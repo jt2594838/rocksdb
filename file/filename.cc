@@ -64,9 +64,21 @@ static std::string MakeFileName(uint64_t number, const char* suffix) {
   return buf;
 }
 
+static std::string MakeFileName(uint64_t number, const char* suffix, uint64_t seq_num) {
+  char buf[100];
+  snprintf(buf, sizeof(buf), "%06llu-s%llu.%s",
+           static_cast<unsigned long long>(number), seq_num, suffix);
+  return buf;
+}
+
 static std::string MakeFileName(const std::string& name, uint64_t number,
                                 const char* suffix) {
   return name + "/" + MakeFileName(number, suffix);
+}
+
+static std::string MakeFileName(const std::string& name, uint64_t number,
+                                const char* suffix, uint64_t seq_num) {
+  return name + "/" + MakeFileName(number, suffix, seq_num);
 }
 
 std::string LogFileName(const std::string& name, uint64_t number) {
@@ -112,6 +124,10 @@ std::string MakeTableFileName(uint64_t number) {
   return MakeFileName(number, kRocksDbTFileExt.c_str());
 }
 
+std::string MakeTableFileName(uint64_t number, uint64_t seq_num) {
+  return MakeFileName(number, kRocksDbTFileExt.c_str(), seq_num);
+}
+
 std::string Rocks2LevelTableFileName(const std::string& fullname) {
   assert(fullname.size() > kRocksDbTFileExt.size() + 1);
   if (fullname.size() <= kRocksDbTFileExt.size() + 1) {
@@ -142,6 +158,18 @@ std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t number,
     path = db_paths[path_id].path;
   }
   return MakeTableFileName(path, number);
+}
+
+std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t number,
+                          uint32_t path_id, uint64_t seq_num) {
+  assert(number > 0);
+  std::string path;
+  if (path_id >= db_paths.size()) {
+    path = db_paths.back().path;
+  } else {
+    path = db_paths[path_id].path;
+  }
+  return MakeTableFileName(path, number, seq_num);
 }
 
 void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,

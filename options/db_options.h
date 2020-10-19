@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "rocksdb/options.h"
+#include "db/thrift/rpc_types.h"
+
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -89,6 +91,8 @@ struct ImmutableDBOptions {
   bool best_efforts_recovery;
   int max_bgerror_resume_count;
   uint64_t bgerror_resume_retry_interval;
+
+  std::vector<rocksT::RemoteCompactionJob*> jobs;
 };
 
 struct MutableDBOptions {
