@@ -328,6 +328,47 @@ bool CompactionPicker::AreFilesInCompaction(
   return false;
 }
 
+Compaction* CompactionPicker::CompactExactly(const CompactionOptions& compact_options,
+                                             const std::vector<CompactionInputFiles>& input_files,
+                                             Slice* begin, Slice* end,
+                                             int output_level, VersionStorageInfo* vstorage,
+                                             const MutableCFOptions& mutable_cf_options,
+                                             const MutableDBOptions& mutable_db_options,
+                                             uint32_t output_path_id) {
+  assert(input_files.size());
+  // do not check overlap because several remote compactions may work on the
+  // same files
+
+  CompressionType compression_type;
+  if (compact_options.compression == kDisableCompressionOption) {
+    int base_level;
+    if (ioptions_.compaction_style == kCompactionStyleLevel) {
+      base_level = vstorage->base_level();
+    } else {
+      base_level = 1;
+    }
+    compression_type =
+        GetCompressionType(ioptions_, vstorage, mutable_cf_options,
+                           output_level, base_level);
+  } else {
+    // TODO(ajkr): `CompactionOptions` offers configurable `CompressionType`
+    // without configurable `CompressionOptions`, which is inconsistent.
+    compression_type = compact_options.compression;
+  }
+  auto c = new Compaction(
+      vstorage, ioptions_, mutable_cf_options, mutable_db_options, input_files,
+      output_level, compact_options.output_file_size_limit,
+      mutable_cf_options.max_compaction_bytes, output_path_id, compression_type,
+      GetCompressionOptions(mutable_cf_options, vstorage, output_level),
+      compact_options.max_subcompactions,
+      /* grandparents */ {}, true);
+  c->setBegin(begin);
+  c->setAnEnd(end);
+  // still register to avoid local compaction overlaps with them
+  RegisterCompaction(c);
+  return c;
+}
+
 Compaction* CompactionPicker::CompactFiles(
     const CompactionOptions& compact_options,
     const std::vector<CompactionInputFiles>& input_files, int output_level,

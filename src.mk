@@ -1,4 +1,5 @@
 # These are the sources from which librocksdb.a is built:
+# These are the sources from which librocksdb.a is built:
 LIB_SOURCES =                                                   \
   cache/cache.cc                                                \
   cache/clock_cache.cc                                          \
@@ -258,6 +259,7 @@ LIB_SOURCES =                                                   \
   utilities/ttl/db_ttl_impl.cc                                  \
   utilities/write_batch_with_index/write_batch_with_index.cc    \
   utilities/write_batch_with_index/write_batch_with_index_internal.cc    \
+  db/example/simple_exmple.cc                                   \
 
 ifeq ($(ARMCRC_SOURCE),1)
 LIB_SOURCES +=\

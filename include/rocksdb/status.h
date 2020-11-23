@@ -486,7 +486,7 @@ class Status {
   // Returns the string "OK" for success.
   std::string ToString() const;
 
- protected:
+ public:
   // A nullptr state_ (which is always the case for OK) means the message
   // is empty.
   // of the following form:

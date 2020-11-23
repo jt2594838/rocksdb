@@ -8,6 +8,8 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #pragma once
 
+#include <db/thrift/gen/rpc_types.h>
+
 #include <atomic>
 #include <deque>
 #include <functional>
@@ -121,6 +123,11 @@ class CompactionJob {
   // Call compaction filter. Then iterate through input and compact the
   // kv-pairs
   void ProcessKeyValueCompaction(SubcompactionState* sub_compact);
+  void ProcessLocalKVCompaction(SubcompactionState* sub_compact);
+  void ProcessRemoteKVCompaction(SubcompactionState* sub_compact);
+  void GenFileNumbers();
+  void PushFilesToNode(TCompactionResult& result, ClusterNode*
+                                                                  node) const;
 
   Status FinishCompactionOutputFile(
       const Status& input_status, SubcompactionState* sub_compact,
@@ -132,17 +139,23 @@ class CompactionJob {
   Status OpenCompactionOutputFile(SubcompactionState* sub_compact);
   void CleanupCompaction();
   void UpdateCompactionJobStats(
-    const InternalStats::CompactionStats& stats) const;
+      const InternalStats::CompactionStats& stats) const;
   void RecordDroppedKeys(const CompactionIterationStats& c_iter_stats,
                          CompactionJobStats* compaction_job_stats = nullptr);
 
   void UpdateCompactionStats();
-  void UpdateCompactionInputStatsHelper(
-      int* num_files, uint64_t* bytes_read, int input_level);
+  void UpdateCompactionInputStatsHelper(int* num_files, uint64_t* bytes_read,
+                                        int input_level);
 
   void LogCompaction();
 
+  void assignSubJobNode(SubcompactionState& subcompactionState);
+  static void ConstructCompactionOutPut(TFileMetadata& file_meta,
+                            SubcompactionState* sub_comp);
+  void AdvanceOtherFileNumbers(uint64_t i);
+
   int job_id_;
+  int curr_node_index;
 
   // CompactionJob state
   struct CompactionState;
@@ -196,9 +209,27 @@ class CompactionJob {
   std::vector<Slice> boundaries_;
   // Stores the approx size of keys covered in the range of each subcompaction
   std::vector<uint64_t> sizes_;
+  std::vector<uint64_t> start_file_nums;
   Env::WriteLifeTimeHint write_hint_;
   Env::Priority thread_pri_;
   IOStatus io_status_;
+  int max_file_per_sub_comp = 10;
+  int new_file_start_num;
+
+  uint64_t file_start_num;
+  uint64_t max_file_num;
+  bool is_remote = false;
+  std::vector<FileMetaData> compact_output;
+
+ public:
+  uint64_t getFileStartNum() const;
+  void setFileStartNum(uint64_t fileStartNum);
+  uint64_t getMaxFileNum() const;
+  void setMaxFileNum(uint64_t maxFileNum);
+  bool isRemote() const;
+  void setIsRemote(bool isRemote);
+
+  const std::vector<FileMetaData>& getCompactOutput() const;
 };
 
 }  // namespace ROCKSDB_NAMESPACE

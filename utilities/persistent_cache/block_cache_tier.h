@@ -7,7 +7,7 @@
 #ifndef ROCKSDB_LITE
 
 #ifndef  OS_WIN
-#include <unistd.h>
+//#include <unistd.h>
 #endif // ! OS_WIN
 
 #include <atomic>

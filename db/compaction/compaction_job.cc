@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <memory>
 #include <random>
@@ -33,6 +34,8 @@
 #include "db/merge_context.h"
 #include "db/merge_helper.h"
 #include "db/range_del_aggregator.h"
+#include "db/thrift/RpcUtils.h"
+#include "db/thrift/gen/rpc_types.h"
 #include "db/version_set.h"
 #include "file/filename.h"
 #include "file/read_write_util.h"
@@ -122,6 +125,10 @@ struct CompactionJob::SubcompactionState {
   // The return IO Status of this subcompaction
   IOStatus io_status;
 
+  ClusterNode* node;
+  int64_t start_file_num = -1;
+  int64_t max_output_file_num = -1;
+
   // Files produced by this subcompaction
   struct Output {
     FileMetaData meta;
@@ -163,10 +170,11 @@ struct CompactionJob::SubcompactionState {
   bool seen_key = false;
 
   SubcompactionState(Compaction* c, Slice* _start, Slice* _end,
-                     uint64_t size = 0)
+                     uint64_t size = 0, ClusterNode* _node = nullptr)
       : compaction(c),
         start(_start),
         end(_end),
+        node(_node),
         outfile(nullptr),
         builder(nullptr),
         current_output_file_size(0),
@@ -185,6 +193,7 @@ struct CompactionJob::SubcompactionState {
     compaction = std::move(o.compaction);
     start = std::move(o.start);
     end = std::move(o.end);
+    node = o.node;
     status = std::move(o.status);
     io_status = std::move(o.io_status);
     outputs = std::move(o.outputs);
@@ -268,9 +277,7 @@ struct CompactionJob::CompactionState {
   uint64_t num_output_records;
 
   explicit CompactionState(Compaction* c)
-      : compaction(c),
-        total_bytes(0),
-        num_output_records(0) {}
+      : compaction(c), total_bytes(0), num_output_records(0) {}
 
   size_t NumOutputFiles() {
     size_t total = 0;
@@ -435,10 +442,11 @@ void CompactionJob::Prepare() {
       c->column_family_data()->CalculateSSTWriteHint(c->output_level());
   bottommost_level_ = c->bottommost_level();
 
-  if (c->ShouldFormSubcompactions()) {
+  if (c->ShouldFormSubcompactions() && !is_remote) {
     {
       StopWatch sw(env_, stats_, SUBCOMPACTION_SETUP_TIME);
       GenSubcompactionBoundaries();
+      GenFileNumbers();
     }
     assert(sizes_.size() == boundaries_.size() + 1);
 
@@ -446,12 +454,59 @@ void CompactionJob::Prepare() {
       Slice* start = i == 0 ? nullptr : &boundaries_[i - 1];
       Slice* end = i == boundaries_.size() ? nullptr : &boundaries_[i];
       compact_->sub_compact_states.emplace_back(c, start, end, sizes_[i]);
+      SubcompactionState& sub_comp = compact_->sub_compact_states.back();
+      assignSubJobNode(sub_comp);
+      sub_comp.start_file_num = start_file_nums[i];
+      sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
     RecordInHistogram(stats_, NUM_SUBCOMPACTIONS_SCHEDULED,
                       compact_->sub_compact_states.size());
   } else {
-    compact_->sub_compact_states.emplace_back(c, nullptr, nullptr);
+    compact_->sub_compact_states.emplace_back(
+        c, compact_->compaction->getBegin(), compact_->compaction->getAnEnd());
+    SubcompactionState& sub_comp = compact_->sub_compact_states.back();
+    if (is_remote) {
+      sub_comp.start_file_num = file_start_num;
+      sub_comp.max_output_file_num = max_file_num;
+    } else {
+      sub_comp.start_file_num = versions_->GetFileNumber();
+      sub_comp.max_output_file_num = max_file_per_sub_comp;
+    }
+    versions_->FetchAddFileNumber(is_remote ? max_file_num
+                                            : max_file_per_sub_comp);
   }
+
+  if (!is_remote) {
+    AdvanceOtherFileNumbers(versions_->GetFileNumber());
+  }
+}
+
+void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_file_num) {
+  for (ClusterNode* node : db_options_.nodes) {
+    if (node != db_options_.this_node) {
+      ThriftServiceClient* client = RpcUtils::CreateClient(node);
+      client->SetFileNumber(new_file_num);
+      delete client;
+    }
+  }
+}
+
+void CompactionJob::GenFileNumbers() {
+  uint64_t required_file_numbers = sizes_.size() * max_file_per_sub_comp;
+  uint64_t start_file_num =
+      versions_->FetchAddFileNumber(required_file_numbers);
+  start_file_nums.push_back(start_file_num);
+  for (uint64_t i = 1; i < sizes_.size(); i++) {
+    start_file_num += max_file_per_sub_comp;
+    start_file_nums.push_back(start_file_num);
+  }
+  new_file_start_num = start_file_num;
+}
+
+void CompactionJob::assignSubJobNode(SubcompactionState& subcompactionState) {
+  ClusterNode* node = db_options_.nodes[curr_node_index];
+  subcompactionState.node = node;
+  curr_node_index = (curr_node_index + 1) % db_options_.nodes.size();
 }
 
 struct RangeWithSize {
@@ -556,13 +611,13 @@ void CompactionJob::GenSubcompactionBoundaries() {
   int base_level = v->storage_info()->base_level();
   uint64_t max_output_files = static_cast<uint64_t>(std::ceil(
       sum / min_file_fill_percent /
-      MaxFileSizeForLevel(*(c->mutable_cf_options()), out_lvl,
+      MaxFileSizeForLevel(
+          *(c->mutable_cf_options()), out_lvl,
           c->immutable_cf_options()->compaction_style, base_level,
           c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
-  uint64_t subcompactions =
-      std::min({static_cast<uint64_t>(ranges.size()),
-                static_cast<uint64_t>(c->max_subcompactions()),
-                max_output_files});
+  uint64_t subcompactions = std::min(
+      {static_cast<uint64_t>(ranges.size()),
+       static_cast<uint64_t>(c->max_subcompactions()), max_output_files});
 
   if (subcompactions > 1) {
     double mean = sum * 1.0 / subcompactions;
@@ -601,17 +656,13 @@ Status CompactionJob::Run() {
   assert(num_threads > 0);
   const uint64_t start_micros = env_->NowMicros();
 
-  // Launch a thread for each of subcompactions 1...num_threads-1
+  // Launch a thread for each of subcompactions 0...num_threads-1
   std::vector<port::Thread> thread_pool;
   thread_pool.reserve(num_threads - 1);
-  for (size_t i = 1; i < compact_->sub_compact_states.size(); i++) {
+  for (auto & sub_compact_state : compact_->sub_compact_states) {
     thread_pool.emplace_back(&CompactionJob::ProcessKeyValueCompaction, this,
-                             &compact_->sub_compact_states[i]);
+                             &sub_compact_state);
   }
-
-  // Always schedule the first subcompaction (whether or not there are also
-  // others) in the current thread to be efficient with resources
-  ProcessKeyValueCompaction(&compact_->sub_compact_states[0]);
 
   // Wait for all other threads (if there are any) to finish execution
   for (auto& thread : thread_pool) {
@@ -620,9 +671,9 @@ Status CompactionJob::Run() {
 
   compaction_stats_.micros = env_->NowMicros() - start_micros;
   compaction_stats_.cpu_micros = 0;
-  for (size_t i = 0; i < compact_->sub_compact_states.size(); i++) {
+  for (auto & sub_compact_state : compact_->sub_compact_states) {
     compaction_stats_.cpu_micros +=
-        compact_->sub_compact_states[i].compaction_job_stats.cpu_micros;
+        sub_compact_state.compaction_job_stats.cpu_micros;
   }
 
   RecordTimeToHistogram(stats_, COMPACTION_TIME, compaction_stats_.micros);
@@ -672,11 +723,12 @@ Status CompactionJob::Run() {
           break;
         }
         // Verify that the table is usable
-        // We set for_compaction to false and don't OptimizeForCompactionTableRead
-        // here because this is a special case after we finish the table building
-        // No matter whether use_direct_io_for_flush_and_compaction is true,
-        // we will regard this verification as user reads since the goal is
-        // to cache it here for further user reads
+        // We set for_compaction to false and don't
+        // OptimizeForCompactionTableRead here because this is a special case
+        // after we finish the table building No matter whether
+        // use_direct_io_for_flush_and_compaction is true, we will regard this
+        // verification as user reads since the goal is to cache it here for
+        // further user reads
         ReadOptions read_options;
         InternalIterator* iter = cfd->table_cache()->NewIterator(
             read_options, file_options_, cfd->internal_comparator(),
@@ -716,8 +768,8 @@ Status CompactionJob::Run() {
       }
     };
     for (size_t i = 1; i < compact_->sub_compact_states.size(); i++) {
-      thread_pool.emplace_back(verify_table,
-                               std::ref(compact_->sub_compact_states[i].status));
+      thread_pool.emplace_back(
+          verify_table, std::ref(compact_->sub_compact_states[i].status));
     }
     verify_table(compact_->sub_compact_states[0].status);
     for (auto& thread : thread_pool) {
@@ -738,6 +790,7 @@ Status CompactionJob::Run() {
           TableFileName(state.compaction->immutable_cf_options()->cf_paths,
                         output.meta.fd.GetNumber(), output.meta.fd.GetPathId());
       tp[fn] = output.table_properties;
+      compact_output.emplace_back(output.meta);
     }
   }
   compact_->compaction->SetOutputTableProperties(std::move(tp));
@@ -853,7 +906,7 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
   return status;
 }
 
-void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
+void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
   assert(sub_compact != nullptr);
 
   uint64_t prev_cpu_micros = env_->NowCPUNanos() / 1000;
@@ -1014,7 +1067,8 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
     Status input_status;
     if (sub_compact->compaction->output_level() != 0 &&
         sub_compact->current_output_file_size >=
-            sub_compact->compaction->max_output_file_size()) {
+            sub_compact->compaction->max_output_file_size() &&
+        sub_compact->max_output_file_num > 0) {
       // (1) this key terminates the file. For historical reasons, the iterator
       // status before advancing will be given to FinishCompactionOutputFile().
       input_status = input->status();
@@ -1139,9 +1193,129 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
     }
   }
 
+  // push compaction results to other nodes
+  if (status.ok()) {
+    auto node_itr = db_options_.nodes.begin();
+    ClusterNode* this_node = db_options_.this_node;
+    TCompactionResult result;
+    result.num_output_records =
+        sub_compact->compaction_job_stats.num_output_records;
+    result.total_bytes = sub_compact->compaction_job_stats.total_output_bytes;
+    std::vector<TFileMetadata>& output_file_metadata = result.output_files;
+
+    auto output_iter = sub_compact->outputs.begin();
+    while (output_iter != sub_compact->outputs.end()) {
+      SubcompactionState::Output& output = *output_iter;
+      output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
+      output_iter++;
+    }
+
+    ROCKS_LOG_INFO(this->db_options_.info_log,
+                   "A local compaction ends with %ld files",
+                   output_file_metadata.size());
+
+    while (node_itr != db_options_.nodes.end()) {
+      ClusterNode* node = *node_itr;
+      if (node != this_node) {
+        ROCKS_LOG_INFO(this->db_options_.info_log,
+                       "Pushing compaction "
+                       "results to node %s",
+                       node->ToString().c_str());
+        PushFilesToNode(result, node);
+      }
+      node_itr++;
+    }
+  }
+
   sub_compact->c_iter.reset();
   input.reset();
   sub_compact->status = status;
+}
+
+void CompactionJob::PushFilesToNode(TCompactionResult& result,
+                                    ClusterNode* node) const {
+  auto* client = RpcUtils::CreateClient(node);
+  ClusterNode* this_node = db_options_.this_node;
+  client->PushFiles(result, this_node->getIp(), this_node->getPort());
+  delete client;
+}
+
+void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
+  std::string cf_name =
+      sub_compact->compaction->column_family_data()->GetName();
+  Slice* start = sub_compact->start;
+  Slice* end = sub_compact->end;
+  size_t num_levels = sub_compact->compaction->num_input_levels();
+  std::vector<int64_t> file_packed_nums;
+  for (size_t i = 0; i < num_levels; i++) {
+    const std::vector<FileMetaData*>* level_inputs =
+        sub_compact->compaction->inputs(i);
+    size_t input_size = level_inputs->size();
+    for (size_t j = 0; j < input_size; j++) {
+      int64_t file_packed_num =
+          (*level_inputs)[j]->fd.packed_number_and_path_id;
+      file_packed_nums.push_back(file_packed_num);
+    }
+  }
+  int output_level = sub_compact->compaction->output_level();
+
+  TCompactFilesRequest request;
+  request.__set_file_nums(file_packed_nums);
+  request.__set_cf_name(cf_name);
+  request.__set_output_level(output_level);
+  request.__set_max_file_num(sub_compact->max_output_file_num);
+  request.__set_start_file_num(sub_compact->start_file_num);
+  request.__set_comp_start(std::string(start->data(), start->size()));
+  request.__set_comp_end(std::string(end->data(), end->size()));
+  auto* client = RpcUtils::CreateClient(sub_compact->node);
+
+  ROCKS_LOG_INFO(this->db_options_.info_log,
+                 "Executing a remote compaction "
+                 "on %s",
+                 sub_compact->node->ToString().c_str());
+
+  TCompactionResult result;
+  client->CompactFiles(result, request);
+
+  // when the client ends compaction, the result files should have been
+  // pushed to this node
+  const Status& status = RpcUtils::ToStatus(result.status);
+  auto iter = result.output_files.begin();
+  while (iter != result.output_files.end()) {
+    TFileMetadata& output_meta = *iter;
+    ConstructCompactionOutPut(output_meta, sub_compact);
+    iter++;
+  }
+
+  ROCKS_LOG_INFO(this->db_options_.info_log,
+                 "Executed a remote compaction "
+                 "on %s, status: %s, results: %ld "
+                 "files",
+                 sub_compact->node->ToString().c_str(),
+                 status.ToString().c_str(), result.output_files.size());
+  sub_compact->status = status;
+  sub_compact->num_output_records = result.num_output_records;
+  sub_compact->total_bytes = result.total_bytes;
+
+  delete client;
+}
+
+void CompactionJob::ConstructCompactionOutPut(TFileMetadata& file_meta,
+                                              SubcompactionState* sub_comp) {
+  SubcompactionState::Output out;
+  out.meta = RpcUtils::ToFileMetaData(file_meta);
+  out.finished = true;
+  out.paranoid_hash = 0;
+
+  sub_comp->outputs.emplace_back(out);
+}
+
+void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
+  if (sub_compact->node == db_options_.this_node) {
+    ProcessLocalKVCompaction(sub_compact);
+  } else {
+    ProcessRemoteKVCompaction(sub_compact);
+  }
 }
 
 void CompactionJob::RecordDroppedKeys(
@@ -1260,9 +1434,8 @@ Status CompactionJob::FinishCompactionOutputFile(
     // bound. If the end of subcompaction is null or the upper bound is null,
     // it means that this file is the last file in the compaction. So there
     // will be no overlapping between this file and others.
-    assert(sub_compact->end == nullptr ||
-           upper_bound == nullptr ||
-           ucmp->Compare(*upper_bound , *sub_compact->end) <= 0);
+    assert(sub_compact->end == nullptr || upper_bound == nullptr ||
+           ucmp->Compare(*upper_bound, *sub_compact->end) <= 0);
     auto it = range_del_agg->NewIterator(lower_bound, upper_bound,
                                          has_overlapping_endpoints);
     // Position the range tombstone output iterator. There may be tombstone
@@ -1518,6 +1691,37 @@ Status CompactionJob::InstallCompactionResults(
       compaction->edit()->AddFile(compaction->output_level(), out.meta);
     }
   }
+
+  TInstallCompactionRequest request;
+  TStatus tstatus;
+  for (auto& deleted_file : compact_->compaction->edit()->GetDeletedFiles()) {
+    TDeletedCompactionInput deleted_input;
+    deleted_input.level = deleted_file.first;
+    deleted_input.file_num = deleted_file.second;
+    request.deleted_inputs.emplace_back(std::move(deleted_input));
+  }
+  for (auto& new_file : compact_->compaction->edit()->GetNewFiles()) {
+    TInstalledCompactionOutput output;
+    output.level = new_file.first;
+    output.metadata = RpcUtils::ToTFileMetaData(new_file.second);
+    request.installed_outputs.emplace_back(std::move(output));
+  }
+
+  for (auto* node : db_options_.nodes) {
+    if (node != db_options_.this_node) {
+      auto* client = RpcUtils::CreateClient(node);
+      ROCKS_LOG_INFO(db_options_.info_log, "Installing compaction result of "
+                     "%ld inputs and %ld outputs to %s", request
+                         .deleted_inputs.size(), request.installed_outputs
+                         .size(), node->ToString().c_str());
+      client->InstallCompaction(tstatus, request);
+      Status status = RpcUtils::ToStatus(tstatus);
+      ROCKS_LOG_INFO(db_options_.info_log, "Installed compaction result to %s, "
+                     "result: %s"
+                     "", node->ToString().c_str(), status.ToString().c_str());
+    }
+  }
+
   return versions_->LogAndApply(compaction->column_family_data(),
                                 mutable_cf_options, compaction->edit(),
                                 db_mutex_, db_directory_);
@@ -1551,7 +1755,14 @@ Status CompactionJob::OpenCompactionOutputFile(
   assert(sub_compact != nullptr);
   assert(sub_compact->builder == nullptr);
   // no need to lock because VersionSet::next_file_number_ is atomic
-  uint64_t file_number = versions_->NewFileNumber();
+  uint64_t file_number;
+  if (sub_compact->start_file_num >= 0) {
+    file_number = sub_compact->start_file_num++;
+    sub_compact->max_output_file_num--;
+  } else {
+    file_number = versions_->NewFileNumber();
+  }
+
   std::string fname =
       TableFileName(sub_compact->compaction->immutable_cf_options()->cf_paths,
                     file_number, sub_compact->compaction->output_path_id());
@@ -1811,6 +2022,19 @@ void CompactionJob::LogCompaction() {
     stream << "score" << compaction->score() << "input_data_size"
            << compaction->CalculateTotalInputSize();
   }
+}
+uint64_t CompactionJob::getFileStartNum() const { return file_start_num; }
+void CompactionJob::setFileStartNum(uint64_t fileStartNum) {
+  file_start_num = fileStartNum;
+}
+uint64_t CompactionJob::getMaxFileNum() const { return max_file_num; }
+void CompactionJob::setMaxFileNum(uint64_t maxFileNum) {
+  max_file_num = maxFileNum;
+}
+bool CompactionJob::isRemote() const { return is_remote; }
+void CompactionJob::setIsRemote(bool isRemote) { is_remote = isRemote; }
+const std::vector<FileMetaData>& CompactionJob::getCompactOutput() const {
+  return compact_output;
 }
 
 }  // namespace ROCKSDB_NAMESPACE

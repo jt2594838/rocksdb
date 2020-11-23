@@ -1032,6 +1032,14 @@ class VersionSet {
     return next_file_number_.fetch_add(n);
   }
 
+  void SetFileNumber(uint64_t n) {
+    next_file_number_ = n;
+  }
+
+  uint64_t GetFileNumber() {
+    return next_file_number_;
+  }
+
 // TSAN failure is suppressed in most sequence read/write functions when
 // clang is used, because it would show a warning of conflcit for those
 // updates. Since we haven't figured out a correctnes violation caused

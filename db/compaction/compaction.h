@@ -337,6 +337,8 @@ class Compaction {
   const int number_levels_;
   ColumnFamilyData* cfd_;
   Arena arena_;          // Arena used to allocate space for file_levels_
+  Slice* begin = nullptr;
+  Slice* end = nullptr;
 
   const uint32_t output_path_id_;
   CompressionType output_compression_;
@@ -381,6 +383,12 @@ class Compaction {
 
   // Reason for compaction
   CompactionReason compaction_reason_;
+
+ public:
+  Slice* getBegin() const;
+  void setBegin(Slice* begin);
+  Slice* getAnEnd() const;
+  void setAnEnd(Slice* anEnd);
 };
 
 // Return sum of sizes of all files in `files`.

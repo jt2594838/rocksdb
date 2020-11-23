@@ -10,11 +10,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "rocksdb/iterator.h"
 #include "rocksdb/listener.h"
 #include "rocksdb/metadata.h"
@@ -48,7 +50,6 @@ struct FlushOptions;
 struct CompactionOptions;
 struct CompactRangeOptions;
 struct TableProperties;
-struct ExternalSstFileInfo;
 class WriteBatch;
 class Env;
 class EventListener;
@@ -1154,6 +1155,22 @@ class DB {
                         input_file_names, output_level, output_path_id,
                         output_file_names, compaction_job_info);
   }
+
+  virtual Status CompactExactly(
+      CompactionOptions& compact_options, ColumnFamilyHandle* column_family,
+      const std::vector<std::string>& input_file_names, const int output_level,
+      const int start_file_num, const int max_file_num, Slice* begin,
+      Slice* end, const int output_path_id = -1,
+      std::vector<std::string>* const output_file_names = nullptr,
+      CompactionJobInfo* compaction_job_info = nullptr);
+
+  virtual Status RemoteCompactFiles(
+      CompactionOptions& compact_options, ColumnFamilyHandle* column_family,
+      const std::vector<std::string>& input_file_names, const int output_level,
+      const int start_file_num, const int max_file_num,
+      const int new_file_start_num, const int output_path_id = -1,
+      std::vector<std::string>* const output_file_names = nullptr,
+      CompactionJobInfo* compaction_job_info = nullptr);
 
   // This function will wait until all currently running background processes
   // finish. After it returns, no background process will be run until

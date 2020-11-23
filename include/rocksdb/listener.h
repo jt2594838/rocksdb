@@ -25,6 +25,7 @@ typedef std::unordered_map<std::string, std::shared_ptr<const TableProperties>>
 class DB;
 class ColumnFamilyHandle;
 class Status;
+struct FileMetaData;
 struct CompactionJobStats;
 
 enum class TableFileCreationReason {
@@ -278,6 +279,8 @@ struct CompactionJobInfo {
 
   // Additional information about the compaction output files.
   std::vector<CompactionFileInfo> output_file_infos;
+
+  std::vector<FileMetaData> output_file_meta;
 
   // Table properties for input and output tables.
   // The map is keyed by values from input_files and output_files.

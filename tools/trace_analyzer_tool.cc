@@ -12,7 +12,6 @@
 #include <numaif.h>
 #endif
 #ifndef OS_WIN
-#include <unistd.h>
 #endif
 
 #include <cinttypes>

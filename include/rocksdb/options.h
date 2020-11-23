@@ -17,16 +17,18 @@
 #include <unordered_map>
 #include <vector>
 
+#include "rocksdb/types.h"
+#include "rocksdb/listener.h"
 #include "rocksdb/advanced_options.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/compression_type.h"
 #include "rocksdb/env.h"
 #include "rocksdb/file_checksum.h"
-#include "rocksdb/listener.h"
 #include "rocksdb/sst_partitioner.h"
 #include "rocksdb/universal_compaction.h"
 #include "rocksdb/version.h"
 #include "rocksdb/write_buffer_manager.h"
+#include "rocksdb/node.h"
 
 #ifdef max
 #undef max
@@ -53,6 +55,8 @@ class Statistics;
 class InternalKeyComparator;
 class WalFilter;
 class FileSystem;
+class EventListener;
+struct TableProperties;
 
 struct Options;
 struct DbPath;
@@ -1157,6 +1161,9 @@ struct DBOptions {
   //
   // Default: 1000000 (microseconds).
   uint64_t bgerror_resume_retry_interval = 1000000;
+
+  ClusterNode* this_node;
+  std::vector<ClusterNode*> nodes;
 };
 
 // Options to control the behavior of a database (passed to DB::Open)

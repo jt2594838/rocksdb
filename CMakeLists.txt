@@ -875,7 +875,7 @@ else()
   set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
-add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
+add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES} db/dist/rocks_service.cpp db/dist/rocks_service.h)
 target_link_libraries(${ROCKSDB_STATIC_LIB} PRIVATE
   ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
@@ -1188,7 +1188,7 @@ if(WITH_TESTS)
       monitoring/thread_status_updater_debug.cc
       table/mock_table.cc
       utilities/cassandra/test_utils.cc
-  )
+          db/dist/rocks_service.cpp db/dist/rocks_service.h)
   enable_testing()
   add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
   set(TESTUTILLIB testutillib${ARTIFACT_SUFFIX})

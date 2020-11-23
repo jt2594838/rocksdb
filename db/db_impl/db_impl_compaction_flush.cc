@@ -876,6 +876,74 @@ Status DBImpl::CompactRange(const CompactRangeOptions& options,
   return s;
 }
 
+Status DBImpl::CompactExactly(CompactionOptions& compact_options,
+                              ColumnFamilyHandle* column_family,
+                              const std::vector<std::string>& input_file_names,
+                              const int output_level, const int start_file_num,
+                              const int max_file_num, Slice* begin, Slice* end,
+                              const int output_path_id,
+                              std::vector<std::string>* const output_file_names,
+                              CompactionJobInfo* compaction_job_info) {
+  if (column_family == nullptr) {
+    return Status::InvalidArgument("ColumnFamilyHandle must be non-null.");
+  }
+
+  auto cfd =
+      static_cast_with_check<ColumnFamilyHandleImpl>(column_family)->cfd();
+  assert(cfd);
+
+  Status s;
+  JobContext job_context(0, true);
+  LogBuffer log_buffer(InfoLogLevel::INFO_LEVEL,
+                       immutable_db_options_.info_log.get());
+
+  // Perform CompactFiles
+  TEST_SYNC_POINT("TestCompactFiles::IngestExternalFile2");
+  {
+    InstrumentedMutexLock l(&mutex_);
+
+    // We need to get current after `WaitForIngestFile`, because
+    // `IngestExternalFile` may add files that overlap with `input_file_names`
+    auto* current = cfd->current();
+    current->Ref();
+
+    s = CompactExactlyImpl(compact_options, cfd, current, input_file_names,
+                           output_file_names, output_level, output_path_id,
+                           start_file_num, max_file_num, begin, end,
+                           &job_context, &log_buffer, compaction_job_info);
+
+    current->Unref();
+  }
+
+  // Find and delete obsolete files
+  {
+    InstrumentedMutexLock l(&mutex_);
+    // If !s.ok(), this means that Compaction failed. In that case, we want
+    // to delete all obsolete files we might have created and we force
+    // FindObsoleteFiles(). This is because job_context does not
+    // catch all created files if compaction failed.
+    FindObsoleteFiles(&job_context, !s.ok());
+  }  // release the mutex
+
+  // delete unnecessary files if any, this is done outside the mutex
+  if (job_context.HaveSomethingToClean() ||
+      job_context.HaveSomethingToDelete() || !log_buffer.IsEmpty()) {
+    // Have to flush the info logs before bg_compaction_scheduled_--
+    // because if bg_flush_scheduled_ becomes 0 and the lock is
+    // released, the deconstructor of DB can kick in and destroy all the
+    // states of DB so info_log might not be available after that point.
+    // It also applies to access other states that DB owns.
+    log_buffer.FlushBufferToLog();
+    if (job_context.HaveSomethingToDelete()) {
+      // no mutex is locked here.  No need to Unlock() and Lock() here.
+      PurgeObsoleteFiles(job_context);
+    }
+    job_context.Clean();
+  }
+
+  return s;
+}
+
 Status DBImpl::CompactFiles(const CompactionOptions& compact_options,
                             ColumnFamilyHandle* column_family,
                             const std::vector<std::string>& input_file_names,
@@ -955,6 +1023,184 @@ Status DBImpl::CompactFiles(const CompactionOptions& compact_options,
 
   return s;
 #endif  // ROCKSDB_LITE
+}
+
+Status DBImpl::CompactExactlyImpl(
+    const CompactionOptions& compact_options, ColumnFamilyData* cfd,
+    Version* version, const std::vector<std::string>& input_file_names,
+    std::vector<std::string>* const output_file_names, const int output_level,
+    int output_path_id, const int start_file_num, const int max_file_num,
+    Slice* begin, Slice* end, JobContext* job_context, LogBuffer* log_buffer,
+    CompactionJobInfo* compaction_job_info) {
+  mutex_.AssertHeld();
+
+  if (shutting_down_.load(std::memory_order_acquire)) {
+    return Status::ShutdownInProgress();
+  }
+  if (manual_compaction_paused_.load(std::memory_order_acquire) > 0) {
+    return Status::Incomplete(Status::SubCode::kManualCompactionPaused);
+  }
+
+  std::unordered_set<uint64_t> input_set;
+  for (const auto& file_name : input_file_names) {
+    input_set.insert(TableFileNameToNumber(file_name));
+  }
+
+  ColumnFamilyMetaData cf_meta;
+  version->GetColumnFamilyMetaData(&cf_meta);
+
+  if (output_path_id < 0) {
+    if (cfd->ioptions()->cf_paths.size() == 1U) {
+      output_path_id = 0;
+    } else {
+      return Status::NotSupported(
+          "Automatic output path selection is not "
+          "yet supported in CompactFiles()");
+    }
+  }
+
+  std::vector<CompactionInputFiles> input_files;
+  Status s = cfd->compaction_picker()->GetCompactionInputsFromFileNumbers(
+      &input_files, &input_set, version->storage_info(), compact_options);
+  if (!s.ok()) {
+    return s;
+  }
+
+  bool sfm_reserved_compact_space = false;
+  // First check if we have enough room to do the compaction
+  bool enough_room = EnoughRoomForCompaction(
+      cfd, input_files, &sfm_reserved_compact_space, log_buffer);
+
+  if (!enough_room) {
+    // m's vars will get set properly at the end of this function,
+    // as long as status == CompactionTooLarge
+    return Status::CompactionTooLarge();
+  }
+
+  // do not sanitize because the compaction leader has done it
+
+  // At this point, CompactFiles will be run.
+  bg_compaction_scheduled_++;
+
+  std::unique_ptr<Compaction> c;
+  assert(cfd->compaction_picker());
+  c.reset(cfd->compaction_picker()->CompactExactly(
+      compact_options, input_files, begin, end, output_level,
+      version->storage_info(), *cfd->GetLatestMutableCFOptions(),
+      mutable_db_options_, output_path_id));
+  // we already sanitized the set of input files and checked for conflicts
+  // without releasing the lock, so we're guaranteed a compaction can be formed.
+  assert(c != nullptr);
+
+  c->SetInputVersion(version);
+  // deletion compaction currently not allowed in remote compact.
+  assert(!c->deletion_compaction());
+
+  std::vector<SequenceNumber> snapshot_seqs;
+  SequenceNumber earliest_write_conflict_snapshot;
+  SnapshotChecker* snapshot_checker;
+  GetSnapshotContext(job_context, &snapshot_seqs,
+                     &earliest_write_conflict_snapshot, &snapshot_checker);
+
+  std::unique_ptr<std::list<uint64_t>::iterator> pending_outputs_inserted_elem(
+      new std::list<uint64_t>::iterator(
+          CaptureCurrentFileNumberInPendingOutputs()));
+
+  assert(is_snapshot_supported_ || snapshots_.empty());
+  CompactionJobStats compaction_job_stats;
+  CompactionJob compaction_job(
+      job_context->job_id, c.get(), immutable_db_options_,
+      file_options_for_compaction_, versions_.get(), &shutting_down_,
+      preserve_deletes_seqnum_.load(), log_buffer, directories_.GetDbDir(),
+      GetDataDir(c->column_family_data(), c->output_path_id()), stats_, &mutex_,
+      &error_handler_, snapshot_seqs, earliest_write_conflict_snapshot,
+      snapshot_checker, table_cache_, &event_logger_,
+      c->mutable_cf_options()->paranoid_file_checks,
+      c->mutable_cf_options()->report_bg_io_stats, dbname_,
+      &compaction_job_stats, Env::Priority::USER, io_tracer_,
+      &manual_compaction_paused_, db_id_, db_session_id_);
+
+  // Creating a compaction influences the compaction score because the score
+  // takes running compactions into account (by skipping files that are already
+  // being compacted). Since we just changed compaction score, we recalculate it
+  // here.
+  version->storage_info()->ComputeCompactionScore(*cfd->ioptions(),
+                                                  *c->mutable_cf_options());
+  compaction_job.setFileStartNum(start_file_num);
+  compaction_job.setMaxFileNum(max_file_num);
+  compaction_job.setIsRemote(true);
+  compaction_job.Prepare();
+
+  mutex_.Unlock();
+  TEST_SYNC_POINT("CompactExactlyImpl:0");
+  TEST_SYNC_POINT("CompactExactlyImpl:1");
+  Status status = compaction_job.Run();
+  TEST_SYNC_POINT("CompactExactlyImpl:2");
+  TEST_SYNC_POINT("CompactExactlyImpl:3");
+  mutex_.Lock();
+
+  // do not install compaction results because the compaction leader will
+  // do so
+  c->ReleaseCompactionFiles(s);
+#ifndef ROCKSDB_LITE
+  // Need to make sure SstFileManager does its bookkeeping
+  auto sfm = static_cast<SstFileManagerImpl*>(
+      immutable_db_options_.sst_file_manager.get());
+  if (sfm && sfm_reserved_compact_space) {
+    sfm->OnCompactionCompletion(c.get());
+  }
+#endif  // ROCKSDB_LITE
+
+  ReleaseFileNumberFromPendingOutputs(pending_outputs_inserted_elem);
+
+  if (compaction_job_info != nullptr) {
+    BuildCompactionJobInfo(cfd, c.get(), s, compaction_job_stats,
+                           job_context->job_id, version, compaction_job_info);
+  }
+
+  if (status.ok()) {
+    // Done
+  } else if (status.IsColumnFamilyDropped() || status.IsShutdownInProgress()) {
+    // Ignore compaction errors found during shutting down
+  } else if (status.IsManualCompactionPaused()) {
+    // Don't report stopping manual compaction as error
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "[%s] [JOB %d] Stopping manual compaction",
+                   c->column_family_data()->GetName().c_str(),
+                   job_context->job_id);
+  } else {
+    ROCKS_LOG_WARN(immutable_db_options_.info_log,
+                   "[%s] [JOB %d] Compaction error: %s",
+                   c->column_family_data()->GetName().c_str(),
+                   job_context->job_id, status.ToString().c_str());
+    IOStatus io_s = compaction_job.io_status();
+    if (!io_s.ok()) {
+      error_handler_.SetBGError(io_s, BackgroundErrorReason::kCompaction);
+    } else {
+      error_handler_.SetBGError(status, BackgroundErrorReason::kCompaction);
+    }
+  }
+
+  if (output_file_names != nullptr) {
+    for (const auto& newf : c->edit()->GetNewFiles()) {
+      (*output_file_names)
+          .push_back(TableFileName(c->immutable_cf_options()->cf_paths,
+                                   newf.second.fd.GetNumber(),
+                                   newf.second.fd.GetPathId()));
+    }
+  }
+  compaction_job_info->output_file_meta = compaction_job.getCompactOutput();
+
+  c.reset();
+
+  bg_compaction_scheduled_--;
+  if (bg_compaction_scheduled_ == 0) {
+    bg_cv_.SignalAll();
+  }
+  MaybeScheduleFlushOrCompaction();
+  TEST_SYNC_POINT("CompactExactlyImpl:End");
+
+  return status;
 }
 
 #ifndef ROCKSDB_LITE

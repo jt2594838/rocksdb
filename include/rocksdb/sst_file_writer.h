@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 
+#include "db.h"
+#include "rocksdb/db.h"
 #include "rocksdb/env.h"
 #include "rocksdb/options.h"
 #include "rocksdb/table_properties.h"
@@ -23,6 +25,7 @@
 
 namespace ROCKSDB_NAMESPACE {
 
+class ColumnFamilyHandle;
 class Comparator;
 
 // ExternalSstFileInfo include information about sst files created

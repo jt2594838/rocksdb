@@ -587,5 +587,9 @@ uint64_t Compaction::MinInputFileOldestAncesterTime() const {
 int Compaction::GetInputBaseLevel() const {
   return input_vstorage_->base_level();
 }
+Slice* Compaction::getBegin() const { return begin; }
+void Compaction::setBegin(Slice* begin_) { Compaction::begin = begin_; }
+Slice* Compaction::getAnEnd() const { return end; }
+void Compaction::setAnEnd(Slice* anEnd) { end = anEnd; }
 
 }  // namespace ROCKSDB_NAMESPACE

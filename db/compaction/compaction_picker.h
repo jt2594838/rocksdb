@@ -118,6 +118,14 @@ class CompactionPicker {
                            const MutableDBOptions& mutable_db_options,
                            uint32_t output_path_id);
 
+  Compaction* CompactExactly(const CompactionOptions& compact_options,
+                           const std::vector<CompactionInputFiles>& input_files,
+                           Slice* begin, Slice* end,
+                           int output_level, VersionStorageInfo* vstorage,
+                           const MutableCFOptions& mutable_cf_options,
+                           const MutableDBOptions& mutable_db_options,
+                           uint32_t output_path_id);
+
   // Converts a set of compaction input file numbers into
   // a list of CompactionInputFiles.
   Status GetCompactionInputsFromFileNumbers(

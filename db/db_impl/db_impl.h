@@ -62,6 +62,7 @@
 #include "util/repeatable_thread.h"
 #include "util/stop_watch.h"
 #include "util/thread_local.h"
+#include "db/dist/rocks_service.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -304,6 +305,14 @@ class DBImpl : public DB {
       std::vector<std::string>* const output_file_names = nullptr,
       CompactionJobInfo* compaction_job_info = nullptr) override;
 
+  virtual Status CompactExactly(
+      CompactionOptions& compact_options, ColumnFamilyHandle* column_family,
+  const std::vector<std::string>& input_file_names, const int output_level,
+  const int start_file_num, const int max_file_num, Slice* begin,
+  Slice* end, const int output_path_id = -1,
+      std::vector<std::string>* const output_file_names = nullptr,
+      CompactionJobInfo* compaction_job_info = nullptr) override;
+
   virtual Status PauseBackgroundWork() override;
   virtual Status ContinueBackgroundWork() override;
 
@@ -383,8 +392,7 @@ class DBImpl : public DB {
   virtual Status GetSortedWalFiles(VectorLogPtr& files) override;
   virtual Status GetCurrentWalFile(
       std::unique_ptr<LogFile>* current_log_file) override;
-  virtual Status GetCreationTimeOfOldestFile(
-      uint64_t* creation_time) override;
+  virtual Status GetCreationTimeOfOldestFile(uint64_t* creation_time) override;
 
   virtual Status GetUpdatesSince(
       SequenceNumber seq_number, std::unique_ptr<TransactionLogIterator>* iter,
@@ -1217,6 +1225,7 @@ class DBImpl : public DB {
   friend class WriteBatchWithIndex;
   friend class WriteUnpreparedTxnDB;
   friend class WriteUnpreparedTxn;
+  friend class RocksService;
 
 #ifndef ROCKSDB_LITE
   friend class ForwardIterator;
@@ -1582,6 +1591,16 @@ class DBImpl : public DB {
   void MemTableInsertStatusCheck(const Status& memtable_insert_status);
 
 #ifndef ROCKSDB_LITE
+
+  Status CompactExactlyImpl(const CompactionOptions& compact_options,
+                            ColumnFamilyData* cfd, Version* version,
+                            const std::vector<std::string>& input_file_names,
+                            std::vector<std::string>* const output_file_names,
+                            const int output_level, int output_path_id,
+                            const int start_file_num, const int max_file_num,
+                            Slice* begin, Slice* end,
+                            JobContext* job_context, LogBuffer* log_buffer,
+                            CompactionJobInfo* compaction_job_info);
 
   Status CompactFilesImpl(const CompactionOptions& compact_options,
                           ColumnFamilyData* cfd, Version* version,

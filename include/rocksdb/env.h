@@ -173,6 +173,20 @@ class Env {
   // The result of Default() belongs to rocksdb and must never be deleted.
   static Env* Default();
 
+  static const std::string TransFormToLocalFile(std::string& remote_file_path,
+                                          const std::string& local_cf_path) {
+    std::string source_file_name = Env::ExtractFileName(remote_file_path);
+    return local_cf_path + "/" + source_file_name;
+  }
+
+  static std::string ExtractFileName(std::string& path) {
+    size_t pos = path.find_last_of('/');
+    if (pos > 0) {
+      return path.substr(pos + 1);
+    }
+    return path;
+  }
+
   // See FileSystem::RegisterDbPaths.
   virtual Status RegisterDbPaths(const std::vector<std::string>& /*paths*/) {
     return Status::OK();

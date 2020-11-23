@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "rocksdb/options.h"
-#include "db/thrift/rpc_types.h"
+#include "rocksdb/node.h"
 
 
 namespace ROCKSDB_NAMESPACE {
@@ -92,7 +92,8 @@ struct ImmutableDBOptions {
   int max_bgerror_resume_count;
   uint64_t bgerror_resume_retry_interval;
 
-  std::vector<rocksT::RemoteCompactionJob*> jobs;
+  ClusterNode* this_node;
+  std::vector<ClusterNode*> nodes;
 };
 
 struct MutableDBOptions {

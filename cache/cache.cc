@@ -9,7 +9,6 @@
 
 #include "rocksdb/cache.h"
 
-#include "cache/lru_cache.h"
 #include "options/options_helper.h"
 #include "util/string_util.h"
 

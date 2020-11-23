@@ -1738,6 +1738,8 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
   }
   if (s.ok()) {
     impl->StartStatsDumpScheduler();
+    auto* compactionService = new RocksService(impl);
+    compactionService->Start();
   } else {
     for (auto* h : *handles) {
       delete h;
