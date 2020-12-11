@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef ROCKSDB_ROCKS_SERVICE_H
 #define ROCKSDB_ROCKS_SERVICE_H
 

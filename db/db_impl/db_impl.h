@@ -305,13 +305,13 @@ class DBImpl : public DB {
       std::vector<std::string>* const output_file_names = nullptr,
       CompactionJobInfo* compaction_job_info = nullptr) override;
 
-  virtual Status CompactExactly(
+  Status CompactExactly(
       CompactionOptions& compact_options, ColumnFamilyHandle* column_family,
   const std::vector<std::string>& input_file_names, const int output_level,
   const int start_file_num, const int max_file_num, Slice* begin,
   Slice* end, const int output_path_id = -1,
       std::vector<std::string>* const output_file_names = nullptr,
-      CompactionJobInfo* compaction_job_info = nullptr) override;
+      CompactionJobInfo* compaction_job_info = nullptr);
 
   virtual Status PauseBackgroundWork() override;
   virtual Status ContinueBackgroundWork() override;

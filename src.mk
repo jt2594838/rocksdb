@@ -259,7 +259,14 @@ LIB_SOURCES =                                                   \
   utilities/ttl/db_ttl_impl.cc                                  \
   utilities/write_batch_with_index/write_batch_with_index.cc    \
   utilities/write_batch_with_index/write_batch_with_index_internal.cc    \
-  db/example/simple_exmple.cc                                   \
+  db/thrift/gen/rpc_constants.cc  \
+  db/thrift/gen/rpc_types.cc      \
+  db/thrift/gen/ThriftService.cc  \
+  db/dist/node.cc	\
+  db/dist/rocks_service.cc	\
+  db/thrift/RpcUtils.cc \
+
+
 
 ifeq ($(ARMCRC_SOURCE),1)
 LIB_SOURCES +=\

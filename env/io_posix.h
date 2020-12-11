@@ -8,6 +8,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #pragma once
 #include <errno.h>
+#define __CTERMID_DEFINED 1
 #if defined(ROCKSDB_IOURING_PRESENT)
 #include <liburing.h>
 #include <sys/uio.h>

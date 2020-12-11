@@ -22,6 +22,7 @@ CXXFLAGS += -I/usr/local/include
 MACHINE ?= $(shell uname -m)
 ARFLAGS = ${EXTRA_ARFLAGS} rs
 STRIPFLAGS = -S -x
+LDFLAGS += -L/Users/koutakashi/Downloads/usr/local/lib -L/usr/local/lib -lthrift -lthriftnb
 
 # Transform parallel LOG output into something more readable.
 perl_command = perl -n \
@@ -415,8 +416,7 @@ endif
 # This (the first rule) must depend on "all".
 default: all
 
-WARNING_FLAGS = -W -Wextra -Wall -Wsign-compare -Wshadow \
-  -Wunused-parameter
+WARNING_FLAGS = -W -Wextra -Wall -Wsign-compare -Wshadow
 
 ifeq ($(PLATFORM), OS_OPENBSD)
 	WARNING_FLAGS += -Wno-unused-lambda-capture
@@ -458,7 +458,7 @@ ifeq ($(NO_THREEWAY_CRC32C), 1)
 endif
 
 CFLAGS += $(WARNING_FLAGS) -I.-I. -I./include -I/usr/local/include $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += $(WARNING_FLAGS) -I. -I./include -I/usr/local/include $(PLATFORM_CXXFLAGS) $(OPT) -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers
+CXXFLAGS += $(WARNING_FLAGS) -I. -I./include -I/usr/local/include $(PLATFORM_CXXFLAGS) $(OPT) -Wnon-virtual-dtor -Wno-missing-field-initializers
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
 

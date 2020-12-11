@@ -5241,35 +5241,68 @@ db/deletefile_test.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb_deletefile_test.dir/build.make CMakeFiles/rocksdb_deletefile_test.dir/db/deletefile_test.cc.s
 .PHONY : db/deletefile_test.cc.s
 
-db/dist/rocks_service.o: db/dist/rocks_service.cpp.o
+db/dist/node.o: db/dist/node.cc.o
+
+.PHONY : db/dist/node.o
+
+# target to build an object file
+db/dist/node.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/node.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/node.cc.o
+.PHONY : db/dist/node.cc.o
+
+db/dist/node.i: db/dist/node.cc.i
+
+.PHONY : db/dist/node.i
+
+# target to preprocess a source file
+db/dist/node.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/node.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/node.cc.i
+.PHONY : db/dist/node.cc.i
+
+db/dist/node.s: db/dist/node.cc.s
+
+.PHONY : db/dist/node.s
+
+# target to generate assembly for a file
+db/dist/node.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/node.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/node.cc.s
+.PHONY : db/dist/node.cc.s
+
+db/dist/rocks_service.o: db/dist/rocks_service.cc.o
 
 .PHONY : db/dist/rocks_service.o
 
 # target to build an object file
-db/dist/rocks_service.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cpp.o
-.PHONY : db/dist/rocks_service.cpp.o
+db/dist/rocks_service.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/rocks_service.cc.o
+.PHONY : db/dist/rocks_service.cc.o
 
-db/dist/rocks_service.i: db/dist/rocks_service.cpp.i
+db/dist/rocks_service.i: db/dist/rocks_service.cc.i
 
 .PHONY : db/dist/rocks_service.i
 
 # target to preprocess a source file
-db/dist/rocks_service.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cpp.i
-.PHONY : db/dist/rocks_service.cpp.i
+db/dist/rocks_service.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/rocks_service.cc.i
+.PHONY : db/dist/rocks_service.cc.i
 
-db/dist/rocks_service.s: db/dist/rocks_service.cpp.s
+db/dist/rocks_service.s: db/dist/rocks_service.cc.s
 
 .PHONY : db/dist/rocks_service.s
 
 # target to generate assembly for a file
-db/dist/rocks_service.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cpp.s
-.PHONY : db/dist/rocks_service.cpp.s
+db/dist/rocks_service.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/dist/rocks_service.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/testutillib.dir/build.make CMakeFiles/testutillib.dir/db/dist/rocks_service.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/dist/rocks_service.cc.s
+.PHONY : db/dist/rocks_service.cc.s
 
 db/error_handler.o: db/error_handler.cc.o
 
@@ -6612,6 +6645,66 @@ db/table_properties_collector_test.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb_table_properties_collector_test.dir/build.make CMakeFiles/rocksdb_table_properties_collector_test.dir/db/table_properties_collector_test.cc.s
 .PHONY : db/table_properties_collector_test.cc.s
 
+db/thrift/gen/rpc_constants.o: db/thrift/gen/rpc_constants.cc.o
+
+.PHONY : db/thrift/gen/rpc_constants.o
+
+# target to build an object file
+db/thrift/gen/rpc_constants.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_constants.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_constants.cc.o
+.PHONY : db/thrift/gen/rpc_constants.cc.o
+
+db/thrift/gen/rpc_constants.i: db/thrift/gen/rpc_constants.cc.i
+
+.PHONY : db/thrift/gen/rpc_constants.i
+
+# target to preprocess a source file
+db/thrift/gen/rpc_constants.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_constants.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_constants.cc.i
+.PHONY : db/thrift/gen/rpc_constants.cc.i
+
+db/thrift/gen/rpc_constants.s: db/thrift/gen/rpc_constants.cc.s
+
+.PHONY : db/thrift/gen/rpc_constants.s
+
+# target to generate assembly for a file
+db/thrift/gen/rpc_constants.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_constants.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_constants.cc.s
+.PHONY : db/thrift/gen/rpc_constants.cc.s
+
+db/thrift/gen/rpc_types.o: db/thrift/gen/rpc_types.cc.o
+
+.PHONY : db/thrift/gen/rpc_types.o
+
+# target to build an object file
+db/thrift/gen/rpc_types.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_types.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_types.cc.o
+.PHONY : db/thrift/gen/rpc_types.cc.o
+
+db/thrift/gen/rpc_types.i: db/thrift/gen/rpc_types.cc.i
+
+.PHONY : db/thrift/gen/rpc_types.i
+
+# target to preprocess a source file
+db/thrift/gen/rpc_types.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_types.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_types.cc.i
+.PHONY : db/thrift/gen/rpc_types.cc.i
+
+db/thrift/gen/rpc_types.s: db/thrift/gen/rpc_types.cc.s
+
+.PHONY : db/thrift/gen/rpc_types.s
+
+# target to generate assembly for a file
+db/thrift/gen/rpc_types.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/db/thrift/gen/rpc_types.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/db/thrift/gen/rpc_types.cc.s
+.PHONY : db/thrift/gen/rpc_types.cc.s
+
 db/transaction_log_impl.o: db/transaction_log_impl.cc.o
 
 .PHONY : db/transaction_log_impl.o
@@ -7595,6 +7688,36 @@ env/mock_env_test.s: env/mock_env_test.cc.s
 env/mock_env_test.cc.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb_mock_env_test.dir/build.make CMakeFiles/rocksdb_mock_env_test.dir/env/mock_env_test.cc.s
 .PHONY : env/mock_env_test.cc.s
+
+examples/simple_example.o: examples/simple_example.cc.o
+
+.PHONY : examples/simple_example.o
+
+# target to build an object file
+examples/simple_example.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/examples/simple_example.cc.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/examples/simple_example.cc.o
+.PHONY : examples/simple_example.cc.o
+
+examples/simple_example.i: examples/simple_example.cc.i
+
+.PHONY : examples/simple_example.i
+
+# target to preprocess a source file
+examples/simple_example.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/examples/simple_example.cc.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/examples/simple_example.cc.i
+.PHONY : examples/simple_example.cc.i
+
+examples/simple_example.s: examples/simple_example.cc.s
+
+.PHONY : examples/simple_example.s
+
+# target to generate assembly for a file
+examples/simple_example.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb.dir/build.make CMakeFiles/rocksdb.dir/examples/simple_example.cc.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rocksdb-shared.dir/build.make CMakeFiles/rocksdb-shared.dir/examples/simple_example.cc.s
+.PHONY : examples/simple_example.cc.s
 
 file/delete_scheduler.o: file/delete_scheduler.cc.o
 
@@ -15897,6 +16020,9 @@ help:
 	@echo "... db/deletefile_test.o"
 	@echo "... db/deletefile_test.i"
 	@echo "... db/deletefile_test.s"
+	@echo "... db/dist/node.o"
+	@echo "... db/dist/node.i"
+	@echo "... db/dist/node.s"
 	@echo "... db/dist/rocks_service.o"
 	@echo "... db/dist/rocks_service.i"
 	@echo "... db/dist/rocks_service.s"
@@ -16041,6 +16167,12 @@ help:
 	@echo "... db/table_properties_collector_test.o"
 	@echo "... db/table_properties_collector_test.i"
 	@echo "... db/table_properties_collector_test.s"
+	@echo "... db/thrift/gen/rpc_constants.o"
+	@echo "... db/thrift/gen/rpc_constants.i"
+	@echo "... db/thrift/gen/rpc_constants.s"
+	@echo "... db/thrift/gen/rpc_types.o"
+	@echo "... db/thrift/gen/rpc_types.i"
+	@echo "... db/thrift/gen/rpc_types.s"
 	@echo "... db/transaction_log_impl.o"
 	@echo "... db/transaction_log_impl.i"
 	@echo "... db/transaction_log_impl.s"
@@ -16143,6 +16275,9 @@ help:
 	@echo "... env/mock_env_test.o"
 	@echo "... env/mock_env_test.i"
 	@echo "... env/mock_env_test.s"
+	@echo "... examples/simple_example.o"
+	@echo "... examples/simple_example.i"
+	@echo "... examples/simple_example.s"
 	@echo "... file/delete_scheduler.o"
 	@echo "... file/delete_scheduler.i"
 	@echo "... file/delete_scheduler.s"

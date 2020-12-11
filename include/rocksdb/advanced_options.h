@@ -10,7 +10,6 @@
 
 #include <memory>
 
-#include "rocksdb/options.h"
 #include "rocksdb/compression_type.h"
 #include "rocksdb/memtablerep.h"
 #include "rocksdb/universal_compaction.h"

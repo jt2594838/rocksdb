@@ -10,8 +10,6 @@
 #include <memory>
 #include <string>
 
-#include "db.h"
-#include "rocksdb/db.h"
 #include "rocksdb/env.h"
 #include "rocksdb/options.h"
 #include "rocksdb/table_properties.h"

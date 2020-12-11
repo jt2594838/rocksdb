@@ -34,6 +34,9 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+include_directories("." "./include" "/usr/local/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L /usr/local/lib -L/usr/local/Cellar/gcc/8.3.0_2/lib/gcc/8 -lthrift -lthriftnb")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/")
 include(ReadVersion)
 get_rocksdb_version(rocksdb_VERSION)
@@ -578,6 +581,10 @@ set(SOURCES
         db/db_info_dumper.cc
         db/db_iter.cc
         db/dbformat.cc
+        db/dist/node.cc
+        db/dist/rocks_service.cc
+        db/thrift/gen/rpc_constants.cc
+        db/thrift/gen/rpc_types.cc
         db/error_handler.cc
         db/event_helpers.cc
         db/experimental.cc
@@ -621,6 +628,7 @@ set(SOURCES
         env/file_system.cc
         env/file_system_tracer.cc
         env/mock_env.cc
+        examples/simple_example.cc
         file/delete_scheduler.cc
         file/file_prefetch_buffer.cc
         file/file_util.cc
@@ -875,7 +883,7 @@ else()
   set(SYSTEM_LIBS ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
-add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES} db/dist/rocks_service.cpp db/dist/rocks_service.h)
+add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES} db/dist/rocks_service.cc db/dist/rocks_service.h)
 target_link_libraries(${ROCKSDB_STATIC_LIB} PRIVATE
   ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
@@ -1188,7 +1196,7 @@ if(WITH_TESTS)
       monitoring/thread_status_updater_debug.cc
       table/mock_table.cc
       utilities/cassandra/test_utils.cc
-          db/dist/rocks_service.cpp db/dist/rocks_service.h)
+          db/dist/rocks_service.cc db/dist/rocks_service.h)
   enable_testing()
   add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
   set(TESTUTILLIB testutillib${ARTIFACT_SUFFIX})
