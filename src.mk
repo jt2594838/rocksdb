@@ -265,6 +265,7 @@ LIB_SOURCES =                                                   \
   db/dist/node.cc	\
   db/dist/rocks_service.cc	\
   db/thrift/RpcUtils.cc \
+  executable/backend.cc  \
 
 
 

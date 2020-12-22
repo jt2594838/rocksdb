@@ -340,11 +340,12 @@ void swap(TStatus &a, TStatus &b);
 std::ostream& operator<<(std::ostream& out, const TStatus& obj);
 
 typedef struct _TCompactionResult__isset {
-  _TCompactionResult__isset() : status(false), output_files(false), total_bytes(false), num_output_records(false) {}
+  _TCompactionResult__isset() : status(false), output_files(false), total_bytes(false), num_output_records(false), db_paths(false) {}
   bool status :1;
   bool output_files :1;
   bool total_bytes :1;
   bool num_output_records :1;
+  bool db_paths :1;
 } _TCompactionResult__isset;
 
 class TCompactionResult : public virtual ::apache::thrift::TBase {
@@ -360,6 +361,7 @@ class TCompactionResult : public virtual ::apache::thrift::TBase {
   std::vector<TFileMetadata>  output_files;
   int64_t total_bytes;
   int64_t num_output_records;
+  std::vector<std::string>  db_paths;
 
   _TCompactionResult__isset __isset;
 
@@ -371,6 +373,8 @@ class TCompactionResult : public virtual ::apache::thrift::TBase {
 
   void __set_num_output_records(const int64_t val);
 
+  void __set_db_paths(const std::vector<std::string> & val);
+
   bool operator == (const TCompactionResult & rhs) const
   {
     if (!(status == rhs.status))
@@ -380,6 +384,8 @@ class TCompactionResult : public virtual ::apache::thrift::TBase {
     if (!(total_bytes == rhs.total_bytes))
       return false;
     if (!(num_output_records == rhs.num_output_records))
+      return false;
+    if (!(db_paths == rhs.db_paths))
       return false;
     return true;
   }

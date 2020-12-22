@@ -8,15 +8,17 @@ namespace ROCKSDB_NAMESPACE {
 class ClusterNode {
  private:
   std::string ip;
-  int port;
+  int port = 0;
 
  public:
+  ClusterNode();
   ClusterNode(std::string  ip, int port);
   const std::string& getIp() const;
   void setIp(const std::string& _ip);
   int getPort() const;
   void setPort(int _port);
   bool operator== (ClusterNode& another);
+  bool operator!= (ClusterNode& another);
   std::string ToString();
 };
 }

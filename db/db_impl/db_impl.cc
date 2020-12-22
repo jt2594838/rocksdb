@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstdio>
+#include <iostream>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -30,6 +31,7 @@
 #include "db/db_info_dumper.h"
 #include "db/db_iter.h"
 #include "db/dbformat.h"
+#include "db/dist/rocks_service.h"
 #include "db/error_handler.h"
 #include "db/event_helpers.h"
 #include "db/external_sst_file_ingestion_job.h"
@@ -618,6 +620,13 @@ Status DBImpl::CloseHelper() {
     env_->UnlockFile(db_lock_).PermitUncheckedError();
   }
 
+  if (rpc_service != nullptr) {
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "Closing RocksService");
+    delete rpc_service;
+    ROCKS_LOG_INFO(immutable_db_options_.info_log, "Closed RocksService");
+    rpc_service = nullptr;
+  }
+
   ROCKS_LOG_INFO(immutable_db_options_.info_log, "Shutdown complete");
   LogFlush(immutable_db_options_.info_log);
 
@@ -646,6 +655,11 @@ Status DBImpl::CloseHelper() {
     return Status::Incomplete(ret.ToString());
   }
   return ret;
+}
+
+void DBImpl::StartRPCService() {
+    rpc_service = new RocksService(this);
+    rpc_service->Start();
 }
 
 Status DBImpl::CloseImpl() { return CloseHelper(); }

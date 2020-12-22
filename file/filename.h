@@ -88,7 +88,14 @@ extern uint64_t TableFileNameToNumber(const std::string& name);
 // in the db named by "dbname".  The result will be prefixed with
 // "dbname".
 extern std::string TableFileName(const std::vector<DbPath>& db_paths,
-                                 uint64_t number, uint32_t path_id);
+                                 uint64_t flush_number, uint32_t path_id);
+
+// Return the name of the sstable with the specified number
+// in the db named by "dbname".  The result will be prefixed with
+// "dbname".
+extern std::string TableFileName(const std::vector<std::string>& db_paths,
+                                 uint64_t flush_number, uint32_t path_id);
+
 
 // Sufficient buffer size for FormatFileNumber.
 const size_t kFormatFileNumberBufSize = 38;

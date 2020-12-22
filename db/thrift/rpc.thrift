@@ -43,6 +43,7 @@ struct TCompactionResult {
     2: list<TFileMetadata> output_files
     3: i64 total_bytes
     4: i64 num_output_records
+    5: list<string> db_paths
 }
 
 struct TDeletedCompactionInput {
@@ -73,4 +74,6 @@ service ThriftService {
     TStatus InstallCompaction(1: TInstallCompactionRequest request);
     TStatus Put(1: string key, 2: string value)
     GetResult Get(1: string key)
+    TStatus FullCompaction()
+    TStatus Flush()
 }

@@ -483,10 +483,15 @@ void CompactionJob::Prepare() {
 
 void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_file_num) {
   for (ClusterNode* node : db_options_.nodes) {
-    if (node != db_options_.this_node) {
+    if (*node != *(db_options_.this_node)) {
       ThriftServiceClient* client = RpcUtils::CreateClient(node);
-      client->SetFileNumber(new_file_num);
-      delete client;
+      if (client != nullptr) {
+        client->SetFileNumber(new_file_num);
+        delete client;
+      } else {
+        ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                        "Node %s is unreachable", node->ToString().c_str());
+      }
     }
   }
 }
@@ -659,7 +664,7 @@ Status CompactionJob::Run() {
   // Launch a thread for each of subcompactions 0...num_threads-1
   std::vector<port::Thread> thread_pool;
   thread_pool.reserve(num_threads - 1);
-  for (auto & sub_compact_state : compact_->sub_compact_states) {
+  for (auto& sub_compact_state : compact_->sub_compact_states) {
     thread_pool.emplace_back(&CompactionJob::ProcessKeyValueCompaction, this,
                              &sub_compact_state);
   }
@@ -671,7 +676,7 @@ Status CompactionJob::Run() {
 
   compaction_stats_.micros = env_->NowMicros() - start_micros;
   compaction_stats_.cpu_micros = 0;
-  for (auto & sub_compact_state : compact_->sub_compact_states) {
+  for (auto& sub_compact_state : compact_->sub_compact_states) {
     compaction_stats_.cpu_micros +=
         sub_compact_state.compaction_job_stats.cpu_micros;
   }
@@ -1202,6 +1207,9 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
         sub_compact->compaction_job_stats.num_output_records;
     result.total_bytes = sub_compact->compaction_job_stats.total_output_bytes;
     std::vector<TFileMetadata>& output_file_metadata = result.output_files;
+    for (auto& path : db_options_.db_paths) {
+      result.db_paths.emplace_back(path.path);
+    }
 
     auto output_iter = sub_compact->outputs.begin();
     while (output_iter != sub_compact->outputs.end()) {
@@ -1216,7 +1224,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
 
     while (node_itr != db_options_.nodes.end()) {
       ClusterNode* node = *node_itr;
-      if (node != this_node) {
+      if (*node != *this_node) {
         ROCKS_LOG_INFO(this->db_options_.info_log,
                        "Pushing compaction "
                        "results to node %s",
@@ -1235,9 +1243,14 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
 void CompactionJob::PushFilesToNode(TCompactionResult& result,
                                     ClusterNode* node) const {
   auto* client = RpcUtils::CreateClient(node);
-  ClusterNode* this_node = db_options_.this_node;
-  client->PushFiles(result, this_node->getIp(), this_node->getPort());
-  delete client;
+  if (client != nullptr) {
+    ClusterNode* this_node = db_options_.this_node;
+    client->PushFiles(result, this_node->getIp(), this_node->getPort());
+    delete client;
+  } else {
+    ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                    "Node %s is unreachable", node->ToString().c_str());
+  }
 }
 
 void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
@@ -1265,9 +1278,18 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
   request.__set_output_level(output_level);
   request.__set_max_file_num(sub_compact->max_output_file_num);
   request.__set_start_file_num(sub_compact->start_file_num);
-  request.__set_comp_start(std::string(start->data(), start->size()));
-  request.__set_comp_end(std::string(end->data(), end->size()));
+  if (start != nullptr) {
+    request.__set_comp_start(std::string(start->data(), start->size()));
+  }
+  if (end != nullptr) {
+    request.__set_comp_end(std::string(end->data(), end->size()));
+  }
   auto* client = RpcUtils::CreateClient(sub_compact->node);
+  if (client == nullptr) {
+    ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                    "Node %s is unreachable", sub_compact->node->ToString().c_str());
+    return;
+  }
 
   ROCKS_LOG_INFO(this->db_options_.info_log,
                  "Executing a remote compaction "
@@ -1311,7 +1333,7 @@ void CompactionJob::ConstructCompactionOutPut(TFileMetadata& file_meta,
 }
 
 void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
-  if (sub_compact->node == db_options_.this_node) {
+  if (sub_compact->node == db_options_.this_node || sub_compact->node == nullptr) {
     ProcessLocalKVCompaction(sub_compact);
   } else {
     ProcessRemoteKVCompaction(sub_compact);
@@ -1693,7 +1715,6 @@ Status CompactionJob::InstallCompactionResults(
   }
 
   TInstallCompactionRequest request;
-  TStatus tstatus;
   for (auto& deleted_file : compact_->compaction->edit()->GetDeletedFiles()) {
     TDeletedCompactionInput deleted_input;
     deleted_input.level = deleted_file.first;
@@ -1707,18 +1728,28 @@ Status CompactionJob::InstallCompactionResults(
     request.installed_outputs.emplace_back(std::move(output));
   }
 
+  TStatus tStatus;
+  Status status;
   for (auto* node : db_options_.nodes) {
-    if (node != db_options_.this_node) {
+    if (*node != *db_options_.this_node) {
       auto* client = RpcUtils::CreateClient(node);
-      ROCKS_LOG_INFO(db_options_.info_log, "Installing compaction result of "
-                     "%ld inputs and %ld outputs to %s", request
-                         .deleted_inputs.size(), request.installed_outputs
-                         .size(), node->ToString().c_str());
-      client->InstallCompaction(tstatus, request);
-      Status status = RpcUtils::ToStatus(tstatus);
-      ROCKS_LOG_INFO(db_options_.info_log, "Installed compaction result to %s, "
-                     "result: %s"
-                     "", node->ToString().c_str(), status.ToString().c_str());
+      if (client == nullptr) {
+        ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                        "Node %s is unreachable", node->ToString().c_str());
+        continue;
+      }
+      ROCKS_LOG_INFO(db_options_.info_log,
+                     "Installing compaction result of "
+                     "%ld inputs and %ld outputs to %s",
+                     request.deleted_inputs.size(),
+                     request.installed_outputs.size(),
+                     node->ToString().c_str());
+      client->InstallCompaction(tStatus, request);
+      status = RpcUtils::ToStatus(tStatus);
+      ROCKS_LOG_INFO(db_options_.info_log,
+                     "Installed compaction result to %s, "
+                     "result: %s",
+                     node->ToString().c_str(), status.ToString().c_str());
     }
   }
 

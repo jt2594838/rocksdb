@@ -18,11 +18,11 @@ CLEAN_FILES = # deliberately empty, so we can append below.
 CFLAGS += ${EXTRA_CFLAGS}
 CXXFLAGS += ${EXTRA_CXXFLAGS}
 LDFLAGS += $(EXTRA_LDFLAGS)
-CXXFLAGS += -I/usr/local/include
+CXXFLAGS += -I/usr/local/include -I.
 MACHINE ?= $(shell uname -m)
 ARFLAGS = ${EXTRA_ARFLAGS} rs
 STRIPFLAGS = -S -x
-LDFLAGS += -L/Users/koutakashi/Downloads/usr/local/lib -L/usr/local/lib -lthrift -lthriftnb
+LDFLAGS += -L/usr/local/lib -lthrift -lthriftnb
 
 # Transform parallel LOG output into something more readable.
 perl_command = perl -n \
@@ -80,6 +80,21 @@ ifeq ($(MAKECMDGOALS),install-shared)
 endif
 
 ifeq ($(MAKECMDGOALS),static_lib)
+	DEBUG_LEVEL=0
+	LIB_MODE=static
+endif
+
+ifeq ($(MAKECMDGOALS),backend_debug)
+	DEBUG_LEVEL=2
+	LIB_MODE=static
+endif
+
+ifeq ($(MAKECMDGOALS),backend)
+	DEBUG_LEVEL=0
+	LIB_MODE=static
+endif
+
+ifeq ($(MAKECMDGOALS),broker)
 	DEBUG_LEVEL=0
 	LIB_MODE=static
 endif
@@ -178,6 +193,8 @@ endif
 # if we're compiling for release, compile without debug code (-DNDEBUG)
 ifeq ($(DEBUG_LEVEL),0)
 OPT += -DNDEBUG
+
+USE_RTTI=1
 
 ifneq ($(USE_RTTI), 1)
 	CXXFLAGS += -fno-rtti
@@ -741,6 +758,15 @@ endif  # PLATFORM_SHARED_EXT
 all: $(LIBRARY) $(BENCHMARKS) tools tools_lib test_libs $(TESTS)
 
 all_but_some_tests: $(LIBRARY) $(BENCHMARKS) tools tools_lib test_libs $(SUBSET)
+
+backend_debug: static_lib
+	$(CXX) $(CXXFLAGS) executable/backend.cc -obackend_debug ./librocksdb_debug.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
+
+backend: static_lib
+	$(CXX) $(CXXFLAGS) executable/backend.cc -obackend ./librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
+
+broker: static_lib
+	$(CXX) $(CXXFLAGS) executable/broker.cc -obroker ./librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
 
 static_lib: $(STATIC_LIBRARY)
 

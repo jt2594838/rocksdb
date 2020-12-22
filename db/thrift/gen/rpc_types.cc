@@ -861,6 +861,10 @@ void TCompactionResult::__set_total_bytes(const int64_t val) {
 void TCompactionResult::__set_num_output_records(const int64_t val) {
   this->num_output_records = val;
 }
+
+void TCompactionResult::__set_db_paths(const std::vector<std::string> & val) {
+  this->db_paths = val;
+}
 std::ostream& operator<<(std::ostream& out, const TCompactionResult& obj)
 {
   obj.printTo(out);
@@ -933,6 +937,26 @@ uint32_t TCompactionResult::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
+      case 5:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->db_paths.clear();
+            uint32_t _size19;
+            ::apache::thrift::protocol::TType _etype22;
+            xfer += iprot->readListBegin(_etype22, _size19);
+            this->db_paths.resize(_size19);
+            uint32_t _i23;
+            for (_i23 = 0; _i23 < _size19; ++_i23)
+            {
+              xfer += iprot->readString(this->db_paths[_i23]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.db_paths = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
       default:
         xfer += iprot->skip(ftype);
         break;
@@ -957,10 +981,10 @@ uint32_t TCompactionResult::write(::apache::thrift::protocol::TProtocol* oprot) 
   xfer += oprot->writeFieldBegin("output_files", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->output_files.size()));
-    std::vector<TFileMetadata> ::const_iterator _iter19;
-    for (_iter19 = this->output_files.begin(); _iter19 != this->output_files.end(); ++_iter19)
+    std::vector<TFileMetadata> ::const_iterator _iter24;
+    for (_iter24 = this->output_files.begin(); _iter24 != this->output_files.end(); ++_iter24)
     {
-      xfer += (*_iter19).write(oprot);
+      xfer += (*_iter24).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -974,6 +998,18 @@ uint32_t TCompactionResult::write(::apache::thrift::protocol::TProtocol* oprot) 
   xfer += oprot->writeI64(this->num_output_records);
   xfer += oprot->writeFieldEnd();
 
+  xfer += oprot->writeFieldBegin("db_paths", ::apache::thrift::protocol::T_LIST, 5);
+  {
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->db_paths.size()));
+    std::vector<std::string> ::const_iterator _iter25;
+    for (_iter25 = this->db_paths.begin(); _iter25 != this->db_paths.end(); ++_iter25)
+    {
+      xfer += oprot->writeString((*_iter25));
+    }
+    xfer += oprot->writeListEnd();
+  }
+  xfer += oprot->writeFieldEnd();
+
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
@@ -985,22 +1021,25 @@ void swap(TCompactionResult &a, TCompactionResult &b) {
   swap(a.output_files, b.output_files);
   swap(a.total_bytes, b.total_bytes);
   swap(a.num_output_records, b.num_output_records);
+  swap(a.db_paths, b.db_paths);
   swap(a.__isset, b.__isset);
 }
 
-TCompactionResult::TCompactionResult(const TCompactionResult& other20) {
-  status = other20.status;
-  output_files = other20.output_files;
-  total_bytes = other20.total_bytes;
-  num_output_records = other20.num_output_records;
-  __isset = other20.__isset;
+TCompactionResult::TCompactionResult(const TCompactionResult& other26) {
+  status = other26.status;
+  output_files = other26.output_files;
+  total_bytes = other26.total_bytes;
+  num_output_records = other26.num_output_records;
+  db_paths = other26.db_paths;
+  __isset = other26.__isset;
 }
-TCompactionResult& TCompactionResult::operator=(const TCompactionResult& other21) {
-  status = other21.status;
-  output_files = other21.output_files;
-  total_bytes = other21.total_bytes;
-  num_output_records = other21.num_output_records;
-  __isset = other21.__isset;
+TCompactionResult& TCompactionResult::operator=(const TCompactionResult& other27) {
+  status = other27.status;
+  output_files = other27.output_files;
+  total_bytes = other27.total_bytes;
+  num_output_records = other27.num_output_records;
+  db_paths = other27.db_paths;
+  __isset = other27.__isset;
   return *this;
 }
 void TCompactionResult::printTo(std::ostream& out) const {
@@ -1010,6 +1049,7 @@ void TCompactionResult::printTo(std::ostream& out) const {
   out << ", " << "output_files=" << to_string(output_files);
   out << ", " << "total_bytes=" << to_string(total_bytes);
   out << ", " << "num_output_records=" << to_string(num_output_records);
+  out << ", " << "db_paths=" << to_string(db_paths);
   out << ")";
 }
 
@@ -1106,15 +1146,15 @@ void swap(TDeletedCompactionInput &a, TDeletedCompactionInput &b) {
   swap(a.__isset, b.__isset);
 }
 
-TDeletedCompactionInput::TDeletedCompactionInput(const TDeletedCompactionInput& other22) {
-  level = other22.level;
-  file_num = other22.file_num;
-  __isset = other22.__isset;
+TDeletedCompactionInput::TDeletedCompactionInput(const TDeletedCompactionInput& other28) {
+  level = other28.level;
+  file_num = other28.file_num;
+  __isset = other28.__isset;
 }
-TDeletedCompactionInput& TDeletedCompactionInput::operator=(const TDeletedCompactionInput& other23) {
-  level = other23.level;
-  file_num = other23.file_num;
-  __isset = other23.__isset;
+TDeletedCompactionInput& TDeletedCompactionInput::operator=(const TDeletedCompactionInput& other29) {
+  level = other29.level;
+  file_num = other29.file_num;
+  __isset = other29.__isset;
   return *this;
 }
 void TDeletedCompactionInput::printTo(std::ostream& out) const {
@@ -1218,15 +1258,15 @@ void swap(TInstalledCompactionOutput &a, TInstalledCompactionOutput &b) {
   swap(a.__isset, b.__isset);
 }
 
-TInstalledCompactionOutput::TInstalledCompactionOutput(const TInstalledCompactionOutput& other24) {
-  level = other24.level;
-  metadata = other24.metadata;
-  __isset = other24.__isset;
+TInstalledCompactionOutput::TInstalledCompactionOutput(const TInstalledCompactionOutput& other30) {
+  level = other30.level;
+  metadata = other30.metadata;
+  __isset = other30.__isset;
 }
-TInstalledCompactionOutput& TInstalledCompactionOutput::operator=(const TInstalledCompactionOutput& other25) {
-  level = other25.level;
-  metadata = other25.metadata;
-  __isset = other25.__isset;
+TInstalledCompactionOutput& TInstalledCompactionOutput::operator=(const TInstalledCompactionOutput& other31) {
+  level = other31.level;
+  metadata = other31.metadata;
+  __isset = other31.__isset;
   return *this;
 }
 void TInstalledCompactionOutput::printTo(std::ostream& out) const {
@@ -1281,14 +1321,14 @@ uint32_t TInstallCompactionRequest::read(::apache::thrift::protocol::TProtocol* 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->deleted_inputs.clear();
-            uint32_t _size26;
-            ::apache::thrift::protocol::TType _etype29;
-            xfer += iprot->readListBegin(_etype29, _size26);
-            this->deleted_inputs.resize(_size26);
-            uint32_t _i30;
-            for (_i30 = 0; _i30 < _size26; ++_i30)
+            uint32_t _size32;
+            ::apache::thrift::protocol::TType _etype35;
+            xfer += iprot->readListBegin(_etype35, _size32);
+            this->deleted_inputs.resize(_size32);
+            uint32_t _i36;
+            for (_i36 = 0; _i36 < _size32; ++_i36)
             {
-              xfer += this->deleted_inputs[_i30].read(iprot);
+              xfer += this->deleted_inputs[_i36].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -1301,14 +1341,14 @@ uint32_t TInstallCompactionRequest::read(::apache::thrift::protocol::TProtocol* 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->installed_outputs.clear();
-            uint32_t _size31;
-            ::apache::thrift::protocol::TType _etype34;
-            xfer += iprot->readListBegin(_etype34, _size31);
-            this->installed_outputs.resize(_size31);
-            uint32_t _i35;
-            for (_i35 = 0; _i35 < _size31; ++_i35)
+            uint32_t _size37;
+            ::apache::thrift::protocol::TType _etype40;
+            xfer += iprot->readListBegin(_etype40, _size37);
+            this->installed_outputs.resize(_size37);
+            uint32_t _i41;
+            for (_i41 = 0; _i41 < _size37; ++_i41)
             {
-              xfer += this->installed_outputs[_i35].read(iprot);
+              xfer += this->installed_outputs[_i41].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -1337,10 +1377,10 @@ uint32_t TInstallCompactionRequest::write(::apache::thrift::protocol::TProtocol*
   xfer += oprot->writeFieldBegin("deleted_inputs", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->deleted_inputs.size()));
-    std::vector<TDeletedCompactionInput> ::const_iterator _iter36;
-    for (_iter36 = this->deleted_inputs.begin(); _iter36 != this->deleted_inputs.end(); ++_iter36)
+    std::vector<TDeletedCompactionInput> ::const_iterator _iter42;
+    for (_iter42 = this->deleted_inputs.begin(); _iter42 != this->deleted_inputs.end(); ++_iter42)
     {
-      xfer += (*_iter36).write(oprot);
+      xfer += (*_iter42).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -1349,10 +1389,10 @@ uint32_t TInstallCompactionRequest::write(::apache::thrift::protocol::TProtocol*
   xfer += oprot->writeFieldBegin("installed_outputs", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->installed_outputs.size()));
-    std::vector<TInstalledCompactionOutput> ::const_iterator _iter37;
-    for (_iter37 = this->installed_outputs.begin(); _iter37 != this->installed_outputs.end(); ++_iter37)
+    std::vector<TInstalledCompactionOutput> ::const_iterator _iter43;
+    for (_iter43 = this->installed_outputs.begin(); _iter43 != this->installed_outputs.end(); ++_iter43)
     {
-      xfer += (*_iter37).write(oprot);
+      xfer += (*_iter43).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -1370,15 +1410,15 @@ void swap(TInstallCompactionRequest &a, TInstallCompactionRequest &b) {
   swap(a.__isset, b.__isset);
 }
 
-TInstallCompactionRequest::TInstallCompactionRequest(const TInstallCompactionRequest& other38) {
-  deleted_inputs = other38.deleted_inputs;
-  installed_outputs = other38.installed_outputs;
-  __isset = other38.__isset;
+TInstallCompactionRequest::TInstallCompactionRequest(const TInstallCompactionRequest& other44) {
+  deleted_inputs = other44.deleted_inputs;
+  installed_outputs = other44.installed_outputs;
+  __isset = other44.__isset;
 }
-TInstallCompactionRequest& TInstallCompactionRequest::operator=(const TInstallCompactionRequest& other39) {
-  deleted_inputs = other39.deleted_inputs;
-  installed_outputs = other39.installed_outputs;
-  __isset = other39.__isset;
+TInstallCompactionRequest& TInstallCompactionRequest::operator=(const TInstallCompactionRequest& other45) {
+  deleted_inputs = other45.deleted_inputs;
+  installed_outputs = other45.installed_outputs;
+  __isset = other45.__isset;
   return *this;
 }
 void TInstallCompactionRequest::printTo(std::ostream& out) const {
@@ -1482,15 +1522,15 @@ void swap(GetResult &a, GetResult &b) {
   swap(a.__isset, b.__isset);
 }
 
-GetResult::GetResult(const GetResult& other40) {
-  status = other40.status;
-  value = other40.value;
-  __isset = other40.__isset;
+GetResult::GetResult(const GetResult& other46) {
+  status = other46.status;
+  value = other46.value;
+  __isset = other46.__isset;
 }
-GetResult& GetResult::operator=(const GetResult& other41) {
-  status = other41.status;
-  value = other41.value;
-  __isset = other41.__isset;
+GetResult& GetResult::operator=(const GetResult& other47) {
+  status = other47.status;
+  value = other47.value;
+  __isset = other47.__isset;
   return *this;
 }
 void GetResult::printTo(std::ostream& out) const {

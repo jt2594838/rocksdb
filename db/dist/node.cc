@@ -1,4 +1,6 @@
 #include "rocksdb/node.h"
+#include "../../include/rocksdb/node.h"
+
 
 namespace ROCKSDB_NAMESPACE {
 const std::string& ClusterNode::getIp() const { return ip; }
@@ -8,7 +10,9 @@ void ClusterNode::setPort(int _port) { ClusterNode::port = _port; }
 bool ClusterNode::operator==(ClusterNode& another) {
   return ip == another.ip && port == another.port;
 }
+ClusterNode::ClusterNode() = default;
 ClusterNode::ClusterNode(std::string  _ip, int _port)
     : ip(std::move(_ip)), port(_port) {}
 std::string ClusterNode::ToString() { return ip + ":" + std::to_string(port); }
+bool ClusterNode::operator!=(ClusterNode& another) { return ip != another.ip || port != another.port; }
 }  // namespace ROCKSDB_NAMESPACE

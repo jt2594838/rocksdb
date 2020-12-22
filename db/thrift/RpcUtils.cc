@@ -22,15 +22,26 @@ ThriftServiceClient* RpcUtils::CreateClient(ClusterNode* node) {
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> protocol;
   protocol.reset(new ::apache::thrift::protocol::TBinaryProtocol(buffered_transport));
   auto* client = new ThriftServiceClient(protocol);
-  return client;
+  try {
+    transport->open();
+    return client;
+  } catch (apache::thrift::transport::TTransportException& e) {
+    return nullptr;
+  }
 }
 
-uint64_t RpcUtils::DownloadFile(std::string& file_name,
-                                ROCKSDB_NAMESPACE::ClusterNode* node,
-                                const std::string& output_name) {
+uint64_t RpcUtils::DownloadFile(std::string& file_name, ClusterNode* node,
+                                const std::string& output_name,
+                                const std::shared_ptr<Logger>& logger) {
   uint64_t file_length = 0;
   const uint64_t block_length = 4 * 1024 * 1024;
   auto* client = CreateClient(node);
+  if (client == nullptr) {
+    ROCKS_LOG_ERROR(logger,
+                    "Node %s is unreachable", node->ToString().c_str());
+    return -1;
+  }
+
   std::string buffer;
   std::ofstream output_stream(output_name);
 
@@ -97,12 +108,13 @@ TFileDescriptor RpcUtils::ToTFileDescriptor(const FileDescriptor& descriptor) {
   return tdescriptor;
 }
 
-Status RpcUtils::ToStatus(const TStatus& status) {
+Status RpcUtils::ToStatus(TStatus& status) {
   Status s;
   s.code_ = static_cast<Status::Code>(status.code);
   s.subcode_ = static_cast<Status::SubCode>(status.sub_code);
   s.sev_ = static_cast<Status::Severity>(status.severity);
-  s.state_ = status.state.c_str();
+  int state_size = status.state.size();
+  s.state_ = strncpy(new char[state_size + 1], status.state.c_str(), state_size);
   return s;
 }
 
@@ -111,7 +123,7 @@ TStatus RpcUtils::ToTStatus(const Status& status) {
   s.code = status.code();
   s.sub_code = status.subcode_;
   s.severity = status.severity();
-  s.state = std::string(status.state_);
+  s.state = std::string(status.state_ ? status.state_ : "");
   return s;
 }
 }  // namespace ROCKSDB_NAMESPACE

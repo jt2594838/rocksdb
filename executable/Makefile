@@ -8,19 +8,25 @@ ifndef DISABLE_JEMALLOC
 	PLATFORM_CXXFLAGS += $(JEMALLOC_INCLUDE)
 endif
 
-ifneq ($(USE_RTTI), 1)
-	CXXFLAGS += -fno-rtti
-endif
+#ifneq ($(USE_RTTI), 1)
+#	CXXFLAGS += -fno-rtti
+#endif
+
+CXXFLAGS += -I../include -I../
+EXEC_LDFLAGS += -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem
 
 .PHONY: clean librocksdb
 
 all: backend
 
 backend: librocksdb backend.cc
-	$(CXX) $(CXXFLAGS) $@.cc -o$@ ../librocksdb.a -I../include -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/Users/koutakashi/Downloads/usr/local/lib -L/usr/local/lib -lthrift -lthriftnb
+	$(CXX) $(CXXFLAGS) $@.cc -o$@ ../librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
+
+broker: librocksdb broker.cc
+	$(CXX) $(CXXFLAGS) $@.cc -o$@ ../librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
 .c.o:
-	$(CC) $(CFLAGS) -c $< -o $@ -I../include
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf ./backend

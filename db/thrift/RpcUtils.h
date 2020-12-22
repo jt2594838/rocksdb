@@ -13,15 +13,15 @@ class RpcUtils {
  public:
   static ThriftServiceClient* CreateClient(
       ROCKSDB_NAMESPACE::ClusterNode* node);
-  static uint64_t DownloadFile(std::string& file_name,
-                               ROCKSDB_NAMESPACE::ClusterNode* node,
-                               const std::string& output_name);
+  static uint64_t DownloadFile(std::string& file_name, ClusterNode* node,
+                               const std::string& output_name,
+                               const std::shared_ptr<Logger>& ptr);
   static FileMetaData ToFileMetaData(const TFileMetadata& tmetadata);
   static FileDescriptor ToFilDescriptor(const TFileDescriptor& tdesceiptor);
   static TFileMetadata ToTFileMetaData(const FileMetaData& metaData);
   static TFileDescriptor ToTFileDescriptor(const FileDescriptor&
                                                fileDescriptor);
-  static Status ToStatus(const TStatus& status);
+  static Status ToStatus(TStatus& status);
   static TStatus ToTStatus(const Status& status);
 };
 }  // namespace rocksT

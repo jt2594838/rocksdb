@@ -29,6 +29,8 @@ class ThriftServiceIf {
   virtual void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request) = 0;
   virtual void Put(TStatus& _return, const std::string& key, const std::string& value) = 0;
   virtual void Get(GetResult& _return, const std::string& key) = 0;
+  virtual void FullCompaction(TStatus& _return) = 0;
+  virtual void Flush(TStatus& _return) = 0;
 };
 
 class ThriftServiceIfFactory {
@@ -77,6 +79,12 @@ class ThriftServiceNull : virtual public ThriftServiceIf {
     return;
   }
   void Get(GetResult& /* _return */, const std::string& /* key */) {
+    return;
+  }
+  void FullCompaction(TStatus& /* _return */) {
+    return;
+  }
+  void Flush(TStatus& /* _return */) {
     return;
   }
 };
@@ -808,6 +816,190 @@ class ThriftService_Get_presult {
 
 };
 
+
+class ThriftService_FullCompaction_args {
+ public:
+
+  ThriftService_FullCompaction_args(const ThriftService_FullCompaction_args&);
+  ThriftService_FullCompaction_args& operator=(const ThriftService_FullCompaction_args&);
+  ThriftService_FullCompaction_args() {
+  }
+
+  virtual ~ThriftService_FullCompaction_args() noexcept;
+
+  bool operator == (const ThriftService_FullCompaction_args & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const ThriftService_FullCompaction_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_FullCompaction_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_FullCompaction_pargs {
+ public:
+
+
+  virtual ~ThriftService_FullCompaction_pargs() noexcept;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_FullCompaction_result__isset {
+  _ThriftService_FullCompaction_result__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_FullCompaction_result__isset;
+
+class ThriftService_FullCompaction_result {
+ public:
+
+  ThriftService_FullCompaction_result(const ThriftService_FullCompaction_result&);
+  ThriftService_FullCompaction_result& operator=(const ThriftService_FullCompaction_result&);
+  ThriftService_FullCompaction_result() {
+  }
+
+  virtual ~ThriftService_FullCompaction_result() noexcept;
+  TStatus success;
+
+  _ThriftService_FullCompaction_result__isset __isset;
+
+  void __set_success(const TStatus& val);
+
+  bool operator == (const ThriftService_FullCompaction_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_FullCompaction_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_FullCompaction_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_FullCompaction_presult__isset {
+  _ThriftService_FullCompaction_presult__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_FullCompaction_presult__isset;
+
+class ThriftService_FullCompaction_presult {
+ public:
+
+
+  virtual ~ThriftService_FullCompaction_presult() noexcept;
+  TStatus* success;
+
+  _ThriftService_FullCompaction_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+
+class ThriftService_Flush_args {
+ public:
+
+  ThriftService_Flush_args(const ThriftService_Flush_args&);
+  ThriftService_Flush_args& operator=(const ThriftService_Flush_args&);
+  ThriftService_Flush_args() {
+  }
+
+  virtual ~ThriftService_Flush_args() noexcept;
+
+  bool operator == (const ThriftService_Flush_args & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const ThriftService_Flush_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_Flush_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_Flush_pargs {
+ public:
+
+
+  virtual ~ThriftService_Flush_pargs() noexcept;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_Flush_result__isset {
+  _ThriftService_Flush_result__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_Flush_result__isset;
+
+class ThriftService_Flush_result {
+ public:
+
+  ThriftService_Flush_result(const ThriftService_Flush_result&);
+  ThriftService_Flush_result& operator=(const ThriftService_Flush_result&);
+  ThriftService_Flush_result() {
+  }
+
+  virtual ~ThriftService_Flush_result() noexcept;
+  TStatus success;
+
+  _ThriftService_Flush_result__isset __isset;
+
+  void __set_success(const TStatus& val);
+
+  bool operator == (const ThriftService_Flush_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_Flush_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_Flush_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_Flush_presult__isset {
+  _ThriftService_Flush_presult__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_Flush_presult__isset;
+
+class ThriftService_Flush_presult {
+ public:
+
+
+  virtual ~ThriftService_Flush_presult() noexcept;
+  TStatus* success;
+
+  _ThriftService_Flush_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 class ThriftServiceClient : virtual public ThriftServiceIf {
  public:
   ThriftServiceClient(std::shared_ptr< ::apache::thrift::protocol::TProtocol> prot) {
@@ -854,6 +1046,12 @@ class ThriftServiceClient : virtual public ThriftServiceIf {
   void Get(GetResult& _return, const std::string& key);
   void send_Get(const std::string& key);
   void recv_Get(GetResult& _return);
+  void FullCompaction(TStatus& _return);
+  void send_FullCompaction();
+  void recv_FullCompaction(TStatus& _return);
+  void Flush(TStatus& _return);
+  void send_Flush();
+  void recv_Flush(TStatus& _return);
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;
@@ -876,6 +1074,8 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_InstallCompaction(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Put(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Get(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_FullCompaction(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_Flush(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
   ThriftServiceProcessor(::std::shared_ptr<ThriftServiceIf> iface) :
     iface_(iface) {
@@ -886,6 +1086,8 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
     processMap_["InstallCompaction"] = &ThriftServiceProcessor::process_InstallCompaction;
     processMap_["Put"] = &ThriftServiceProcessor::process_Put;
     processMap_["Get"] = &ThriftServiceProcessor::process_Get;
+    processMap_["FullCompaction"] = &ThriftServiceProcessor::process_FullCompaction;
+    processMap_["Flush"] = &ThriftServiceProcessor::process_Flush;
   }
 
   virtual ~ThriftServiceProcessor() {}
@@ -982,6 +1184,26 @@ class ThriftServiceMultiface : virtual public ThriftServiceIf {
     return;
   }
 
+  void FullCompaction(TStatus& _return) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->FullCompaction(_return);
+    }
+    ifaces_[i]->FullCompaction(_return);
+    return;
+  }
+
+  void Flush(TStatus& _return) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->Flush(_return);
+    }
+    ifaces_[i]->Flush(_return);
+    return;
+  }
+
 };
 
 // The 'concurrent' client is a thread safe client that correctly handles
@@ -1035,6 +1257,12 @@ class ThriftServiceConcurrentClient : virtual public ThriftServiceIf {
   void Get(GetResult& _return, const std::string& key);
   int32_t send_Get(const std::string& key);
   void recv_Get(GetResult& _return, const int32_t seqid);
+  void FullCompaction(TStatus& _return);
+  int32_t send_FullCompaction();
+  void recv_FullCompaction(TStatus& _return, const int32_t seqid);
+  void Flush(TStatus& _return);
+  int32_t send_Flush();
+  void recv_Flush(TStatus& _return, const int32_t seqid);
  protected:
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;

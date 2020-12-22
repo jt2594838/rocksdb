@@ -81,6 +81,7 @@ class Version;
 class VersionEdit;
 class VersionSet;
 class WriteCallback;
+class RocksService;
 struct JobContext;
 struct ExternalSstFileInfo;
 struct MemTableInfo;
@@ -1021,7 +1022,10 @@ class DBImpl : public DB {
   // dump rocksdb.stats to LOG
   void DumpStats();
 
+  void StartRPCService();
+
  protected:
+  RocksService* rpc_service = nullptr;
   const std::string dbname_;
   std::string db_id_;
   // db_session_id_ is an identifier that gets reset
