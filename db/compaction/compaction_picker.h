@@ -92,7 +92,7 @@ class CompactionPicker {
 // into a valid one by adding more files, the function will return a
 // non-ok status with specific reason.
 #ifndef ROCKSDB_LITE
-  Status SanitizeCompactionInputFiles(std::unordered_set<uint64_t>* input_files,
+  Status SanitizeCompactionInputFiles(std::unordered_set<std::string>* input_files,
                                       const ColumnFamilyMetaData& cf_meta,
                                       const int output_level) const;
 #endif  // ROCKSDB_LITE
@@ -130,7 +130,7 @@ class CompactionPicker {
   // a list of CompactionInputFiles.
   Status GetCompactionInputsFromFileNumbers(
       std::vector<CompactionInputFiles>* input_files,
-      std::unordered_set<uint64_t>* input_set,
+      std::unordered_set<std::string>* input_set,
       const VersionStorageInfo* vstorage,
       const CompactionOptions& compact_options) const;
 
@@ -232,7 +232,7 @@ class CompactionPicker {
 // sanitizes "input_files" by adding necessary files.
 #ifndef ROCKSDB_LITE
   virtual Status SanitizeCompactionInputFilesForAllLevels(
-      std::unordered_set<uint64_t>* input_files,
+      std::unordered_set<std::string>* input_files,
       const ColumnFamilyMetaData& cf_meta, const int output_level) const;
 #endif  // ROCKSDB_LITE
 

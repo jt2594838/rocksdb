@@ -291,12 +291,13 @@ void UniversalCompactionBuilder::SortedRun::Dump(char* out_buf,
   if (level == 0) {
     assert(file != nullptr);
     if (file->fd.GetPathId() == 0 || !print_path) {
-      snprintf(out_buf, out_buf_size, "file %" PRIu64, file->fd.GetNumber());
+      snprintf(out_buf, out_buf_size, "file %" PRIu64,
+               file->fd.GetFlushNumber());
     } else {
       snprintf(out_buf, out_buf_size, "file %" PRIu64
                                       "(path "
                                       "%" PRIu32 ")",
-               file->fd.GetNumber(), file->fd.GetPathId());
+               file->fd.GetFlushNumber(), file->fd.GetPathId());
     }
   } else {
     snprintf(out_buf, out_buf_size, "level %d", level);
@@ -311,7 +312,7 @@ void UniversalCompactionBuilder::SortedRun::DumpSizeInfo(
              "file %" PRIu64 "[%" ROCKSDB_PRIszt
              "] "
              "with size %" PRIu64 " (compensated size %" PRIu64 ")",
-             file->fd.GetNumber(), sorted_run_count, file->fd.GetFileSize(),
+             file->fd.GetFlushNumber(), sorted_run_count, file->fd.GetFileSize(),
              file->compensated_file_size);
   } else {
     snprintf(out_buf, out_buf_size,

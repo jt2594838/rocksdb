@@ -320,7 +320,7 @@ class VersionStorageInfo {
     assert(it->second.GetPosition() < files_[it->second.GetLevel()].size());
     assert(files_[it->second.GetLevel()][it->second.GetPosition()]);
     assert(files_[it->second.GetLevel()][it->second.GetPosition()]
-               ->fd.GetNumber() == file_number);
+               ->fd.GetFlushNumber() == file_number);
 
     return it->second;
   }
@@ -1018,26 +1018,35 @@ class VersionSet {
     return pending_manifest_file_number_;
   }
 
-  uint64_t current_next_file_number() const { return next_file_number_.load(); }
+  uint64_t current_next_flush_number() const { return next_flush_number_.load(); }
+
+  uint64_t current_next_compaction_number() const { return next_compaction_number_.load(); }
 
   uint64_t min_log_number_to_keep_2pc() const {
     return min_log_number_to_keep_2pc_.load();
   }
 
-  // Allocate and return a new file number
-  uint64_t NewFileNumber() { return next_file_number_.fetch_add(1); }
+  // Allocate and return a new flush number
+  uint64_t NewFlushNumber() { return next_flush_number_.fetch_add(1); }
 
-  // Fetch And Add n new file number
-  uint64_t FetchAddFileNumber(uint64_t n) {
-    return next_file_number_.fetch_add(n);
+  // Fetch And Add n new flush number
+  uint64_t FetchAddFlushNumber(uint64_t n) {
+    return next_flush_number_.fetch_add(n);
   }
 
-  void SetFileNumber(uint64_t n) {
-    next_file_number_ = n;
+  // Allocate and return a new compaction number
+  uint64_t NewCompactionNumber() { return next_compaction_number_.fetch_add(1); }
+
+  // Fetch And Add n new compaction number
+  uint64_t FetchAddCompactionNumber(uint64_t n) {
+    return next_compaction_number_.fetch_add(n);
+  }
+
+  void SetFileNumber(uint64_t n) { next_flush_number_ = n;
   }
 
   uint64_t GetFileNumber() {
-    return next_file_number_;
+    return next_flush_number_;
   }
 
 // TSAN failure is suppressed in most sequence read/write functions when
@@ -1163,7 +1172,7 @@ class VersionSet {
   // pick the same files to compact.
   bool VerifyCompactionFileConsistency(Compaction* c);
 
-  Status GetMetadataForFile(uint64_t number, int* filelevel,
+  Status GetMetadataForFile(uint64_t number1, uint64_t number2, int* filelevel,
                             FileMetaData** metadata, ColumnFamilyData** cfd);
 
   // This function doesn't support leveldb SST filenames
@@ -1290,7 +1299,8 @@ class VersionSet {
   const std::string dbname_;
   std::string db_id_;
   const ImmutableDBOptions* const db_options_;
-  std::atomic<uint64_t> next_file_number_;
+  std::atomic<uint64_t> next_flush_number_;
+  std::atomic<uint64_t> next_compaction_number_;
   // Any log number equal or lower than this should be ignored during recovery,
   // and is qualified for being deleted in 2PC mode. In non-2PC mode, this
   // number is ignored.

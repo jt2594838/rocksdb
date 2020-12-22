@@ -472,8 +472,8 @@ void CompactionJob::Prepare() {
       sub_comp.start_file_num = versions_->GetFileNumber();
       sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
-    versions_->FetchAddFileNumber(is_remote ? max_file_num
-                                            : max_file_per_sub_comp);
+    versions_->FetchAddFlushNumber(is_remote ? max_file_num
+                                             : max_file_per_sub_comp);
   }
 
   if (!is_remote) {
@@ -499,7 +499,7 @@ void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_file_num) {
 void CompactionJob::GenFileNumbers() {
   uint64_t required_file_numbers = sizes_.size() * max_file_per_sub_comp;
   uint64_t start_file_num =
-      versions_->FetchAddFileNumber(required_file_numbers);
+      versions_->FetchAddFlushNumber(required_file_numbers);
   start_file_nums.push_back(start_file_num);
   for (uint64_t i = 1; i < sizes_.size(); i++) {
     start_file_num += max_file_per_sub_comp;
@@ -793,7 +793,7 @@ Status CompactionJob::Run() {
     for (const auto& output : state.outputs) {
       auto fn =
           TableFileName(state.compaction->immutable_cf_options()->cf_paths,
-                        output.meta.fd.GetNumber(), output.meta.fd.GetPathId());
+          output.meta.fd.GetFlushNumber(), output.meta.fd.GetMergeNumber(), output.meta.fd.GetPathId());
       tp[fn] = output.table_properties;
       compact_output.emplace_back(output.meta);
     }
@@ -1259,21 +1259,29 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
   Slice* start = sub_compact->start;
   Slice* end = sub_compact->end;
   size_t num_levels = sub_compact->compaction->num_input_levels();
-  std::vector<int64_t> file_packed_nums;
+  std::vector<int64_t> flush_nums;
+  std::vector<int64_t> compaction_nums;
+  std::vector<int32_t> path_ids;
   for (size_t i = 0; i < num_levels; i++) {
     const std::vector<FileMetaData*>* level_inputs =
         sub_compact->compaction->inputs(i);
     size_t input_size = level_inputs->size();
     for (size_t j = 0; j < input_size; j++) {
-      int64_t file_packed_num =
-          (*level_inputs)[j]->fd.packed_number_and_path_id;
-      file_packed_nums.push_back(file_packed_num);
+      int64_t flush_num =
+          (*level_inputs)[j]->fd.flush_number;
+      int64_t compaction_num = (*level_inputs)[j]->fd.merge_number;
+      int32_t path_id = (*level_inputs)[j]->fd.path_id;
+      flush_nums.push_back(flush_num);
+      compaction_nums.push_back(compaction_num);
+      path_ids.push_back(path_id);
     }
   }
   int output_level = sub_compact->compaction->output_level();
 
   TCompactFilesRequest request;
-  request.__set_file_nums(file_packed_nums);
+  request.__set_flush_nums(flush_nums);
+  request.__set_compaction_nums(compaction_nums);
+  request.__set_path_ids(path_ids);
   request.__set_cf_name(cf_name);
   request.__set_output_level(output_level);
   request.__set_max_file_num(sub_compact->max_output_file_num);
@@ -1389,7 +1397,8 @@ Status CompactionJob::FinishCompactionOutputFile(
   assert(sub_compact->builder != nullptr);
   assert(sub_compact->current_output() != nullptr);
 
-  uint64_t output_number = sub_compact->current_output()->meta.fd.GetNumber();
+  uint64_t output_number =
+      sub_compact->current_output()->meta.fd.GetFlushNumber();
   assert(output_number != 0);
 
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
@@ -1616,7 +1625,7 @@ Status CompactionJob::FinishCompactionOutputFile(
     // the sub_compact output nothing.
     std::string fname =
         TableFileName(sub_compact->compaction->immutable_cf_options()->cf_paths,
-                      meta->fd.GetNumber(), meta->fd.GetPathId());
+                      meta->fd.GetFlushNumber(), meta->fd.GetMergeNumber(), meta->fd.GetPathId());
     env_->DeleteFile(fname);
 
     // Also need to remove the file from outputs, or it will be added to the
@@ -1643,7 +1652,7 @@ Status CompactionJob::FinishCompactionOutputFile(
   if (meta != nullptr) {
     fname =
         TableFileName(sub_compact->compaction->immutable_cf_options()->cf_paths,
-                      meta->fd.GetNumber(), meta->fd.GetPathId());
+                      meta->fd.GetFlushNumber(), meta->fd.GetMergeNumber(), meta->fd.GetPathId());
     output_fd = meta->fd;
     oldest_blob_file_number = meta->oldest_blob_file_number;
   } else {
@@ -1718,7 +1727,8 @@ Status CompactionJob::InstallCompactionResults(
   for (auto& deleted_file : compact_->compaction->edit()->GetDeletedFiles()) {
     TDeletedCompactionInput deleted_input;
     deleted_input.level = deleted_file.first;
-    deleted_input.file_num = deleted_file.second;
+    deleted_input.flush_num = deleted_file.second.first;
+    deleted_input.compaction_num = deleted_file.second.second;
     request.deleted_inputs.emplace_back(std::move(deleted_input));
   }
   for (auto& new_file : compact_->compaction->edit()->GetNewFiles()) {
@@ -1786,17 +1796,17 @@ Status CompactionJob::OpenCompactionOutputFile(
   assert(sub_compact != nullptr);
   assert(sub_compact->builder == nullptr);
   // no need to lock because VersionSet::next_file_number_ is atomic
-  uint64_t file_number;
+  uint64_t compaction_number;
   if (sub_compact->start_file_num >= 0) {
-    file_number = sub_compact->start_file_num++;
+    compaction_number = sub_compact->start_file_num++;
     sub_compact->max_output_file_num--;
   } else {
-    file_number = versions_->NewFileNumber();
+    compaction_number = versions_->NewCompactionNumber();
   }
 
   std::string fname =
-      TableFileName(sub_compact->compaction->immutable_cf_options()->cf_paths,
-                    file_number, sub_compact->compaction->output_path_id());
+      TableFileName(sub_compact->compaction->immutable_cf_options()->cf_paths, 0,
+      compaction_number, sub_compact->compaction->output_path_id());
   // Fire events.
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
 #ifndef ROCKSDB_LITE
@@ -1824,7 +1834,7 @@ Status CompactionJob::OpenCompactionOutputFile(
         "[%s] [JOB %d] OpenCompactionOutputFiles for table #%" PRIu64
         " fails at NewWritableFile with status %s",
         sub_compact->compaction->column_family_data()->GetName().c_str(),
-        job_id_, file_number, s.ToString().c_str());
+        job_id_, compaction_number, s.ToString().c_str());
     LogFlush(db_options_.info_log);
     EventHelpers::LogAndNotifyTableFileCreationFinished(
         event_logger_, cfd->ioptions()->listeners, dbname_, cfd->GetName(),
@@ -1853,7 +1863,7 @@ Status CompactionJob::OpenCompactionOutputFile(
   // Initialize a SubcompactionState::Output and add it to sub_compact->outputs
   {
     SubcompactionState::Output out;
-    out.meta.fd = FileDescriptor(file_number,
+    out.meta.fd = FileDescriptor(0, compaction_number,
                                  sub_compact->compaction->output_path_id(), 0);
     out.meta.oldest_ancester_time = oldest_ancester_time;
     out.meta.file_creation_time = current_time;
@@ -1909,7 +1919,7 @@ void CompactionJob::CleanupCompaction() {
       // If this file was inserted into the table cache then remove
       // them here because this compaction was not committed.
       if (!sub_status.ok()) {
-        TableCache::Evict(table_cache_.get(), out.meta.fd.GetNumber());
+        TableCache::Evict(table_cache_.get(), out.meta.fd.GetFlushNumber());
       }
     }
   }
@@ -2046,7 +2056,7 @@ void CompactionJob::LogCompaction() {
       stream << ("files_L" + ToString(compaction->level(i)));
       stream.StartArray();
       for (auto f : *compaction->inputs(i)) {
-        stream << f->fd.GetNumber();
+        stream << f->fd.GetFlushNumber();
       }
       stream.EndArray();
     }

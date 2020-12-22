@@ -103,7 +103,8 @@ void SstFileManagerImpl::OnCompactionCompletion(Compaction* c) {
   auto new_files = c->edit()->GetNewFiles();
   for (auto& new_file : new_files) {
     auto fn = TableFileName(c->immutable_cf_options()->cf_paths,
-                            new_file.second.fd.GetNumber(),
+                            new_file.second.fd.GetFlushNumber(),
+                            new_file.second.fd.GetMergeNumber(),
                             new_file.second.fd.GetPathId());
     if (in_progress_files_.find(fn) != in_progress_files_.end()) {
       auto tracked_file = tracked_files_.find(fn);
@@ -186,7 +187,9 @@ bool SstFileManagerImpl::EnoughRoomForCompaction(
   // other DB instances
   if (bg_error == Status::NoSpace() && CheckFreeSpace()) {
     auto fn =
-        TableFileName(cfd->ioptions()->cf_paths, inputs[0][0]->fd.GetNumber(),
+        TableFileName(cfd->ioptions()->cf_paths,
+                            inputs[0][0]->fd.GetFlushNumber(),
+                      inputs[0][0]->fd.GetMergeNumber(),
                       inputs[0][0]->fd.GetPathId());
     uint64_t free_space = 0;
     Status s = fs_->GetFreeSpace(fn, IOOptions(), &free_space, nullptr);

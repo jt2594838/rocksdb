@@ -488,7 +488,7 @@ Status CheckpointImpl::ExportColumnFamily(
         LiveFileMetaData live_file_metadata;
         live_file_metadata.size = file_metadata.size;
         live_file_metadata.name = std::move(file_metadata.name);
-        live_file_metadata.file_number = file_metadata.file_number;
+        live_file_metadata.flush_number = file_metadata.flush_number;
         live_file_metadata.db_path = export_dir;
         live_file_metadata.smallest_seqno = file_metadata.smallest_seqno;
         live_file_metadata.largest_seqno = file_metadata.largest_seqno;

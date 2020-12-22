@@ -474,7 +474,7 @@ void BlobDBImpl::InitializeBlobFileToSstMapping(
   assert(bdb_options_.enable_garbage_collection);
 
   for (const auto& live_file : live_files) {
-    const uint64_t sst_file_number = live_file.file_number;
+    const uint64_t sst_file_number = live_file.flush_number;
     const uint64_t blob_file_number = live_file.oldest_blob_file_number;
 
     if (blob_file_number == kInvalidBlobFileNumber) {

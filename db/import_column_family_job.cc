@@ -85,11 +85,11 @@ Status ImportColumnFamilyJob::Prepare(uint64_t next_file_number,
   // Copy/Move external files into DB
   auto hardlink_files = import_options_.move_files;
   for (auto& f : files_to_import_) {
-    f.fd = FileDescriptor(next_file_number++, 0, f.file_size);
+    f.fd = FileDescriptor(next_file_number++, 0, 0, f.file_size);
 
     const auto path_outside_db = f.external_file_path;
     const auto path_inside_db = TableFileName(
-        cfd_->ioptions()->cf_paths, f.fd.GetNumber(), f.fd.GetPathId());
+        cfd_->ioptions()->cf_paths, f.fd.GetFlushNumber(), f.fd.GetMergeNumber(), f.fd.GetPathId());
 
     if (hardlink_files) {
       status =
@@ -149,7 +149,7 @@ Status ImportColumnFamilyJob::Run() {
     const auto& f = files_to_import_[i];
     const auto& file_metadata = metadata_[i];
 
-    edit_.AddFile(file_metadata.level, f.fd.GetNumber(), f.fd.GetPathId(),
+    edit_.AddFile(file_metadata.level, f.fd.GetFlushNumber(), f.fd.GetMergeNumber(), f.fd.GetPathId(),
                   f.fd.GetFileSize(), f.smallest_internal_key,
                   f.largest_internal_key, file_metadata.smallest_seqno,
                   file_metadata.largest_seqno, false, kInvalidBlobFileNumber,

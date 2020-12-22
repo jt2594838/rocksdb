@@ -7,11 +7,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 #include "file/filename.h"
-#include <cinttypes>
 
 #include <ctype.h>
 #include <stdio.h>
+
+#include <cinttypes>
 #include <vector>
+
 #include "file/writable_file_writer.h"
 #include "logging/logging.h"
 #include "rocksdb/env.h"
@@ -38,10 +40,8 @@ static size_t GetInfoLogPrefix(const std::string& path, char* dest, int len) {
   while (i < src_len && write_idx < len - sizeof(suffix)) {
     if ((path[i] >= 'a' && path[i] <= 'z') ||
         (path[i] >= '0' && path[i] <= '9') ||
-        (path[i] >= 'A' && path[i] <= 'Z') ||
-        path[i] == '-' ||
-        path[i] == '.' ||
-        path[i] == '_'){
+        (path[i] >= 'A' && path[i] <= 'Z') || path[i] == '-' ||
+        path[i] == '.' || path[i] == '_') {
       dest[write_idx++] = path[i];
     } else {
       if (i > 0) {
@@ -64,9 +64,21 @@ static std::string MakeFileName(uint64_t number, const char* suffix) {
   return buf;
 }
 
+static std::string MakeFileName(uint64_t number1, uint64_t number2, const char* suffix) {
+  char buf[100];
+  snprintf(buf, sizeof(buf), "%06llu-%06llu.%s",
+           static_cast<unsigned long long>(number1), static_cast<unsigned long long>(number2), suffix);
+  return buf;
+}
+
 static std::string MakeFileName(const std::string& name, uint64_t number,
                                 const char* suffix) {
   return name + "/" + MakeFileName(number, suffix);
+}
+
+static std::string MakeFileName(const std::string& name, uint64_t number1, uint64_t number2,
+                                const char* suffix) {
+  return name + "/" + MakeFileName(number1, number2, suffix);
 }
 
 std::string LogFileName(const std::string& name, uint64_t number) {
@@ -104,12 +116,12 @@ std::string ArchivedLogFileName(const std::string& name, uint64_t number) {
   return MakeFileName(name + "/" + ARCHIVAL_DIR, number, "log");
 }
 
-std::string MakeTableFileName(const std::string& path, uint64_t number) {
-  return MakeFileName(path, number, kRocksDbTFileExt.c_str());
+std::string MakeTableFileName(const std::string& path, uint64_t flush_num, uint64_t compaction_num) {
+  return MakeFileName(path, flush_num, compaction_num, kRocksDbTFileExt.c_str());
 }
 
-std::string MakeTableFileName(uint64_t number) {
-  return MakeFileName(number, kRocksDbTFileExt.c_str());
+std::string MakeTableFileName(uint64_t flush_num, uint64_t compaction_num) {
+  return MakeFileName(flush_num, compaction_num, kRocksDbTFileExt.c_str());
 }
 
 std::string Rocks2LevelTableFileName(const std::string& fullname) {
@@ -121,10 +133,22 @@ std::string Rocks2LevelTableFileName(const std::string& fullname) {
          kLevelDbTFileExt;
 }
 
-uint64_t TableFileNameToNumber(const std::string& name) {
+uint64_t TableFileNameToCompactionNumber(const std::string& name) {
   uint64_t number = 0;
   uint64_t base = 1;
   int pos = static_cast<int>(name.find_last_of('.'));
+  int begin = static_cast<int>(name.find_last_of('-')) + 1;
+  while (--pos >= begin && name[pos] >= '0' && name[pos] <= '9') {
+    number += (name[pos] - '0') * base;
+    base *= 10;
+  }
+  return number;
+}
+
+uint64_t TableFileNameToFlushNumber(const std::string& name) {
+  uint64_t number = 0;
+  uint64_t base = 1;
+  int pos = static_cast<int>(name.find_last_of('-'));
   while (--pos >= 0 && name[pos] >= '0' && name[pos] <= '9') {
     number += (name[pos] - '0') * base;
     base *= 10;
@@ -132,28 +156,29 @@ uint64_t TableFileNameToNumber(const std::string& name) {
   return number;
 }
 
-std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t number,
-                          uint32_t path_id) {
-  assert(number > 0);
+std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t flush_num,
+                          uint64_t compaction_num, uint32_t path_id) {
+  assert(flush_num > 0);
   std::string path;
   if (path_id >= db_paths.size()) {
     path = db_paths.back().path;
   } else {
     path = db_paths[path_id].path;
   }
-  return MakeTableFileName(path, number);
+  return MakeTableFileName(path, flush_num, compaction_num);
 }
 
-std::string TableFileName(const std::vector<std::string>& db_paths, uint64_t number,
+std::string TableFileName(const std::vector<std::string>& db_paths,
+                          uint64_t flush_num, uint64_t compaction_num,
                           uint32_t path_id) {
-  assert(number > 0);
+  assert(flush_num >= 0);
   std::string path;
   if (path_id >= db_paths.size()) {
     path = db_paths.back();
   } else {
     path = db_paths[path_id];
   }
-  return MakeTableFileName(path, number);
+  return MakeTableFileName(path, flush_num, compaction_num);
 }
 
 void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,
@@ -161,9 +186,10 @@ void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,
   if (path_id == 0) {
     snprintf(out_buf, out_buf_size, "%" PRIu64, number);
   } else {
-    snprintf(out_buf, out_buf_size, "%" PRIu64
-                                    "(path "
-                                    "%" PRIu32 ")",
+    snprintf(out_buf, out_buf_size,
+             "%" PRIu64
+             "(path "
+             "%" PRIu32 ")",
              number, path_id);
   }
 }
@@ -180,9 +206,7 @@ std::string CurrentFileName(const std::string& dbname) {
   return dbname + "/CURRENT";
 }
 
-std::string LockFileName(const std::string& dbname) {
-  return dbname + "/LOCK";
-}
+std::string LockFileName(const std::string& dbname) { return dbname + "/LOCK"; }
 
 std::string TempFileName(const std::string& dbname, uint64_t number) {
   return MakeFileName(dbname, number, kTempFileNameSuffix.c_str());
@@ -202,7 +226,8 @@ InfoLogPrefix::InfoLogPrefix(bool has_log_dir,
 }
 
 std::string InfoLogFileName(const std::string& dbname,
-    const std::string& db_path, const std::string& log_dir) {
+                            const std::string& db_path,
+                            const std::string& log_dir) {
   if (log_dir.empty()) {
     return dbname + "/LOG";
   }
@@ -213,7 +238,8 @@ std::string InfoLogFileName(const std::string& dbname,
 
 // Return the name of the old info log file for "dbname".
 std::string OldInfoLogFileName(const std::string& dbname, uint64_t ts,
-    const std::string& db_path, const std::string& log_dir) {
+                               const std::string& db_path,
+                               const std::string& log_dir) {
   char buf[50];
   snprintf(buf, sizeof(buf), "%llu", static_cast<unsigned long long>(ts));
 
@@ -263,14 +289,26 @@ std::string IdentityFileName(const std::string& dbname) {
 //    dbname/OPTIONS-[0-9]+
 //    dbname/OPTIONS-[0-9]+.dbtmp
 //    Disregards / at the beginning
-bool ParseFileName(const std::string& fname,
-                   uint64_t* number,
-                   FileType* type,
+
+bool ParseFileName(const std::string& fname, uint64_t* number1, FileType* type,
                    WalFileType* log_type) {
-  return ParseFileName(fname, number, "", type, log_type);
+  uint64_t tmp;
+  return ParseFileName(fname, number1, &tmp, "", type, log_type);
 }
 
 bool ParseFileName(const std::string& fname, uint64_t* number,
+                   const Slice& info_log_name_prefix, FileType* type,
+                   WalFileType* log_type) {
+  uint64_t tmp;
+  return ParseFileName(fname, number, &tmp, info_log_name_prefix, type, log_type);
+}
+
+bool ParseFileName(const std::string& fname, uint64_t* number1, uint64_t* number2, FileType* type,
+                   WalFileType* log_type) {
+  return ParseFileName(fname, number1, number2, "", type, log_type);
+}
+
+bool ParseFileName(const std::string& fname, uint64_t* number1, uint64_t* number2,
                    const Slice& info_log_name_prefix, FileType* type,
                    WalFileType* log_type) {
   Slice rest(fname);
@@ -278,19 +316,23 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
     rest.remove_prefix(1);
   }
   if (rest == "IDENTITY") {
-    *number = 0;
+    *number1 = 0;
+    *number2 = 0;
     *type = kIdentityFile;
   } else if (rest == "CURRENT") {
-    *number = 0;
+    *number1 = 0;
+    *number2 = 0;
     *type = kCurrentFile;
   } else if (rest == "LOCK") {
-    *number = 0;
+    *number1 = 0;
+    *number2 = 0;
     *type = kDBLockFile;
   } else if (info_log_name_prefix.size() > 0 &&
              rest.starts_with(info_log_name_prefix)) {
     rest.remove_prefix(info_log_name_prefix.size());
     if (rest == "" || rest == ".old") {
-      *number = 0;
+      *number1 = 0;
+      *number2 = 0;
       *type = kInfoLogFile;
     } else if (rest.starts_with(".old.")) {
       uint64_t ts_suffix;
@@ -299,7 +341,8 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
       if (!ConsumeDecimalNumber(&rest, &ts_suffix)) {
         return false;
       }
-      *number = ts_suffix;
+      *number1 = ts_suffix;
+      *number2 = 0;
       *type = kInfoLogFile;
     }
   } else if (rest.starts_with("MANIFEST-")) {
@@ -312,7 +355,8 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
       return false;
     }
     *type = kDescriptorFile;
-    *number = num;
+    *number1 = num;
+    *number2 = 0;
   } else if (rest.starts_with("METADB-")) {
     rest.remove_prefix(strlen("METADB-"));
     uint64_t num;
@@ -323,7 +367,8 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
       return false;
     }
     *type = kMetaDatabase;
-    *number = num;
+    *number1 = num;
+    *number2 = 0;
   } else if (rest.starts_with(kOptionsFileNamePrefix)) {
     uint64_t ts_suffix;
     bool is_temp_file = false;
@@ -337,7 +382,8 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
     if (!ConsumeDecimalNumber(&rest, &ts_suffix)) {
       return false;
     }
-    *number = ts_suffix;
+    *number1 = ts_suffix;
+    *number2 = 0;
     *type = is_temp_file ? kTempFile : kOptionsFile;
   } else {
     // Avoid strtoull() to keep filename format independent of the
@@ -347,7 +393,7 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
       if (rest.size() <= ARCHIVAL_DIR.size()) {
         return false;
       }
-      rest.remove_prefix(ARCHIVAL_DIR.size() + 1); // Add 1 to remove / also
+      rest.remove_prefix(ARCHIVAL_DIR.size() + 1);  // Add 1 to remove / also
       if (log_type) {
         *log_type = kArchivedLogFile;
       }
@@ -357,10 +403,17 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
     if (!ConsumeDecimalNumber(&rest, &num)) {
       return false;
     }
-    if (rest.size() <= 1 || rest[0] != '.') {
+    if (rest.size() <= 1 || rest[0] != '.' || rest[0] != '-') {
       return false;
     }
     rest.remove_prefix(1);
+    uint64_t num2;
+    if (ConsumeDecimalNumber(&rest, &num2) && rest == Slice(kRocksDbTFileExt)) {
+      *type = kTableFile;
+      *number1 = num;
+      *number2 = num2;
+      return true;
+    }
 
     Slice suffix = rest;
     if (suffix == Slice("log")) {
@@ -369,7 +422,7 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
         *log_type = kAliveLogFile;
       }
     } else if (archive_dir_found) {
-      return false; // Archive dir can contain only log files
+      return false;  // Archive dir can contain only log files
     } else if (suffix == Slice(kRocksDbTFileExt) ||
                suffix == Slice(kLevelDbTFileExt)) {
       *type = kTableFile;
@@ -380,7 +433,7 @@ bool ParseFileName(const std::string& fname, uint64_t* number,
     } else {
       return false;
     }
-    *number = num;
+    *number1 = num;
   }
   return true;
 }

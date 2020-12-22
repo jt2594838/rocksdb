@@ -78,7 +78,7 @@ uint64_t DBImpl::TEST_Current_Manifest_FileNo() {
 }
 
 uint64_t DBImpl::TEST_Current_Next_FileNo() {
-  return versions_->current_next_file_number();
+  return versions_->current_next_flush_number();
 }
 
 Status DBImpl::TEST_CompactRange(int level, const Slice* begin,

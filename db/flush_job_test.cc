@@ -72,7 +72,7 @@ class FlushJobTest : public testing::Test {
       new_db.SetDBId(db_id);
     }
     new_db.SetLogNumber(0);
-    new_db.SetNextFile(2);
+    new_db.SetNextFlush(2);
     new_db.SetLastSequence(0);
 
     autovector<VersionEdit> new_cfs;
@@ -83,7 +83,7 @@ class FlushJobTest : public testing::Test {
       new_cf.AddColumnFamily(column_family_names_[i]);
       new_cf.SetColumnFamily(cf_id++);
       new_cf.SetLogNumber(0);
-      new_cf.SetNextFile(2);
+      new_cf.SetNextFlush(2);
       new_cf.SetLastSequence(last_seq++);
       new_cfs.emplace_back(new_cf);
     }

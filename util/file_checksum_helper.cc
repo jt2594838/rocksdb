@@ -141,7 +141,7 @@ Status GetFileChecksumsFromManifest(Env* src_env, const std::string& abs_path,
     // Add the new files to the checksum_list
     for (const auto& new_file : edit.GetNewFiles()) {
       checksum_list->InsertOneFileChecksum(
-          new_file.second.fd.GetNumber(), new_file.second.file_checksum,
+          new_file.second.fd.GetFlushNumber(), new_file.second.file_checksum,
           new_file.second.file_checksum_func_name);
     }
   }

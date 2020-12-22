@@ -819,7 +819,7 @@ TEST_F(BlobDBTest, GetLiveFilesMetaData) {
   // Path should be relative to db_name, but begin with slash.
   std::string filename = "/blob_dir/000001.blob";
   ASSERT_EQ(filename, metadata[0].name);
-  ASSERT_EQ(1, metadata[0].file_number);
+  ASSERT_EQ(1, metadata[0].flush_number);
   ASSERT_EQ("default", metadata[0].column_family_name);
   std::vector<std::string> livefile;
   uint64_t mfs;
@@ -1837,7 +1837,7 @@ TEST_F(BlobDBTest, MaintainBlobFileToSstMapping) {
 
   for (uint64_t i = 1; i <= 10; ++i) {
     LiveFileMetaData live_file;
-    live_file.file_number = i;
+    live_file.flush_number = i;
     live_file.oldest_blob_file_number = ((i - 1) % 5) + 1;
 
     live_files.emplace_back(live_file);
@@ -1845,7 +1845,7 @@ TEST_F(BlobDBTest, MaintainBlobFileToSstMapping) {
 
   for (uint64_t i = 11; i <= 20; ++i) {
     LiveFileMetaData live_file;
-    live_file.file_number = i;
+    live_file.flush_number = i;
 
     live_files.emplace_back(live_file);
   }

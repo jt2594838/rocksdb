@@ -44,7 +44,7 @@ TEST_F(VersionEditTest, EncodeDecode) {
 
   edit.SetComparatorName("foo");
   edit.SetLogNumber(kBig + 100);
-  edit.SetNextFile(kBig + 200);
+  edit.SetNextFlush(kBig + 200);
   edit.SetLastSequence(kBig + 1000);
   TestEncodeDecode(edit);
 }
@@ -78,7 +78,7 @@ TEST_F(VersionEditTest, EncodeDecodeNewFile4) {
 
   edit.SetComparatorName("foo");
   edit.SetLogNumber(kBig + 100);
-  edit.SetNextFile(kBig + 200);
+  edit.SetNextFlush(kBig + 200);
   edit.SetLastSequence(kBig + 1000);
   TestEncodeDecode(edit);
 
@@ -121,7 +121,7 @@ TEST_F(VersionEditTest, ForwardCompatibleNewFile4) {
 
   edit.SetComparatorName("foo");
   edit.SetLogNumber(kBig + 100);
-  edit.SetNextFile(kBig + 200);
+  edit.SetNextFlush(kBig + 200);
   edit.SetLastSequence(kBig + 1000);
 
   std::string encoded;
@@ -168,7 +168,7 @@ TEST_F(VersionEditTest, NewFile4NotSupportedField) {
 
   edit.SetComparatorName("foo");
   edit.SetLogNumber(kBig + 100);
-  edit.SetNextFile(kBig + 200);
+  edit.SetNextFlush(kBig + 200);
   edit.SetLastSequence(kBig + 1000);
 
   std::string encoded;
@@ -264,9 +264,9 @@ TEST_F(VersionEditTest, IgnorableField) {
   ASSERT_OK(ve.DecodeFrom(encoded));
 
   ASSERT_TRUE(ve.HasLogNumber());
-  ASSERT_TRUE(ve.HasNextFile());
+  ASSERT_TRUE(ve.HasNextFlush());
   ASSERT_EQ(66, ve.GetLogNumber());
-  ASSERT_EQ(88, ve.GetNextFile());
+  ASSERT_EQ(88, ve.GetNextFlush());
 }
 
 TEST_F(VersionEditTest, DbId) {

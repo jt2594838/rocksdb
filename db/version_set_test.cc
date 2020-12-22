@@ -49,7 +49,8 @@ class GenerateLevelFilesBriefTest : public testing::Test {
   int Compare() {
     int diff = 0;
     for (size_t i = 0; i < files_.size(); i++) {
-      if (file_level_.files[i].fd.GetNumber() != files_[i]->fd.GetNumber()) {
+      if (file_level_.files[i].fd.GetFlushNumber() !=
+          files_[i]->fd.GetFlushNumber()) {
         diff++;
       }
     }
@@ -168,7 +169,7 @@ class VersionStorageInfoTestBase : public testing::Test {
       if (i > 0) {
         result += ",";
       }
-      AppendNumberTo(&result, inputs[i]->fd.GetNumber());
+      AppendNumberTo(&result, inputs[i]->fd.GetFlushNumber());
     }
     return result;
   }
@@ -766,7 +767,7 @@ class VersionSetTestBase {
       new_db.SetDBId(db_id);
     }
     new_db.SetLogNumber(0);
-    new_db.SetNextFile(2);
+    new_db.SetNextFlush(2);
     new_db.SetLastSequence(0);
 
     const std::vector<std::string> cf_names = {
@@ -781,7 +782,7 @@ class VersionSetTestBase {
       new_cf.AddColumnFamily(cf_names[i]);
       new_cf.SetColumnFamily(cf_id++);
       new_cf.SetLogNumber(0);
-      new_cf.SetNextFile(2);
+      new_cf.SetNextFlush(2);
       new_cf.SetLastSequence(last_seq++);
       new_cfs.emplace_back(new_cf);
     }
@@ -1174,7 +1175,7 @@ class VersionSetAtomicGroupTest : public VersionSetTestBase,
     int remaining = atomic_group_size;
     for (size_t i = 0; i != edits_.size(); ++i) {
       edits_[i].SetLogNumber(0);
-      edits_[i].SetNextFile(2);
+      edits_[i].SetNextFlush(2);
       edits_[i].MarkAtomicGroup(--remaining);
       edits_[i].SetLastSequence(last_seqno_++);
     }
@@ -1186,7 +1187,7 @@ class VersionSetAtomicGroupTest : public VersionSetTestBase,
     int remaining = atomic_group_size;
     for (size_t i = 0; i != edits_.size(); ++i) {
       edits_[i].SetLogNumber(0);
-      edits_[i].SetNextFile(2);
+      edits_[i].SetNextFlush(2);
       edits_[i].MarkAtomicGroup(--remaining);
       edits_[i].SetLastSequence(last_seqno_++);
     }
@@ -1198,7 +1199,7 @@ class VersionSetAtomicGroupTest : public VersionSetTestBase,
     int remaining = atomic_group_size;
     for (size_t i = 0; i != edits_.size(); ++i) {
       edits_[i].SetLogNumber(0);
-      edits_[i].SetNextFile(2);
+      edits_[i].SetNextFlush(2);
       if (i != ((size_t)atomic_group_size / 2)) {
         edits_[i].MarkAtomicGroup(--remaining);
       }
@@ -1212,7 +1213,7 @@ class VersionSetAtomicGroupTest : public VersionSetTestBase,
     int remaining = atomic_group_size;
     for (size_t i = 0; i != edits_.size(); ++i) {
       edits_[i].SetLogNumber(0);
-      edits_[i].SetNextFile(2);
+      edits_[i].SetNextFlush(2);
       if (i != 1) {
         edits_[i].MarkAtomicGroup(--remaining);
       } else {
@@ -1616,7 +1617,7 @@ TEST_P(VersionSetTestDropOneCF, HandleDroppedColumnFamilyInAtomicGroup) {
     mutable_cf_options_list.emplace_back(cfd->GetLatestMutableCFOptions());
     edits[i].SetColumnFamily(cfd->GetID());
     edits[i].SetLogNumber(0);
-    edits[i].SetNextFile(2);
+    edits[i].SetNextFlush(2);
     edits[i].MarkAtomicGroup(--remaining);
     edits[i].SetLastSequence(last_seqno++);
     autovector<VersionEdit*> tmp_edits;
@@ -1692,7 +1693,7 @@ class EmptyDefaultCfNewManifest : public VersionSetTestBase,
     new_cf.AddColumnFamily(VersionSetTestBase::kColumnFamilyName1);
     new_cf.SetColumnFamily(1);
     new_cf.SetLastSequence(2);
-    new_cf.SetNextFile(2);
+    new_cf.SetNextFlush(2);
     record.clear();
     ASSERT_TRUE(new_cf.EncodeTo(&record));
     s = (*log_writer)->AddRecord(record);
@@ -1911,7 +1912,7 @@ TEST_P(VersionSetTestEmptyDb, OpenManifestWithUnknownCF) {
     VersionEdit tmp_edit;
     tmp_edit.SetColumnFamily(4);
     tmp_edit.SetLogNumber(0);
-    tmp_edit.SetNextFile(2);
+    tmp_edit.SetNextFlush(2);
     tmp_edit.SetLastSequence(0);
     std::string record;
     ASSERT_TRUE(tmp_edit.EncodeTo(&record));
@@ -1967,7 +1968,7 @@ TEST_P(VersionSetTestEmptyDb, OpenCompleteManifest) {
   {
     VersionEdit tmp_edit;
     tmp_edit.SetLogNumber(0);
-    tmp_edit.SetNextFile(2);
+    tmp_edit.SetNextFlush(2);
     tmp_edit.SetLastSequence(0);
     std::string record;
     ASSERT_TRUE(tmp_edit.EncodeTo(&record));
@@ -2107,7 +2108,7 @@ class VersionSetTestMissingFiles : public VersionSetTestBase,
     SequenceNumber seq = 2;
     {
       VersionEdit edit;
-      edit.SetNextFile(7);
+      edit.SetNextFlush(7);
       edit.SetLastSequence(seq);
       std::string record;
       ASSERT_TRUE(edit.EncodeTo(&record));
@@ -2302,7 +2303,7 @@ TEST_F(VersionSetTestMissingFiles, ManifestAheadofSst) {
     if (cfd->GetName() == kDefaultColumnFamilyName) {
       ASSERT_EQ(2, files.size());
       for (const auto* fmeta : files) {
-        if (fmeta->fd.GetNumber() != 107 && fmeta->fd.GetNumber() != 110) {
+        if (fmeta->fd.GetFlushNumber() != 107 && fmeta->fd.GetFlushNumber() != 110) {
           ASSERT_FALSE(true);
         }
       }
@@ -2352,7 +2353,7 @@ TEST_F(VersionSetTestMissingFiles, NoFileMissing) {
       ASSERT_EQ(existing_files.size() - deleted_files.size(), files.size());
       bool has_deleted_file = false;
       for (const auto* fmeta : files) {
-        if (fmeta->fd.GetNumber() == 100) {
+        if (fmeta->fd.GetFlushNumber() == 100) {
           has_deleted_file = true;
           break;
         }

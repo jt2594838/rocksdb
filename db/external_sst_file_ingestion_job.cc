@@ -96,11 +96,11 @@ Status ExternalSstFileIngestionJob::Prepare(
   // Copy/Move external files into DB
   std::unordered_set<size_t> ingestion_path_ids;
   for (IngestedFileInfo& f : files_to_ingest_) {
-    f.fd = FileDescriptor(next_file_number++, 0, f.file_size);
+    f.fd = FileDescriptor(next_file_number++, 0, 0, f.file_size);
     f.copy_file = false;
     const std::string path_outside_db = f.external_file_path;
     const std::string path_inside_db =
-        TableFileName(cfd_->ioptions()->cf_paths, f.fd.GetNumber(),
+        TableFileName(cfd_->ioptions()->cf_paths, f.fd.GetFlushNumber(), f.fd.GetMergeNumber(),
                       f.fd.GetPathId());
     if (ingestion_options_.move_files) {
       status =
@@ -387,7 +387,7 @@ Status ExternalSstFileIngestionJob::Run() {
           static_cast<uint64_t>(temp_current_time);
     }
 
-    edit_.AddFile(f.picked_level, f.fd.GetNumber(), f.fd.GetPathId(),
+    edit_.AddFile(f.picked_level, f.fd.GetFlushNumber(), f.fd.GetMergeNumber(), f.fd.GetPathId(),
                   f.fd.GetFileSize(), f.smallest_internal_key,
                   f.largest_internal_key, f.assigned_seqno, f.assigned_seqno,
                   false, kInvalidBlobFileNumber, oldest_ancester_time,

@@ -146,7 +146,7 @@ void DBImpl::FindObsoleteFiles(JobContext* job_context, bool force,
   // calling FindObsoleteFiles with full_scan=true will not add these files to
   // candidate list for purge.
   for (const auto& sst_to_del : job_context->sst_delete_files) {
-    MarkAsGrabbedForPurge(sst_to_del.metadata->fd.GetNumber());
+    MarkAsGrabbedForPurge(sst_to_del.metadata->fd.GetFlushNumber());
   }
 
   for (const auto& blob_file : job_context->blob_delete_files) {
@@ -379,7 +379,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   // We may ignore the dbname when generating the file names.
   for (auto& file : state.sst_delete_files) {
     candidate_files.emplace_back(
-        MakeTableFileName(file.metadata->fd.GetNumber()), file.path);
+        MakeTableFileName(file.metadata->fd.GetFlushNumber(), file.metadata->fd.GetMergeNumber()), file.path);
     if (file.metadata->table_reader_handle) {
       table_cache_->Release(file.metadata->table_reader_handle);
     }
@@ -455,40 +455,41 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   std::unordered_set<uint64_t> files_to_del;
   for (const auto& candidate_file : candidate_files) {
     const std::string& to_delete = candidate_file.file_name;
-    uint64_t number;
+    uint64_t number1;
+    uint64_t number2;
     FileType type;
     // Ignore file if we cannot recognize it.
-    if (!ParseFileName(to_delete, &number, info_log_prefix.prefix, &type)) {
+    if (!ParseFileName(to_delete, &number1, &number2, info_log_prefix.prefix, &type)) {
       continue;
     }
 
     bool keep = true;
     switch (type) {
       case kLogFile:
-        keep = ((number >= state.log_number) ||
-                (number == state.prev_log_number) ||
-                (log_recycle_files_set.find(number) !=
+        keep = ((number1 >= state.log_number) ||
+                (number1 == state.prev_log_number) ||
+                (log_recycle_files_set.find(number1) !=
                  log_recycle_files_set.end()));
         break;
       case kDescriptorFile:
         // Keep my manifest file, and any newer incarnations'
         // (can happen during manifest roll)
-        keep = (number >= state.manifest_file_number);
+        keep = (number1 >= state.manifest_file_number);
         break;
       case kTableFile:
         // If the second condition is not there, this makes
         // DontDeletePendingOutputs fail
-        keep = (sst_live_set.find(number) != sst_live_set.end()) ||
-               number >= state.min_pending_output;
+        keep = (sst_live_set.find(number1) != sst_live_set.end()) ||
+               number1 >= state.min_pending_output;
         if (!keep) {
-          files_to_del.insert(number);
+          files_to_del.insert(number1);
         }
         break;
       case kBlobFile:
-        keep = number >= state.min_pending_output ||
-               (blob_live_set.find(number) != blob_live_set.end());
+        keep = number1 >= state.min_pending_output ||
+               (blob_live_set.find(number1) != blob_live_set.end());
         if (!keep) {
-          files_to_del.insert(number);
+          files_to_del.insert(number1);
         }
         break;
       case kTempFile:
@@ -500,22 +501,22 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
         //
         // TODO(yhchiang): carefully modify the third condition to safely
         //                 remove the temp options files.
-        keep = (sst_live_set.find(number) != sst_live_set.end()) ||
-               (blob_live_set.find(number) != blob_live_set.end()) ||
-               (number == state.pending_manifest_file_number) ||
+        keep = (sst_live_set.find(number1) != sst_live_set.end()) ||
+               (blob_live_set.find(number1) != blob_live_set.end()) ||
+               (number1 == state.pending_manifest_file_number) ||
                (to_delete.find(kOptionsFileNamePrefix) != std::string::npos);
         break;
       case kInfoLogFile:
         keep = true;
-        if (number != 0) {
+        if (number1 != 0) {
           old_info_log_files.push_back(to_delete);
         }
         break;
       case kOptionsFile:
-        keep = (number >= optsfile_num2);
+        keep = (number1 >= optsfile_num2);
         TEST_SYNC_POINT_CALLBACK(
             "DBImpl::PurgeObsoleteFiles:CheckOptionsFiles:1",
-            reinterpret_cast<void*>(&number));
+            reinterpret_cast<void*>(&number1));
         TEST_SYNC_POINT_CALLBACK(
             "DBImpl::PurgeObsoleteFiles:CheckOptionsFiles:2",
             reinterpret_cast<void*>(&keep));
@@ -536,11 +537,11 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
     std::string dir_to_sync;
     if (type == kTableFile) {
       // evict from cache
-      TableCache::Evict(table_cache_.get(), number);
-      fname = MakeTableFileName(candidate_file.file_path, number);
+      TableCache::Evict(table_cache_.get(), number1);
+      fname = MakeTableFileName(candidate_file.file_path, number1, number2);
       dir_to_sync = candidate_file.file_path;
     } else if (type == kBlobFile) {
-      fname = BlobFileName(candidate_file.file_path, number);
+      fname = BlobFileName(candidate_file.file_path, number1);
       dir_to_sync = candidate_file.file_path;
     } else {
       dir_to_sync =
@@ -556,7 +557,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
 #ifndef ROCKSDB_LITE
     if (type == kLogFile && (immutable_db_options_.wal_ttl_seconds > 0 ||
                              immutable_db_options_.wal_size_limit_mb > 0)) {
-      wal_manager_.ArchiveWALFile(fname, number);
+      wal_manager_.ArchiveWALFile(fname, number1);
       continue;
     }
 #endif  // !ROCKSDB_LITE
@@ -569,9 +570,9 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
     }
     if (schedule_only) {
       InstrumentedMutexLock guard_lock(&mutex_);
-      SchedulePendingPurge(fname, dir_to_sync, type, number, state.job_id);
+      SchedulePendingPurge(fname, dir_to_sync, type, number1, state.job_id);
     } else {
-      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, number);
+      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, number1);
     }
   }
 
@@ -757,33 +758,41 @@ Status DBImpl::FinishBestEffortsRecovery() {
   std::sort(paths.begin(), paths.end());
   paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
 
-  uint64_t next_file_number = versions_->current_next_file_number();
-  uint64_t largest_file_number = next_file_number;
+  uint64_t next_flush_number = versions_->current_next_flush_number();
+  uint64_t next_compaction_number = versions_->current_next_compaction_number();
+  uint64_t largest_flush_number = next_flush_number;
+  uint64_t largest_compaction_number = next_compaction_number;
   std::set<std::string> files_to_delete;
   for (const auto& path : paths) {
     std::vector<std::string> files;
     env_->GetChildren(path, &files);
     for (const auto& fname : files) {
-      uint64_t number = 0;
+      uint64_t number1 = 0;
+      uint64_t number2 = 0;
       FileType type;
-      if (!ParseFileName(fname, &number, &type)) {
+      if (!ParseFileName(fname, &number1, &number2, &type)) {
         continue;
       }
       // path ends with '/' or '\\'
       const std::string normalized_fpath = path + fname;
-      largest_file_number = std::max(largest_file_number, number);
-      if (type == kTableFile && number >= next_file_number &&
+      largest_flush_number = std::max(largest_flush_number, number1);
+      largest_compaction_number = std::max(largest_compaction_number, number2);
+      if (type == kTableFile && number1 >= next_flush_number &&
           files_to_delete.find(normalized_fpath) == files_to_delete.end()) {
         files_to_delete.insert(normalized_fpath);
       }
     }
   }
-  if (largest_file_number > next_file_number) {
-    versions_->next_file_number_.store(largest_file_number + 1);
+  if (largest_flush_number > next_flush_number) {
+    versions_->next_flush_number_.store(largest_flush_number + 1);
+  }
+  if (largest_compaction_number > next_flush_number) {
+    versions_->next_compaction_number_.store(next_compaction_number + 1);
   }
 
   VersionEdit edit;
-  edit.SetNextFile(versions_->next_file_number_.load());
+  edit.SetNextFlush(versions_->next_flush_number_.load());
+  edit.SetNextCompaction(versions_->next_compaction_number_.load());
   assert(versions_->GetColumnFamilySet());
   ColumnFamilyData* default_cfd = versions_->GetColumnFamilySet()->GetDefault();
   assert(default_cfd);

@@ -104,7 +104,8 @@ Status BuildTable(
     range_del_agg->AddTombstones(std::move(range_del_iter));
   }
 
-  std::string fname = TableFileName(ioptions.cf_paths, meta->fd.GetNumber(),
+  std::string fname = TableFileName(ioptions.cf_paths, meta->fd.GetFlushNumber(),
+                                    meta->fd.GetMergeNumber(),
                                     meta->fd.GetPathId());
   std::string file_checksum = kUnknownFileChecksum;
   std::string file_checksum_func_name = kUnknownFileChecksumFuncName;

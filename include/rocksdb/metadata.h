@@ -55,7 +55,7 @@ struct LevelMetaData {
 struct SstFileMetaData {
   SstFileMetaData()
       : size(0),
-        file_number(0),
+        flush_number(0),
         smallest_seqno(0),
         largest_seqno(0),
         num_reads_sampled(0),
@@ -64,7 +64,8 @@ struct SstFileMetaData {
         num_deletions(0),
         oldest_blob_file_number(0) {}
 
-  SstFileMetaData(const std::string& _file_name, uint64_t _file_number,
+  SstFileMetaData(const std::string& _file_name, uint64_t _flush_number,
+                  uint64_t _compaction_number,
                   const std::string& _path, size_t _size,
                   SequenceNumber _smallest_seqno, SequenceNumber _largest_seqno,
                   const std::string& _smallestkey,
@@ -75,7 +76,8 @@ struct SstFileMetaData {
                   std::string& _file_checksum_func_name)
       : size(_size),
         name(_file_name),
-        file_number(_file_number),
+        flush_number(_flush_number),
+        compaction_number(_compaction_number),
         db_path(_path),
         smallest_seqno(_smallest_seqno),
         largest_seqno(_largest_seqno),
@@ -96,7 +98,8 @@ struct SstFileMetaData {
   // The name of the file.
   std::string name;
   // The id of the file.
-  uint64_t file_number;
+  uint64_t flush_number;
+  uint64_t compaction_number;
   // The full path where the file locates.
   std::string db_path;
 

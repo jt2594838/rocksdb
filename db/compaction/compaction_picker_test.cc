@@ -213,8 +213,8 @@ TEST_F(CompactionPickerTest, Level0Trigger) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, Level1Trigger) {
@@ -227,7 +227,7 @@ TEST_F(CompactionPickerTest, Level1Trigger) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
-  ASSERT_EQ(66U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(66U, compaction->input(0, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, Level1Trigger2) {
@@ -247,9 +247,9 @@ TEST_F(CompactionPickerTest, Level1Trigger2) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(2U, compaction->num_input_files(1));
-  ASSERT_EQ(66U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetNumber());
+  ASSERT_EQ(66U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetFlushNumber());
   ASSERT_EQ(uint64_t{1073741824}, compaction->OutputFilePreallocationSize());
 }
 
@@ -278,7 +278,7 @@ TEST_F(CompactionPickerTest, LevelMaxScore) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
-  ASSERT_EQ(7U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(7U, compaction->input(0, 0)->fd.GetFlushNumber());
   ASSERT_EQ(mutable_cf_options_.target_file_size_base +
                 mutable_cf_options_.target_file_size_base / 10,
             compaction->OutputFilePreallocationSize());
@@ -326,8 +326,8 @@ TEST_F(CompactionPickerTest, Level0TriggerDynamic) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
   ASSERT_EQ(1, static_cast<int>(compaction->num_input_levels()));
   ASSERT_EQ(num_levels - 1, compaction->output_level());
 }
@@ -351,8 +351,8 @@ TEST_F(CompactionPickerTest, Level0TriggerDynamic2) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
   ASSERT_EQ(1, static_cast<int>(compaction->num_input_levels()));
   ASSERT_EQ(num_levels - 2, compaction->output_level());
 }
@@ -377,8 +377,8 @@ TEST_F(CompactionPickerTest, Level0TriggerDynamic3) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
   ASSERT_EQ(1, static_cast<int>(compaction->num_input_levels()));
   ASSERT_EQ(num_levels - 3, compaction->output_level());
 }
@@ -407,12 +407,12 @@ TEST_F(CompactionPickerTest, Level0TriggerDynamic4) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
   ASSERT_EQ(2U, compaction->num_input_files(1));
   ASSERT_EQ(num_levels - 3, compaction->level(1));
-  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(1, 1)->fd.GetNumber());
+  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(1, 1)->fd.GetFlushNumber());
   ASSERT_EQ(2, static_cast<int>(compaction->num_input_levels()));
   ASSERT_EQ(num_levels - 3, compaction->output_level());
 }
@@ -440,7 +440,7 @@ TEST_F(CompactionPickerTest, LevelTriggerDynamic4) {
       &log_buffer_));
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
-  ASSERT_EQ(5U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(5U, compaction->input(0, 0)->fd.GetFlushNumber());
   ASSERT_EQ(0, compaction->num_input_files(1));
   ASSERT_EQ(1U, compaction->num_input_levels());
   ASSERT_EQ(num_levels - 1, compaction->output_level());
@@ -700,7 +700,7 @@ TEST_F(CompactionPickerTest, UniversalPeriodicCompaction5) {
   ASSERT_TRUE(compaction);
   ASSERT_EQ(0, compaction->start_level());
   ASSERT_EQ(1U, compaction->num_input_files(0));
-  ASSERT_EQ(6U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(6U, compaction->input(0, 0)->fd.GetFlushNumber());
   ASSERT_EQ(4, compaction->output_level());
 }
 
@@ -725,8 +725,8 @@ TEST_F(CompactionPickerTest, UniversalPeriodicCompaction6) {
   ASSERT_TRUE(compaction);
   ASSERT_EQ(4, compaction->start_level());
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(5U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(5U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(0, 1)->fd.GetFlushNumber());
   ASSERT_EQ(4, compaction->output_level());
 }
 
@@ -786,7 +786,7 @@ TEST_F(CompactionPickerTest, CompactionPriMinOverlapping1) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
   // Pick file 8 because it overlaps with 0 files on level 3.
-  ASSERT_EQ(8U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(8U, compaction->input(0, 0)->fd.GetFlushNumber());
   // Compaction input size * 1.1
   ASSERT_GE(uint64_t{55000000}, compaction->OutputFilePreallocationSize());
 }
@@ -819,7 +819,7 @@ TEST_F(CompactionPickerTest, CompactionPriMinOverlapping2) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
   // Picking file 7 because overlapping ratio is the biggest.
-  ASSERT_EQ(7U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(7U, compaction->input(0, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, CompactionPriMinOverlapping3) {
@@ -847,7 +847,7 @@ TEST_F(CompactionPickerTest, CompactionPriMinOverlapping3) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
   // Picking file 8 because overlapping ratio is the biggest.
-  ASSERT_EQ(8U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(8U, compaction->input(0, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, CompactionPriMinOverlapping4) {
@@ -877,7 +877,7 @@ TEST_F(CompactionPickerTest, CompactionPriMinOverlapping4) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_files(0));
   // Picking file 8 because overlapping ratio is the biggest.
-  ASSERT_EQ(6U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(6U, compaction->input(0, 0)->fd.GetFlushNumber());
 }
 
 // This test exhibits the bug where we don't properly reset parent_index in
@@ -923,8 +923,8 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys) {
   ASSERT_TRUE(compaction.get() != nullptr);
   ASSERT_EQ(1U, compaction->num_input_levels());
   ASSERT_EQ(2U, compaction->num_input_files(0));
-  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(0, 1)->fd.GetNumber());
+  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(0, 1)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys2) {
@@ -944,11 +944,11 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys2) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(2U, compaction->num_input_files(0));
   ASSERT_EQ(3U, compaction->num_input_files(1));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(4U, compaction->input(1, 1)->fd.GetNumber());
-  ASSERT_EQ(5U, compaction->input(1, 2)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(4U, compaction->input(1, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(5U, compaction->input(1, 2)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys3) {
@@ -972,13 +972,13 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys3) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(5U, compaction->num_input_files(0));
   ASSERT_EQ(2U, compaction->num_input_files(1));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetNumber());
-  ASSERT_EQ(4U, compaction->input(0, 3)->fd.GetNumber());
-  ASSERT_EQ(5U, compaction->input(0, 4)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetFlushNumber());
+  ASSERT_EQ(4U, compaction->input(0, 3)->fd.GetFlushNumber());
+  ASSERT_EQ(5U, compaction->input(0, 4)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys4) {
@@ -1003,8 +1003,8 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys4) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(1U, compaction->num_input_files(1));
-  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetNumber());
+  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys5) {
@@ -1071,7 +1071,7 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys7) {
   ASSERT_GE(1U, compaction->num_input_files(0));
   ASSERT_GE(2U, compaction->num_input_files(1));
   // File 5 has to be included in the compaction
-  ASSERT_EQ(5U, compaction->inputs(1)->back()->fd.GetNumber());
+  ASSERT_EQ(5U, compaction->inputs(1)->back()->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys8) {
@@ -1099,11 +1099,11 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys8) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(3U, compaction->num_input_files(0));
   ASSERT_EQ(2U, compaction->num_input_files(1));
-  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(0, 1)->fd.GetNumber());
-  ASSERT_EQ(4U, compaction->input(0, 2)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetNumber());
+  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(0, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(4U, compaction->input(0, 2)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 1)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys9) {
@@ -1132,12 +1132,12 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys9) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(5U, compaction->num_input_files(0));
   ASSERT_EQ(2U, compaction->num_input_files(1));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetNumber());
-  ASSERT_EQ(4U, compaction->input(0, 3)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetNumber());
-  ASSERT_EQ(8U, compaction->input(1, 1)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetFlushNumber());
+  ASSERT_EQ(4U, compaction->input(0, 3)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(8U, compaction->input(1, 1)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys10) {
@@ -1173,8 +1173,8 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys10) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(1U, compaction->num_input_files(1));
-  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetNumber());
+  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(6U, compaction->input(1, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, OverlappingUserKeys11) {
@@ -1212,8 +1212,8 @@ TEST_F(CompactionPickerTest, OverlappingUserKeys11) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(1U, compaction->num_input_files(1));
-  ASSERT_EQ(4U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetNumber());
+  ASSERT_EQ(4U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(7U, compaction->input(1, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, NotScheduleL1IfL0WithHigherPri1) {
@@ -1610,8 +1610,8 @@ TEST_F(CompactionPickerTest, MaxCompactionBytesHit) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(1U, compaction->num_input_files(1));
-  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetNumber());
+  ASSERT_EQ(2U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, MaxCompactionBytesNotHit) {
@@ -1635,10 +1635,10 @@ TEST_F(CompactionPickerTest, MaxCompactionBytesNotHit) {
   ASSERT_EQ(2U, compaction->num_input_levels());
   ASSERT_EQ(3U, compaction->num_input_files(0));
   ASSERT_EQ(1U, compaction->num_input_files(1));
-  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetNumber());
-  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetNumber());
-  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetNumber());
-  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetNumber());
+  ASSERT_EQ(1U, compaction->input(0, 0)->fd.GetFlushNumber());
+  ASSERT_EQ(2U, compaction->input(0, 1)->fd.GetFlushNumber());
+  ASSERT_EQ(3U, compaction->input(0, 2)->fd.GetFlushNumber());
+  ASSERT_EQ(5U, compaction->input(1, 0)->fd.GetFlushNumber());
 }
 
 TEST_F(CompactionPickerTest, IsTrivialMoveOn) {
@@ -1739,7 +1739,7 @@ TEST_F(CompactionPickerTest, CacheNextCompactionIndex) {
   ASSERT_EQ(1U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(0U, compaction->num_input_files(1));
-  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(3U, compaction->input(0, 0)->fd.GetFlushNumber());
   ASSERT_EQ(2, vstorage_->NextCompactionIndex(1 /* level */));
 
   compaction.reset(level_compaction_picker.PickCompaction(
@@ -1749,7 +1749,7 @@ TEST_F(CompactionPickerTest, CacheNextCompactionIndex) {
   ASSERT_EQ(1U, compaction->num_input_levels());
   ASSERT_EQ(1U, compaction->num_input_files(0));
   ASSERT_EQ(0U, compaction->num_input_files(1));
-  ASSERT_EQ(4U, compaction->input(0, 0)->fd.GetNumber());
+  ASSERT_EQ(4U, compaction->input(0, 0)->fd.GetFlushNumber());
   ASSERT_EQ(3, vstorage_->NextCompactionIndex(1 /* level */));
 
   compaction.reset(level_compaction_picker.PickCompaction(

@@ -290,20 +290,21 @@ class Repairer {
         found_file = true;
       }
 
-      uint64_t number;
+      uint64_t number1;
+      uint64_t number2;
       FileType type;
       for (size_t i = 0; i < filenames.size(); i++) {
-        if (ParseFileName(filenames[i], &number, &type)) {
+        if (ParseFileName(filenames[i], &number1, &number2, &type)) {
           if (type == kDescriptorFile) {
             manifests_.push_back(filenames[i]);
           } else {
-            if (number + 1 > next_file_number_) {
-              next_file_number_ = number + 1;
+            if (number1 + 1 > next_file_number_) {
+              next_file_number_ = number1 + 1;
             }
             if (type == kLogFile) {
-              logs_.push_back(number);
+              logs_.push_back(number1);
             } else if (type == kTableFile) {
-              table_fds_.emplace_back(number, static_cast<uint32_t>(path_id),
+              table_fds_.emplace_back(number1, number2, static_cast<uint32_t>(path_id),
                                       0);
             } else {
               // Ignore other files
@@ -407,7 +408,7 @@ class Repairer {
       }
 
       FileMetaData meta;
-      meta.fd = FileDescriptor(next_file_number_++, 0, 0);
+      meta.fd = FileDescriptor(next_file_number_++, 0, 0, 0);
       ReadOptions ro;
       ro.total_order_seek = true;
       Arena arena;
@@ -443,7 +444,7 @@ class Repairer {
           db_session_id_);
       ROCKS_LOG_INFO(db_options_.info_log,
                      "Log #%" PRIu64 ": %d ops saved to Table #%" PRIu64 " %s",
-                     log, counter, meta.fd.GetNumber(),
+                     log, counter, meta.fd.GetFlushNumber(),
                      status.ToString().c_str());
       if (status.ok()) {
         if (meta.fd.GetFileSize() > 0) {
@@ -464,9 +465,9 @@ class Repairer {
       Status status = ScanTable(&t);
       if (!status.ok()) {
         std::string fname = TableFileName(
-            db_options_.db_paths, t.meta.fd.GetNumber(), t.meta.fd.GetPathId());
+            db_options_.db_paths, t.meta.fd.GetFlushNumber(), t.meta.fd.GetMergeNumber(), t.meta.fd.GetPathId());
         char file_num_buf[kFormatFileNumberBufSize];
-        FormatFileNumber(t.meta.fd.GetNumber(), t.meta.fd.GetPathId(),
+        FormatFileNumber(t.meta.fd.GetFlushNumber(), t.meta.fd.GetPathId(),
                          file_num_buf, sizeof(file_num_buf));
         ROCKS_LOG_WARN(db_options_.info_log, "Table #%s: ignoring %s",
                        file_num_buf, status.ToString().c_str());
@@ -479,11 +480,11 @@ class Repairer {
 
   Status ScanTable(TableInfo* t) {
     std::string fname = TableFileName(
-        db_options_.db_paths, t->meta.fd.GetNumber(), t->meta.fd.GetPathId());
+        db_options_.db_paths, t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber(), t->meta.fd.GetPathId());
     int counter = 0;
     uint64_t file_size;
     Status status = env_->GetFileSize(fname, &file_size);
-    t->meta.fd = FileDescriptor(t->meta.fd.GetNumber(), t->meta.fd.GetPathId(),
+    t->meta.fd = FileDescriptor(t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber(), t->meta.fd.GetPathId(),
                                 file_size);
     std::shared_ptr<const TableProperties> props;
     if (status.ok()) {
@@ -499,7 +500,7 @@ class Repairer {
             "Table #%" PRIu64
             ": column family unknown (probably due to legacy format); "
             "adding to default column family id 0.",
-            t->meta.fd.GetNumber());
+            t->meta.fd.GetFlushNumber());
         t->column_family_id = 0;
       }
 
@@ -519,7 +520,7 @@ class Repairer {
             "Table #%" PRIu64
             ": inconsistent column family name '%s'; expected '%s' for column "
             "family id %" PRIu32 ".",
-            t->meta.fd.GetNumber(), props->column_family_name.c_str(),
+            t->meta.fd.GetFlushNumber(), props->column_family_name.c_str(),
             cfd->GetName().c_str(), t->column_family_id);
         status = Status::Corruption(dbname_, "inconsistent column family name");
       }
@@ -543,7 +544,7 @@ class Repairer {
         if (!ParseInternalKey(key, &parsed)) {
           ROCKS_LOG_ERROR(db_options_.info_log,
                           "Table #%" PRIu64 ": unparsable key %s",
-                          t->meta.fd.GetNumber(), EscapeString(key).c_str());
+              t->meta.fd.GetFlushNumber(), EscapeString(key).c_str());
           continue;
         }
 
@@ -558,7 +559,7 @@ class Repairer {
       delete iter;
 
       ROCKS_LOG_INFO(db_options_.info_log, "Table #%" PRIu64 ": %d entries %s",
-                     t->meta.fd.GetNumber(), counter,
+                     t->meta.fd.GetFlushNumber(), counter,
                      status.ToString().c_str());
     }
     return status;
@@ -583,13 +584,13 @@ class Repairer {
       VersionEdit edit;
       edit.SetComparatorName(cfd->user_comparator()->Name());
       edit.SetLogNumber(0);
-      edit.SetNextFile(next_file_number_);
+      edit.SetNextFlush(next_file_number_);
       edit.SetColumnFamily(cfd->GetID());
 
       // TODO(opt): separate out into multiple levels
       for (const auto* table : cf_id_and_tables.second) {
         edit.AddFile(
-            0, table->meta.fd.GetNumber(), table->meta.fd.GetPathId(),
+            0, table->meta.fd.GetFlushNumber(), table->meta.fd.GetMergeNumber(), table->meta.fd.GetPathId(),
             table->meta.fd.GetFileSize(), table->meta.smallest,
             table->meta.largest, table->meta.fd.smallest_seqno,
             table->meta.fd.largest_seqno, table->meta.marked_for_compaction,

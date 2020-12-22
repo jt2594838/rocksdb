@@ -240,7 +240,7 @@ Status DBImpl::FlushMemTableToOutputFile(
     if (sfm) {
       // Notify sst_file_manager that a new file was added
       std::string file_path = MakeTableFileName(
-          cfd->ioptions()->cf_paths[0].path, file_meta.fd.GetNumber());
+          cfd->ioptions()->cf_paths[0].path, file_meta.fd.GetFlushNumber(), file_meta.fd.GetMergeNumber());
       sfm->OnAddFile(file_path);
       if (sfm->IsMaxAllowedSpaceReached()) {
         Status new_bg_error =
@@ -475,7 +475,7 @@ Status DBImpl::AtomicFlushMemTablesToOutputFiles(
       if (exec_status[i].first && exec_status[i].second.ok()) {
         auto& mems = jobs[i]->GetMemTables();
         cfds[i]->imm()->RollbackMemtableFlush(mems,
-                                              file_meta[i].fd.GetNumber());
+                                              file_meta[i].fd.GetFlushNumber());
       }
     }
   }
@@ -570,7 +570,8 @@ Status DBImpl::AtomicFlushMemTablesToOutputFiles(
                              jobs[i]->GetCommittedFlushJobsInfo());
       if (sfm) {
         std::string file_path = MakeTableFileName(
-            cfds[i]->ioptions()->cf_paths[0].path, file_meta[i].fd.GetNumber());
+            cfds[i]->ioptions()->cf_paths[0].path,
+                              file_meta[i].fd.GetFlushNumber(), file_meta[i].fd.GetMergeNumber());
         sfm->OnAddFile(file_path);
         if (sfm->IsMaxAllowedSpaceReached() &&
             error_handler_.GetBGError().ok()) {
@@ -631,9 +632,10 @@ void DBImpl::NotifyOnFlushBegin(ColumnFamilyData* cfd, FileMetaData* file_meta,
     info.cf_name = cfd->GetName();
     // TODO(yhchiang): make db_paths dynamic in case flush does not
     //                 go to L0 in the future.
-    const uint64_t file_number = file_meta->fd.GetNumber();
+    const uint64_t file_number = file_meta->fd.GetFlushNumber();
+    const uint64_t compaction_number = file_meta->fd.GetMergeNumber();
     info.file_path =
-        MakeTableFileName(cfd->ioptions()->cf_paths[0].path, file_number);
+        MakeTableFileName(cfd->ioptions()->cf_paths[0].path, file_number, compaction_number);
     info.file_number = file_number;
     info.thread_id = env_->GetThreadID();
     info.job_id = job_id;
@@ -790,7 +792,7 @@ Status DBImpl::CompactRange(const CompactRangeOptions& options,
       // max_file_num_to_ignore can be used to filter out newly created SST
       // files, useful for bottom level compaction in a manual compaction
       uint64_t max_file_num_to_ignore = port::kMaxUint64;
-      uint64_t next_file_number = versions_->current_next_file_number();
+      uint64_t next_file_number = versions_->current_next_flush_number();
       final_output_level = max_overlapped_level;
       int output_level;
       for (int level = first_overlapped_level; level <= max_overlapped_level;
@@ -1041,9 +1043,9 @@ Status DBImpl::CompactExactlyImpl(
     return Status::Incomplete(Status::SubCode::kManualCompactionPaused);
   }
 
-  std::unordered_set<uint64_t> input_set;
+  std::unordered_set<std::string> input_set;
   for (const auto& file_name : input_file_names) {
-    input_set.insert(TableFileNameToNumber(file_name));
+    input_set.insert(file_name);
   }
 
   ColumnFamilyMetaData cf_meta;
@@ -1185,7 +1187,8 @@ Status DBImpl::CompactExactlyImpl(
     for (const auto& newf : c->edit()->GetNewFiles()) {
       (*output_file_names)
           .push_back(TableFileName(c->immutable_cf_options()->cf_paths,
-                                   newf.second.fd.GetNumber(),
+                                   newf.second.fd.GetFlushNumber(),
+                                   newf.second.fd.GetMergeNumber(),
                                    newf.second.fd.GetPathId()));
     }
   }
@@ -1219,9 +1222,9 @@ Status DBImpl::CompactFilesImpl(
     return Status::Incomplete(Status::SubCode::kManualCompactionPaused);
   }
 
-  std::unordered_set<uint64_t> input_set;
+  std::unordered_set<std::string> input_set;
   for (const auto& file_name : input_file_names) {
-    input_set.insert(TableFileNameToNumber(file_name));
+    input_set.insert(file_name);
   }
 
   ColumnFamilyMetaData cf_meta;
@@ -1377,7 +1380,8 @@ Status DBImpl::CompactFilesImpl(
     for (const auto& newf : c->edit()->GetNewFiles()) {
       (*output_file_names)
           .push_back(TableFileName(c->immutable_cf_options()->cf_paths,
-                                   newf.second.fd.GetNumber(),
+                                   newf.second.fd.GetFlushNumber(),
+                                   newf.second.fd.GetMergeNumber(),
                                    newf.second.fd.GetPathId()));
     }
   }
@@ -1563,8 +1567,8 @@ Status DBImpl::ReFitLevel(ColumnFamilyData* cfd, int level, int target_level) {
     VersionEdit edit;
     edit.SetColumnFamily(cfd->GetID());
     for (const auto& f : vstorage->LevelFiles(level)) {
-      edit.DeleteFile(level, f->fd.GetNumber());
-      edit.AddFile(to_level, f->fd.GetNumber(), f->fd.GetPathId(),
+      edit.DeleteFile(level, f->fd.GetFlushNumber());
+      edit.AddFile(to_level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(), f->fd.GetPathId(),
                    f->fd.GetFileSize(), f->smallest, f->largest,
                    f->fd.smallest_seqno, f->fd.largest_seqno,
                    f->marked_for_compaction, f->oldest_blob_file_number,
@@ -2952,7 +2956,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                             compaction_job_stats, job_context->job_id);
 
     for (const auto& f : *c->inputs(0)) {
-      c->edit()->DeleteFile(c->level(), f->fd.GetNumber());
+      c->edit()->DeleteFile(c->level(), f->fd.GetFlushNumber());
     }
     status = versions_->LogAndApply(c->column_family_data(),
                                     *c->mutable_cf_options(), c->edit(),
@@ -2992,8 +2996,8 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       }
       for (size_t i = 0; i < c->num_input_files(l); i++) {
         FileMetaData* f = c->input(l, i);
-        c->edit()->DeleteFile(c->level(l), f->fd.GetNumber());
-        c->edit()->AddFile(c->output_level(), f->fd.GetNumber(),
+        c->edit()->DeleteFile(c->level(l), f->fd.GetFlushNumber());
+        c->edit()->AddFile(c->output_level(), f->fd.GetFlushNumber(), f->fd.GetMergeNumber(),
                            f->fd.GetPathId(), f->fd.GetFileSize(), f->smallest,
                            f->largest, f->fd.smallest_seqno,
                            f->fd.largest_seqno, f->marked_for_compaction,
@@ -3004,7 +3008,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         ROCKS_LOG_BUFFER(
             log_buffer,
             "[%s] Moving #%" PRIu64 " to level-%d %" PRIu64 " bytes\n",
-            c->column_family_data()->GetName().c_str(), f->fd.GetNumber(),
+            c->column_family_data()->GetName().c_str(), f->fd.GetFlushNumber(),
             c->output_level(), f->fd.GetFileSize());
         ++moved_files;
         moved_bytes += f->fd.GetFileSize();
@@ -3329,12 +3333,13 @@ void DBImpl::BuildCompactionJobInfo(
   for (size_t i = 0; i < c->num_input_levels(); ++i) {
     for (const auto fmd : *c->inputs(i)) {
       const FileDescriptor& desc = fmd->fd;
-      const uint64_t file_number = desc.GetNumber();
-      auto fn = TableFileName(c->immutable_cf_options()->cf_paths, file_number,
+      const uint64_t flush_number = desc.GetFlushNumber();
+      const uint64_t compaction_number = desc.GetMergeNumber();
+      auto fn = TableFileName(c->immutable_cf_options()->cf_paths, flush_number, compaction_number,
                               desc.GetPathId());
       compaction_job_info->input_files.push_back(fn);
       compaction_job_info->input_file_infos.push_back(CompactionFileInfo{
-          static_cast<int>(i), file_number, fmd->oldest_blob_file_number});
+          static_cast<int>(i), flush_number, fmd->oldest_blob_file_number});
       if (compaction_job_info->table_properties.count(fn) == 0) {
         std::shared_ptr<const TableProperties> tp;
         auto s = current->GetTableProperties(&tp, fmd, &fn);
@@ -3347,11 +3352,12 @@ void DBImpl::BuildCompactionJobInfo(
   for (const auto& newf : c->edit()->GetNewFiles()) {
     const FileMetaData& meta = newf.second;
     const FileDescriptor& desc = meta.fd;
-    const uint64_t file_number = desc.GetNumber();
+    const uint64_t flush_number = desc.GetFlushNumber();
+    const uint64_t compaction_number = desc.GetMergeNumber();
     compaction_job_info->output_files.push_back(TableFileName(
-        c->immutable_cf_options()->cf_paths, file_number, desc.GetPathId()));
+        c->immutable_cf_options()->cf_paths, flush_number, compaction_number, desc.GetPathId()));
     compaction_job_info->output_file_infos.push_back(CompactionFileInfo{
-        newf.first, file_number, meta.oldest_blob_file_number});
+        newf.first, flush_number, meta.oldest_blob_file_number});
   }
 }
 #endif

@@ -16,13 +16,12 @@ void RocksService::CompactFiles(TCompactionResult& _return,
                                 const TCompactFilesRequest& request) {
   CompactionOptions compactionOptions;
   std::vector<std::string> file_names;
-  for (auto num : request.file_nums) {
-    auto packed_file_num = static_cast<uint64_t>(num);
-    uint64_t file_num = packed_file_num & kFileNumberMask;
-    uint64_t path_id =
-        static_cast<uint32_t>(packed_file_num / (kFileNumberMask + 1));
+  for (uint32_t i = 0; i < request.flush_nums.size(); ++i) {
+    uint64_t flush_num = request.flush_nums[i];
+    uint64_t compaction_num = request.compaction_nums[i];
+    uint32_t path_id = request.path_ids[i];
     file_names.emplace_back(
-        TableFileName(db->GetDBOptions().db_paths, path_id, file_num));
+        TableFileName(db->GetDBOptions().db_paths, flush_num, compaction_num, path_id));
   }
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Received a compaction "
@@ -75,12 +74,13 @@ void RocksService::PushFiles(const TCompactionResult& result,
   auto source_node = ClusterNode(source_ip, source_port);
   for (const auto& meta : result.output_files) {
     FileMetaData&& file_metadata = RpcUtils::ToFileMetaData(meta);
-    uint64_t file_num = file_metadata.fd.GetNumber();
+    uint64_t flush_num = file_metadata.fd.GetFlushNumber();
+    uint64_t compaction_num = file_metadata.fd.GetMergeNumber();
     uint64_t path_num = file_metadata.fd.GetPathId();
     const std::string& cf_path =
         db->default_cf_handle_->cfd()->ioptions()->cf_paths[path_num].path;
     std::string source_file_path =
-        TableFileName(result.db_paths, file_num, path_num);
+        TableFileName(result.db_paths, flush_num, compaction_num, path_num);
     ROCKS_LOG_INFO(db->immutable_db_options_.info_log, "Downloading file %s",
                    source_file_path.c_str());
     const std::string& target_file_name =
@@ -110,8 +110,9 @@ void RocksService::InstallCompaction(TStatus& _return,
   VersionEdit edit;
   for (auto& deleted_file : request.deleted_inputs) {
     int level = deleted_file.level;
-    uint64_t file_num = deleted_file.file_num;
-    edit.DeleteFile(level, file_num);
+    uint64_t flush_num = deleted_file.flush_num;
+    uint64_t compaction_num = deleted_file.compaction_num;
+    edit.DeleteFile(level, flush_num, compaction_num);
   }
 
   for (auto& installed_file : request.installed_outputs) {

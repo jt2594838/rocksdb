@@ -3355,7 +3355,7 @@ DBImpl::CaptureCurrentFileNumberInPendingOutputs() {
   // We need to remember the iterator of our insert, because after the
   // background job is done, we need to remove that element from
   // pending_outputs_.
-  pending_outputs_.push_back(versions_->current_next_file_number());
+  pending_outputs_.push_back(versions_->current_next_flush_number());
   auto pending_outputs_inserted_elem = pending_outputs_.end();
   --pending_outputs_inserted_elem;
   return pending_outputs_inserted_elem;
@@ -3381,10 +3381,11 @@ Status DBImpl::GetUpdatesSince(
 }
 
 Status DBImpl::DeleteFile(std::string name) {
-  uint64_t number;
+  uint64_t number1;
+  uint64_t number2;
   FileType type;
   WalFileType log_type;
-  if (!ParseFileName(name, &number, &type, &log_type) ||
+  if (!ParseFileName(name, &number1, &number2, &type, &log_type) ||
       (type != kTableFile && type != kLogFile)) {
     ROCKS_LOG_ERROR(immutable_db_options_.info_log, "DeleteFile %s failed.\n",
                     name.c_str());
@@ -3400,7 +3401,7 @@ Status DBImpl::DeleteFile(std::string name) {
                       name.c_str());
       return Status::NotSupported("Delete only supported for archived logs");
     }
-    status = wal_manager_.DeleteFile(name, number);
+    status = wal_manager_.DeleteFile(name, number1);
     if (!status.ok()) {
       ROCKS_LOG_ERROR(immutable_db_options_.info_log,
                       "DeleteFile %s failed -- %s.\n", name.c_str(),
@@ -3416,7 +3417,7 @@ Status DBImpl::DeleteFile(std::string name) {
   JobContext job_context(next_job_id_.fetch_add(1), true);
   {
     InstrumentedMutexLock l(&mutex_);
-    status = versions_->GetMetadataForFile(number, &level, &metadata, &cfd);
+    status = versions_->GetMetadataForFile(number1, number2, &level, &metadata, &cfd);
     if (!status.ok()) {
       ROCKS_LOG_WARN(immutable_db_options_.info_log,
                      "DeleteFile %s failed. File not found\n", name.c_str());
@@ -3449,7 +3450,8 @@ Status DBImpl::DeleteFile(std::string name) {
     }
     // if level == 0, it has to be the oldest file
     if (level == 0 &&
-        vstoreage->LevelFiles(0).back()->fd.GetNumber() != number) {
+        vstoreage->LevelFiles(0).back()->fd.GetFlushNumber() != number1 &&
+        vstoreage->LevelFiles(0).back()->fd.GetMergeNumber() != number2) {
       ROCKS_LOG_WARN(immutable_db_options_.info_log,
                      "DeleteFile %s failed ---"
                      " target file in level 0 must be the oldest.",
@@ -3458,7 +3460,7 @@ Status DBImpl::DeleteFile(std::string name) {
       return Status::InvalidArgument("File in level 0, but not oldest");
     }
     edit.SetColumnFamily(cfd->GetID());
-    edit.DeleteFile(level, number);
+    edit.DeleteFile(level, number1, number2);
     status = versions_->LogAndApply(cfd, *cfd->GetLatestMutableCFOptions(),
                                     &edit, &mutex_, directories_.GetDbDir());
     if (status.ok()) {
@@ -3533,7 +3535,7 @@ Status DBImpl::DeleteFilesInRanges(ColumnFamilyHandle* column_family,
             continue;
           }
           edit.SetColumnFamily(cfd->GetID());
-          edit.DeleteFile(i, level_file->fd.GetNumber());
+          edit.DeleteFile(i, level_file->fd.GetFlushNumber(), level_file->fd.GetMergeNumber());
           deleted_files.insert(level_file);
           level_file->being_compacted = true;
         }
@@ -3935,7 +3937,7 @@ Status DBImpl::WriteOptionsFile(bool need_mutex_lock,
   TEST_SYNC_POINT("DBImpl::WriteOptionsFile:2");
 
   std::string file_name =
-      TempOptionsFileName(GetName(), versions_->NewFileNumber());
+      TempOptionsFileName(GetName(), versions_->NewFlushNumber());
   Status s = PersistRocksDBOptions(db_options, cf_names, cf_opts, file_name,
                                    fs_.get());
 
@@ -4019,7 +4021,7 @@ Status DBImpl::RenameTempFileToOptionsFile(const std::string& file_name) {
 #ifndef ROCKSDB_LITE
   Status s;
 
-  uint64_t options_file_number = versions_->NewFileNumber();
+  uint64_t options_file_number = versions_->NewFlushNumber();
   std::string options_file_name =
       OptionsFileName(GetName(), options_file_number);
   // Retry if the file name happen to conflict with an existing one.
@@ -4582,7 +4584,7 @@ Status DBImpl::CreateColumnFamilyWithImport(
       // reuse the file number that has already assigned to the internal file,
       // and this will overwrite the external file. To protect the external
       // file, we have to make sure the file number will never being reused.
-      next_file_number = versions_->FetchAddFileNumber(metadata.files.size());
+      next_file_number = versions_->FetchAddFlushNumber(metadata.files.size());
       auto cf_options = cfd->GetLatestMutableCFOptions();
       status = versions_->LogAndApply(cfd, *cf_options, &dummy_edit, &mutex_,
                                       directories_.GetDbDir());
@@ -4687,7 +4689,7 @@ Status DBImpl::VerifyChecksum(const ReadOptions& read_options) {
            j++) {
         const auto& fd = vstorage->LevelFilesBrief(i).files[j].fd;
         std::string fname = TableFileName(cfd->ioptions()->cf_paths,
-                                          fd.GetNumber(), fd.GetPathId());
+                                          fd.GetFlushNumber(), fd.GetMergeNumber(), fd.GetPathId());
         s = ROCKSDB_NAMESPACE::VerifySstFileChecksum(opts, file_options_,
                                                      read_options, fname);
       }
@@ -4814,7 +4816,8 @@ Status DBImpl::ReserveFileNumbersBeforeIngestion(
   }
   pending_output_elem.reset(new std::list<uint64_t>::iterator(
       CaptureCurrentFileNumberInPendingOutputs()));
-  *next_file_number = versions_->FetchAddFileNumber(static_cast<uint64_t>(num));
+  *next_file_number =
+      versions_->FetchAddFlushNumber(static_cast<uint64_t>(num));
   auto cf_options = cfd->GetLatestMutableCFOptions();
   VersionEdit dummy_edit;
   // If crash happen after a hard link established, Recover function may

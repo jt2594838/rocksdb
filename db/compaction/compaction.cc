@@ -360,7 +360,8 @@ bool Compaction::IsTrivialMove() const {
 void Compaction::AddInputDeletions(VersionEdit* out_edit) {
   for (size_t which = 0; which < num_input_levels(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
-      out_edit->DeleteFile(level(which), inputs_[which][i]->fd.GetNumber());
+      out_edit->DeleteFile(level(which),
+                           inputs_[which][i]->fd.GetFlushNumber());
     }
   }
 }
@@ -468,7 +469,7 @@ int InputSummary(const std::vector<FileMetaData*>& files, char* output,
     char sztxt[16];
     AppendHumanBytes(files.at(i)->fd.GetFileSize(), sztxt, 16);
     ret = snprintf(output + write, sz, "%" PRIu64 "(%s) ",
-                   files.at(i)->fd.GetNumber(), sztxt);
+                   files.at(i)->fd.GetFlushNumber(), sztxt);
     if (ret < 0 || ret >= sz) break;
     write += ret;
   }

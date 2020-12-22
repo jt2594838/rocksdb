@@ -409,7 +409,7 @@ Compaction* CompactionPicker::CompactFiles(
 
 Status CompactionPicker::GetCompactionInputsFromFileNumbers(
     std::vector<CompactionInputFiles>* input_files,
-    std::unordered_set<uint64_t>* input_set, const VersionStorageInfo* vstorage,
+    std::unordered_set<std::string>* input_set, const VersionStorageInfo* vstorage,
     const CompactionOptions& /*compact_options*/) const {
   if (input_set->size() == 0U) {
     return Status::InvalidArgument(
@@ -425,7 +425,7 @@ Status CompactionPicker::GetCompactionInputsFromFileNumbers(
   //                 file_number to FileMetaData in Version.
   for (int level = 0; level < vstorage->num_levels(); ++level) {
     for (auto file : vstorage->LevelFiles(level)) {
-      auto iter = input_set->find(file->fd.GetNumber());
+      auto iter = input_set->find(MakeTableFileName(file->fd.GetFlushNumber(), file->fd.GetMergeNumber()));
       if (iter != input_set->end()) {
         matched_input_files[level].files.push_back(file);
         input_set->erase(iter);
@@ -440,9 +440,9 @@ Status CompactionPicker::GetCompactionInputsFromFileNumbers(
   if (!input_set->empty()) {
     std::string message(
         "Cannot find matched SST files for the following file numbers:");
-    for (auto fn : *input_set) {
+    for (auto& fn : *input_set) {
       message += " ";
-      message += ToString(fn);
+      message += fn;
     }
     return Status::InvalidArgument(message);
   }
@@ -738,7 +738,7 @@ Compaction* CompactionPicker::CompactRange(
     std::vector<FileMetaData*> inputs_shrunk;
     size_t skip_input_index = inputs.size();
     for (size_t i = 0; i < inputs.size(); ++i) {
-      if (inputs[i]->fd.GetNumber() < max_file_num_to_ignore) {
+      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore) {
         inputs_shrunk.push_back(inputs[i]);
       } else if (!inputs_shrunk.empty()) {
         // inputs[i] was created during the current manual compaction and
@@ -756,7 +756,7 @@ Compaction* CompactionPicker::CompactRange(
     // set covering_the_whole_range to false if there is any file that need to
     // be compacted in the range of inputs[skip_input_index+1, inputs.size())
     for (size_t i = skip_input_index + 1; i < inputs.size(); ++i) {
-      if (inputs[i]->fd.GetNumber() < max_file_num_to_ignore) {
+      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore) {
         covering_the_whole_range = false;
       }
     }
@@ -874,7 +874,7 @@ bool HaveOverlappingKeyRanges(const Comparator* c, const SstFileMetaData& a,
 }  // namespace
 
 Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
-    std::unordered_set<uint64_t>* input_files,
+    std::unordered_set<std::string>* input_files,
     const ColumnFamilyMetaData& cf_meta, const int output_level) const {
   auto& levels = cf_meta.levels;
   auto comparator = icmp_->user_comparator();
@@ -904,7 +904,7 @@ Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
     // identify the first and the last compaction input files
     // in the current level.
     for (size_t f = 0; f < current_files.size(); ++f) {
-      if (input_files->find(TableFileNameToNumber(current_files[f].name)) !=
+      if (input_files->find(current_files[f].name) !=
           input_files->end()) {
         first_included = std::min(first_included, static_cast<int>(f));
         last_included = std::max(last_included, static_cast<int>(f));
@@ -950,7 +950,7 @@ Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
                                current_files[f].name +
                                " is currently being compacted.");
       }
-      input_files->insert(TableFileNameToNumber(current_files[f].name));
+      input_files->insert(current_files[f].name);
     }
 
     // update smallest and largest key
@@ -995,7 +995,7 @@ Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
                 " that has overlapping key range with one of the compaction "
                 " input file is currently being compacted.");
           }
-          input_files->insert(TableFileNameToNumber(next_lv_file.name));
+          input_files->insert(next_lv_file.name);
         }
       }
     }
@@ -1009,7 +1009,7 @@ Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
 }
 
 Status CompactionPicker::SanitizeCompactionInputFiles(
-    std::unordered_set<uint64_t>* input_files,
+    std::unordered_set<std::string>* input_files,
     const ColumnFamilyMetaData& cf_meta, const int output_level) const {
   assert(static_cast<int>(cf_meta.levels.size()) - 1 ==
          cf_meta.levels[cf_meta.levels.size() - 1].level);
@@ -1045,14 +1045,14 @@ Status CompactionPicker::SanitizeCompactionInputFiles(
 
   // for all input files, check whether the file number matches
   // any currently-existing files.
-  for (auto file_num : *input_files) {
+  for (auto& file_name : *input_files) {
     bool found = false;
     for (const auto& level_meta : cf_meta.levels) {
       for (const auto& file_meta : level_meta.files) {
-        if (file_num == TableFileNameToNumber(file_meta.name)) {
+        if (file_name == file_meta.name) {
           if (file_meta.being_compacted) {
             return Status::Aborted("Specified compaction input file " +
-                                   MakeTableFileName("", file_num) +
+                                   file_name +
                                    " is already being compacted.");
           }
           found = true;
@@ -1065,7 +1065,7 @@ Status CompactionPicker::SanitizeCompactionInputFiles(
     }
     if (!found) {
       return Status::InvalidArgument(
-          "Specified compaction input file " + MakeTableFileName("", file_num) +
+          "Specified compaction input file " + file_name +
           " does not exist in column family " + cf_meta.name + ".");
     }
   }

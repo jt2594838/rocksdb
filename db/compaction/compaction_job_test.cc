@@ -98,8 +98,8 @@ class CompactionJobTest : public testing::Test {
     FileMetaData meta;
     std::vector<DbPath> db_paths;
     db_paths.emplace_back(dbname_, std::numeric_limits<uint64_t>::max());
-    meta.fd = FileDescriptor(file_number, 0, 0);
-    return TableFileName(db_paths, meta.fd.GetNumber(), meta.fd.GetPathId());
+    meta.fd = FileDescriptor(file_number, 0, 0, 0);
+    return TableFileName(db_paths, meta.fd.GetFlushNumber(), meta.fd.GetMergeNumber(), meta.fd.GetPathId());
   }
 
   static std::string KeyStr(const std::string& user_key,
@@ -181,7 +181,7 @@ class CompactionJobTest : public testing::Test {
       }
     }
 
-    uint64_t file_number = versions_->NewFileNumber();
+    uint64_t file_number = versions_->NewFlushNumber();
     EXPECT_OK(mock_table_factory_->CreateMockTable(
         env_, GenerateFileName(file_number), std::move(contents)));
 
@@ -264,7 +264,7 @@ class CompactionJobTest : public testing::Test {
       new_db.SetDBId(db_id);
     }
     new_db.SetLogNumber(0);
-    new_db.SetNextFile(2);
+    new_db.SetNextFlush(2);
     new_db.SetLastSequence(0);
 
     const std::string manifest = DescriptorFileName(dbname_, 1);

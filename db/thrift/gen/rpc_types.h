@@ -40,9 +40,11 @@ class TInstallCompactionRequest;
 class GetResult;
 
 typedef struct _TCompactFilesRequest__isset {
-  _TCompactFilesRequest__isset() : cf_name(false), file_nums(false), output_level(false), start_file_num(false), max_file_num(false), comp_start(false), comp_end(false) {}
+  _TCompactFilesRequest__isset() : cf_name(false), flush_nums(false), compaction_nums(false), path_ids(false), output_level(false), start_file_num(false), max_file_num(false), comp_start(false), comp_end(false) {}
   bool cf_name :1;
-  bool file_nums :1;
+  bool flush_nums :1;
+  bool compaction_nums :1;
+  bool path_ids :1;
   bool output_level :1;
   bool start_file_num :1;
   bool max_file_num :1;
@@ -60,7 +62,9 @@ class TCompactFilesRequest : public virtual ::apache::thrift::TBase {
 
   virtual ~TCompactFilesRequest() noexcept;
   std::string cf_name;
-  std::vector<int64_t>  file_nums;
+  std::vector<int64_t>  flush_nums;
+  std::vector<int64_t>  compaction_nums;
+  std::vector<int32_t>  path_ids;
   int32_t output_level;
   int64_t start_file_num;
   int32_t max_file_num;
@@ -71,7 +75,11 @@ class TCompactFilesRequest : public virtual ::apache::thrift::TBase {
 
   void __set_cf_name(const std::string& val);
 
-  void __set_file_nums(const std::vector<int64_t> & val);
+  void __set_flush_nums(const std::vector<int64_t> & val);
+
+  void __set_compaction_nums(const std::vector<int64_t> & val);
+
+  void __set_path_ids(const std::vector<int32_t> & val);
 
   void __set_output_level(const int32_t val);
 
@@ -87,7 +95,11 @@ class TCompactFilesRequest : public virtual ::apache::thrift::TBase {
   {
     if (!(cf_name == rhs.cf_name))
       return false;
-    if (!(file_nums == rhs.file_nums))
+    if (!(flush_nums == rhs.flush_nums))
+      return false;
+    if (!(compaction_nums == rhs.compaction_nums))
+      return false;
+    if (!(path_ids == rhs.path_ids))
       return false;
     if (!(output_level == rhs.output_level))
       return false;
@@ -118,8 +130,10 @@ void swap(TCompactFilesRequest &a, TCompactFilesRequest &b);
 std::ostream& operator<<(std::ostream& out, const TCompactFilesRequest& obj);
 
 typedef struct _TFileDescriptor__isset {
-  _TFileDescriptor__isset() : packed_number_and_path_id(false), file_size(false), smallest_seqno(false), largest_seqno(false) {}
-  bool packed_number_and_path_id :1;
+  _TFileDescriptor__isset() : flush_number(false), merge_number(false), path_id(false), file_size(false), smallest_seqno(false), largest_seqno(false) {}
+  bool flush_number :1;
+  bool merge_number :1;
+  bool path_id :1;
   bool file_size :1;
   bool smallest_seqno :1;
   bool largest_seqno :1;
@@ -130,18 +144,24 @@ class TFileDescriptor : public virtual ::apache::thrift::TBase {
 
   TFileDescriptor(const TFileDescriptor&);
   TFileDescriptor& operator=(const TFileDescriptor&);
-  TFileDescriptor() : packed_number_and_path_id(0), file_size(0), smallest_seqno(0), largest_seqno(0) {
+  TFileDescriptor() : flush_number(0), merge_number(0), path_id(0), file_size(0), smallest_seqno(0), largest_seqno(0) {
   }
 
   virtual ~TFileDescriptor() noexcept;
-  int64_t packed_number_and_path_id;
+  int64_t flush_number;
+  int64_t merge_number;
+  int32_t path_id;
   int64_t file_size;
   int64_t smallest_seqno;
   int64_t largest_seqno;
 
   _TFileDescriptor__isset __isset;
 
-  void __set_packed_number_and_path_id(const int64_t val);
+  void __set_flush_number(const int64_t val);
+
+  void __set_merge_number(const int64_t val);
+
+  void __set_path_id(const int32_t val);
 
   void __set_file_size(const int64_t val);
 
@@ -151,7 +171,11 @@ class TFileDescriptor : public virtual ::apache::thrift::TBase {
 
   bool operator == (const TFileDescriptor & rhs) const
   {
-    if (!(packed_number_and_path_id == rhs.packed_number_and_path_id))
+    if (!(flush_number == rhs.flush_number))
+      return false;
+    if (!(merge_number == rhs.merge_number))
+      return false;
+    if (!(path_id == rhs.path_id))
       return false;
     if (!(file_size == rhs.file_size))
       return false;
@@ -406,9 +430,10 @@ void swap(TCompactionResult &a, TCompactionResult &b);
 std::ostream& operator<<(std::ostream& out, const TCompactionResult& obj);
 
 typedef struct _TDeletedCompactionInput__isset {
-  _TDeletedCompactionInput__isset() : level(false), file_num(false) {}
+  _TDeletedCompactionInput__isset() : level(false), flush_num(false), compaction_num(false) {}
   bool level :1;
-  bool file_num :1;
+  bool flush_num :1;
+  bool compaction_num :1;
 } _TDeletedCompactionInput__isset;
 
 class TDeletedCompactionInput : public virtual ::apache::thrift::TBase {
@@ -416,24 +441,29 @@ class TDeletedCompactionInput : public virtual ::apache::thrift::TBase {
 
   TDeletedCompactionInput(const TDeletedCompactionInput&);
   TDeletedCompactionInput& operator=(const TDeletedCompactionInput&);
-  TDeletedCompactionInput() : level(0), file_num(0) {
+  TDeletedCompactionInput() : level(0), flush_num(0), compaction_num(0) {
   }
 
   virtual ~TDeletedCompactionInput() noexcept;
   int32_t level;
-  int64_t file_num;
+  int64_t flush_num;
+  int64_t compaction_num;
 
   _TDeletedCompactionInput__isset __isset;
 
   void __set_level(const int32_t val);
 
-  void __set_file_num(const int64_t val);
+  void __set_flush_num(const int64_t val);
+
+  void __set_compaction_num(const int64_t val);
 
   bool operator == (const TDeletedCompactionInput & rhs) const
   {
     if (!(level == rhs.level))
       return false;
-    if (!(file_num == rhs.file_num))
+    if (!(flush_num == rhs.flush_num))
+      return false;
+    if (!(compaction_num == rhs.compaction_num))
       return false;
     return true;
   }

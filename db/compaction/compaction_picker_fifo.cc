@@ -105,7 +105,7 @@ Compaction* FIFOCompactionPicker::PickTTLCompaction(
     ROCKS_LOG_BUFFER(log_buffer,
                      "[%s] FIFO compaction: picking file %" PRIu64
                      " with creation time %" PRIu64 " for deletion",
-                     cf_name.c_str(), f->fd.GetNumber(), creation_time);
+                     cf_name.c_str(), f->fd.GetFlushNumber(), creation_time);
   }
 
   Compaction* c = new Compaction(
@@ -193,7 +193,7 @@ Compaction* FIFOCompactionPicker::PickSizeCompaction(
     ROCKS_LOG_BUFFER(log_buffer,
                      "[%s] FIFO compaction: picking file %" PRIu64
                      " with size %s for deletion",
-                     cf_name.c_str(), f->fd.GetNumber(), tmp_fsize);
+                     cf_name.c_str(), f->fd.GetFlushNumber(), tmp_fsize);
     if (total_size <=
         mutable_cf_options.compaction_options_fifo.max_table_files_size) {
       break;

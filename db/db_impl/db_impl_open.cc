@@ -275,7 +275,7 @@ Status DBImpl::NewDB(std::vector<std::string>* new_filenames) {
     new_db.SetDBId(temp_db_id);
   }
   new_db.SetLogNumber(0);
-  new_db.SetNextFile(2);
+  new_db.SetNextFlush(2);
   new_db.SetLastSequence(0);
 
   ROCKS_LOG_INFO(immutable_db_options_.info_log, "Creating manifest 1 \n");
@@ -1276,7 +1276,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
   std::unique_ptr<std::list<uint64_t>::iterator> pending_outputs_inserted_elem(
       new std::list<uint64_t>::iterator(
           CaptureCurrentFileNumberInPendingOutputs()));
-  meta.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0);
+  meta.fd = FileDescriptor(versions_->NewFlushNumber(), 0, 0);
   ReadOptions ro;
   ro.total_order_seek = true;
   Arena arena;
@@ -1287,7 +1287,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
     ROCKS_LOG_DEBUG(immutable_db_options_.info_log,
                     "[%s] [WriteLevel0TableForRecovery]"
                     " Level-0 table #%" PRIu64 ": started",
-                    cfd->GetName().c_str(), meta.fd.GetNumber());
+                    cfd->GetName().c_str(), meta.fd.GetFlushNumber());
 
     // Get the latest mutable cf options while the mutex is still locked
     const MutableCFOptions mutable_cf_options =
@@ -1337,7 +1337,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
       ROCKS_LOG_DEBUG(immutable_db_options_.info_log,
                       "[%s] [WriteLevel0TableForRecovery]"
                       " Level-0 table #%" PRIu64 ": %" PRIu64 " bytes %s",
-                      cfd->GetName().c_str(), meta.fd.GetNumber(),
+                      cfd->GetName().c_str(), meta.fd.GetFlushNumber(),
                       meta.fd.GetFileSize(), s.ToString().c_str());
       mutex_.Lock();
     }
@@ -1348,7 +1348,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
   // should not be added to the manifest.
   int level = 0;
   if (s.ok() && meta.fd.GetFileSize() > 0) {
-    edit->AddFile(level, meta.fd.GetNumber(), meta.fd.GetPathId(),
+    edit->AddFile(level, meta.fd.GetFlushNumber(), meta.fd.GetPathId(),
                   meta.fd.GetFileSize(), meta.smallest, meta.largest,
                   meta.fd.smallest_seqno, meta.fd.largest_seqno,
                   meta.marked_for_compaction, meta.oldest_blob_file_number,
@@ -1509,7 +1509,7 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
   uint64_t recovered_seq(kMaxSequenceNumber);
   s = impl->Recover(column_families, false, false, false, &recovered_seq);
   if (s.ok()) {
-    uint64_t new_log_number = impl->versions_->NewFileNumber();
+    uint64_t new_log_number = impl->versions_->NewFlushNumber();
     log::Writer* new_log = nullptr;
     const size_t preallocate_block_size =
         impl->GetWalPreallocateBlockSize(max_write_buffer_size);

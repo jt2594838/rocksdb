@@ -2,19 +2,23 @@ namespace cpp rocksdb
 
 struct TCompactFilesRequest {
     1: string cf_name
-    2: list<i64> file_nums
-    3: i32 output_level
-    4: i64 start_file_num
-    5: i32 max_file_num
-    6: binary comp_start
-    7: binary comp_end
+    2: list<i64> flush_nums
+    3: list<i64> compaction_nums
+    4: list<i32> path_ids
+    5: i32 output_level
+    6: i64 start_file_num
+    7: i32 max_file_num
+    8: binary comp_start
+    9: binary comp_end
 }
 
 struct TFileDescriptor {
-    1: i64 packed_number_and_path_id
-    2: i64 file_size
-    3: i64 smallest_seqno
-    4: i64 largest_seqno
+    1: i64 flush_number
+    2: i64 merge_number
+    3: i32 path_id
+    4: i64 file_size
+    5: i64 smallest_seqno
+    6: i64 largest_seqno
 }
 
 struct TFileMetadata {
@@ -48,7 +52,8 @@ struct TCompactionResult {
 
 struct TDeletedCompactionInput {
     1: i32 level
-    2: i64 file_num
+    2: i64 flush_num
+    3: i64 compaction_num
 }
 
 struct TInstalledCompactionOutput {

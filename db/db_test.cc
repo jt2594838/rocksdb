@@ -1047,10 +1047,10 @@ void CheckColumnFamilyMeta(
 
       level_size += file_meta_from_cf.size;
 
-      ASSERT_EQ(file_meta_from_cf.file_number,
-                file_meta_from_files.fd.GetNumber());
-      ASSERT_EQ(file_meta_from_cf.file_number,
-                TableFileNameToNumber(file_meta_from_cf.name));
+      ASSERT_EQ(file_meta_from_cf.flush_number,
+                file_meta_from_files.fd.GetFlushNumber());
+      ASSERT_EQ(file_meta_from_cf.flush_number,
+                TableFileNameToFlushNumber(file_meta_from_cf.name));
       ASSERT_EQ(file_meta_from_cf.size, file_meta_from_files.fd.file_size);
       ASSERT_EQ(file_meta_from_cf.smallest_seqno,
                 file_meta_from_files.fd.smallest_seqno);
@@ -1104,8 +1104,8 @@ void CheckLiveFilesMeta(
     const auto& expected_meta = files_by_level[level][i];
 
     ASSERT_EQ(meta.column_family_name, kDefaultColumnFamilyName);
-    ASSERT_EQ(meta.file_number, expected_meta.fd.GetNumber());
-    ASSERT_EQ(meta.file_number, TableFileNameToNumber(meta.name));
+    ASSERT_EQ(meta.flush_number, expected_meta.fd.GetFlushNumber());
+    ASSERT_EQ(meta.flush_number, TableFileNameToFlushNumber(meta.name));
     ASSERT_EQ(meta.size, expected_meta.fd.file_size);
     ASSERT_EQ(meta.smallest_seqno, expected_meta.fd.smallest_seqno);
     ASSERT_EQ(meta.largest_seqno, expected_meta.fd.largest_seqno);

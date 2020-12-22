@@ -669,7 +669,7 @@ Status InstallMemtableAtomicFlushResults(
     for (size_t i = 0; i != mems_list[k]->size(); ++i) {
       assert(i == 0 || (*mems_list[k])[i]->GetEdits()->NumEntries() == 0);
       (*mems_list[k])[i]->SetFlushCompleted(true);
-      (*mems_list[k])[i]->SetFileNumber(file_metas[k]->fd.GetNumber());
+      (*mems_list[k])[i]->SetFileNumber(file_metas[k]->fd.GetFlushNumber());
     }
   }
 

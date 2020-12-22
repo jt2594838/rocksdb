@@ -72,7 +72,7 @@ void VersionEdit::Clear() {
   comparator_.clear();
   log_number_ = 0;
   prev_log_number_ = 0;
-  next_file_number_ = 0;
+  next_flush_number_ = 0;
   max_column_family_ = 0;
   min_log_number_to_keep_ = 0;
   last_sequence_ = 0;
@@ -80,7 +80,7 @@ void VersionEdit::Clear() {
   has_comparator_ = false;
   has_log_number_ = false;
   has_prev_log_number_ = false;
-  has_next_file_number_ = false;
+  has_next_flush_number_ = false;
   has_max_column_family_ = false;
   has_min_log_number_to_keep_ = false;
   has_last_sequence_ = false;
@@ -113,8 +113,8 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
   if (has_prev_log_number_) {
     PutVarint32Varint64(dst, kPrevLogNumber, prev_log_number_);
   }
-  if (has_next_file_number_) {
-    PutVarint32Varint64(dst, kNextFileNumber, next_file_number_);
+  if (has_next_flush_number_) {
+    PutVarint32Varint64(dst, kNextFileNumber, next_flush_number_);
   }
   if (has_max_column_family_) {
     PutVarint32Varint32(dst, kMaxColumnFamily, max_column_family_);
@@ -134,7 +134,8 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
       return false;
     }
     PutVarint32(dst, kNewFile4);
-    PutVarint32Varint64(dst, new_files_[i].first /* level */, f.fd.GetNumber());
+    PutVarint32Varint64(dst, new_files_[i].first /* level */,
+                        f.fd.GetFlushNumber());
     PutVarint64(dst, f.fd.GetFileSize());
     PutLengthPrefixedSlice(dst, f.smallest.Encode());
     PutLengthPrefixedSlice(dst, f.largest.Encode());
@@ -414,8 +415,8 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
         break;
 
       case kNextFileNumber:
-        if (GetVarint64(&input, &next_file_number_)) {
-          has_next_file_number_ = true;
+        if (GetVarint64(&input, &next_flush_number_)) {
+          has_next_flush_number_ = true;
         } else {
           msg = "next file number";
         }
@@ -662,9 +663,9 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append("\n  PrevLogNumber: ");
     AppendNumberTo(&r, prev_log_number_);
   }
-  if (has_next_file_number_) {
+  if (has_next_flush_number_) {
     r.append("\n  NextFileNumber: ");
-    AppendNumberTo(&r, next_file_number_);
+    AppendNumberTo(&r, next_flush_number_);
   }
   if (has_max_column_family_) {
     r.append("\n  MaxColumnFamily: ");
@@ -689,7 +690,7 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append("\n  AddFile: ");
     AppendNumberTo(&r, new_files_[i].first);
     r.append(" ");
-    AppendNumberTo(&r, f.fd.GetNumber());
+    AppendNumberTo(&r, f.fd.GetFlushNumber());
     r.append(" ");
     AppendNumberTo(&r, f.fd.GetFileSize());
     r.append(" ");
@@ -764,8 +765,8 @@ std::string VersionEdit::DebugJSON(int edit_num, bool hex_key) const {
   if (has_prev_log_number_) {
     jw << "PrevLogNumber" << prev_log_number_;
   }
-  if (has_next_file_number_) {
-    jw << "NextFileNumber" << next_file_number_;
+  if (has_next_flush_number_) {
+    jw << "NextFileNumber" << next_flush_number_;
   }
   if (has_max_column_family_) {
     jw << "MaxColumnFamily" << max_column_family_;
@@ -799,7 +800,7 @@ std::string VersionEdit::DebugJSON(int edit_num, bool hex_key) const {
       jw.StartArrayedObject();
       jw << "Level" << new_files_[i].first;
       const FileMetaData& f = new_files_[i].second;
-      jw << "FileNumber" << f.fd.GetNumber();
+      jw << "FileNumber" << f.fd.GetFlushNumber();
       jw << "FileSize" << f.fd.GetFileSize();
       jw << "SmallestIKey" << f.smallest.DebugString(hex_key);
       jw << "LargestIKey" << f.largest.DebugString(hex_key);

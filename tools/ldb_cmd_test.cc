@@ -233,7 +233,7 @@ class FileChecksumTestHelper {
       std::string stored_checksum = "";
       std::string stored_func_name = "";
       s = checksum_list->SearchOneFileChecksum(
-          live_files[i].file_number, &stored_checksum, &stored_func_name);
+          live_files[i].flush_number, &stored_checksum, &stored_func_name);
       if (s.IsNotFound()) {
         return s;
       }
@@ -241,7 +241,7 @@ class FileChecksumTestHelper {
           live_files[i].file_checksum_func_name != stored_func_name) {
         return Status::Corruption(
             "Checksum does not match! The file: " +
-            ToString(live_files[i].file_number) +
+            ToString(live_files[i].flush_number) +
             ". In Manifest, checksum name: " + stored_func_name +
             " and checksum " + stored_checksum +
             ". However, expected checksum name: " +

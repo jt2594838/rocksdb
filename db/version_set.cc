@@ -1270,7 +1270,7 @@ Status Version::GetTableProperties(std::shared_ptr<const TableProperties>* tp,
     file_name = *fname;
   } else {
     file_name =
-      TableFileName(ioptions->cf_paths, file_meta->fd.GetNumber(),
+      TableFileName(ioptions->cf_paths, file_meta->fd.GetFlushNumber(), file_meta->fd.GetMergeNumber(),
                     file_meta->fd.GetPathId());
   }
   s = ioptions->fs->NewRandomAccessFile(file_name, file_options_, &file,
@@ -1324,7 +1324,8 @@ Status Version::TablesRangeTombstoneSummary(int max_entries_to_print,
   for (int level = 0; level < storage_info_.num_levels_; level++) {
     for (const auto& file_meta : storage_info_.files_[level]) {
       auto fname =
-          TableFileName(cfd_->ioptions()->cf_paths, file_meta->fd.GetNumber(),
+          TableFileName(cfd_->ioptions()->cf_paths,
+                                 file_meta->fd.GetFlushNumber(), file_meta->fd.GetMergeNumber(),
                         file_meta->fd.GetPathId());
 
       ss << "=== file : " << fname << " ===\n";
@@ -1370,7 +1371,8 @@ Status Version::GetPropertiesOfAllTables(TablePropertiesCollection* props,
                                          int level) {
   for (const auto& file_meta : storage_info_.files_[level]) {
     auto fname =
-        TableFileName(cfd_->ioptions()->cf_paths, file_meta->fd.GetNumber(),
+        TableFileName(cfd_->ioptions()->cf_paths,
+                               file_meta->fd.GetFlushNumber(), file_meta->fd.GetMergeNumber(),
                       file_meta->fd.GetPathId());
     // 1. If the table is already present in table cache, load table
     // properties from there.
@@ -1399,7 +1401,7 @@ Status Version::GetPropertiesOfTablesInRange(
       for (const auto& file_meta : files) {
         auto fname =
             TableFileName(cfd_->ioptions()->cf_paths,
-                          file_meta->fd.GetNumber(), file_meta->fd.GetPathId());
+                                   file_meta->fd.GetFlushNumber(), file_meta->fd.GetMergeNumber(), file_meta->fd.GetPathId());
         if (props->count(fname) == 0) {
           // 1. If the table is already present in table cache, load table
           // properties from there.
@@ -1476,9 +1478,10 @@ void Version::GetColumnFamilyMetaData(ColumnFamilyMetaData* cf_meta) {
         assert(!ioptions->cf_paths.empty());
         file_path = ioptions->cf_paths.back().path;
       }
-      const uint64_t file_number = file->fd.GetNumber();
+      const uint64_t flush_number = file->fd.GetFlushNumber();
+      const uint64_t compaction_number = file->fd.GetMergeNumber();
       files.emplace_back(SstFileMetaData{
-          MakeTableFileName("", file_number), file_number, file_path,
+          MakeTableFileName("", flush_number, compaction_number), flush_number, compaction_number, file_path,
           static_cast<size_t>(file->fd.GetFileSize()), file->fd.smallest_seqno,
           file->fd.largest_seqno, file->smallest.user_key().ToString(),
           file->largest.user_key().ToString(),
@@ -2164,7 +2167,7 @@ bool Version::MaybeInitializeFileMetaData(FileMetaData* file_meta) {
     ROCKS_LOG_ERROR(vset_->db_options_->info_log,
                     "Unable to load table properties for file %" PRIu64
                     " --- %s\n",
-                    file_meta->fd.GetNumber(), s.ToString().c_str());
+                    file_meta->fd.GetFlushNumber(), s.ToString().c_str());
     return false;
   }
   if (tp.get() == nullptr) return false;
@@ -2609,7 +2612,7 @@ void VersionStorageInfo::ComputeFilesMarkedForPeriodicCompaction(
           file_modification_time = f->TryGetOldestAncesterTime();
         }
         if (file_modification_time == kUnknownOldestAncesterTime) {
-          auto file_path = TableFileName(ioptions.cf_paths, f->fd.GetNumber(),
+          auto file_path = TableFileName(ioptions.cf_paths, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(),
                                          f->fd.GetPathId());
           status = ioptions.env->GetFileModificationTime(
               file_path, &file_modification_time);
@@ -2651,7 +2654,7 @@ void VersionStorageInfo::AddFile(int level, FileMetaData* f) {
 
   f->refs++;
 
-  const uint64_t file_number = f->fd.GetNumber();
+  const uint64_t file_number = f->fd.GetFlushNumber();
 
   assert(file_locations_.find(file_number) == file_locations_.end());
   file_locations_.emplace(file_number,
@@ -2757,14 +2760,14 @@ void SortFileByOverlappingRatio(
     }
 
     assert(file->compensated_file_size != 0);
-    file_to_order[file->fd.GetNumber()] =
+    file_to_order[file->fd.GetFlushNumber()] =
         overlapping_bytes * 1024u / file->compensated_file_size;
   }
 
   std::sort(temp->begin(), temp->end(),
             [&](const Fsize& f1, const Fsize& f2) -> bool {
-              return file_to_order[f1.file->fd.GetNumber()] <
-                     file_to_order[f2.file->fd.GetNumber()];
+              return file_to_order[f1.file->fd.GetFlushNumber()] <
+                     file_to_order[f2.file->fd.GetFlushNumber()];
             });
 }
 }  // namespace
@@ -3210,7 +3213,7 @@ const char* VersionStorageInfo::LevelFileSummary(FileSummaryStorage* scratch,
     AppendHumanBytes(f->fd.GetFileSize(), sztxt, sizeof(sztxt));
     int ret = snprintf(scratch->buffer + len, sz,
                        "#%" PRIu64 "(seq=%" PRIu64 ",sz=%s,%d) ",
-                       f->fd.GetNumber(), f->fd.smallest_seqno, sztxt,
+                       f->fd.GetFlushNumber(), f->fd.smallest_seqno, sztxt,
                        static_cast<int>(f->being_compacted));
     if (ret < 0 || ret >= sz)
       break;
@@ -3471,7 +3474,7 @@ void Version::AddLiveFiles(std::vector<uint64_t>* live_table_files,
     for (const auto& meta : level_files) {
       assert(meta);
 
-      live_table_files->emplace_back(meta->fd.GetNumber());
+      live_table_files->emplace_back(meta->fd.GetFlushNumber());
     }
   }
 
@@ -3502,7 +3505,7 @@ std::string Version::DebugString(bool hex, bool print_stats) const {
     const std::vector<FileMetaData*>& files = storage_info_.files_[level];
     for (size_t i = 0; i < files.size(); i++) {
       r.push_back(' ');
-      AppendNumberTo(&r, files[i]->fd.GetNumber());
+      AppendNumberTo(&r, files[i]->fd.GetFlushNumber());
       r.push_back(':');
       AppendNumberTo(&r, files[i]->fd.GetFileSize());
       r.append("[");
@@ -3626,7 +3629,7 @@ VersionSet::VersionSet(const std::string& dbname,
       fs_(_db_options->fs, io_tracer),
       dbname_(dbname),
       db_options_(_db_options),
-      next_file_number_(2),
+      next_flush_number_(2),
       manifest_file_number_(0),  // Filled by Recover()
       options_file_number_(0),
       pending_manifest_file_number_(0),
@@ -3648,7 +3651,7 @@ VersionSet::~VersionSet() {
   for (auto& file : obsolete_files_) {
     if (file.metadata->table_reader_handle) {
       table_cache->Release(file.metadata->table_reader_handle);
-      TableCache::Evict(table_cache, file.metadata->fd.GetNumber());
+      TableCache::Evict(table_cache, file.metadata->fd.GetFlushNumber());
     }
     file.DeleteMetadata();
   }
@@ -3666,7 +3669,7 @@ void VersionSet::Reset() {
                             wbm, wc, block_cache_tracer_, io_tracer_));
   }
   db_id_.clear();
-  next_file_number_.store(2);
+  next_flush_number_.store(2);
   min_log_number_to_keep_2pc_.store(0);
   manifest_file_number_ = 0;
   options_file_number_ = 0;
@@ -3888,8 +3891,9 @@ Status VersionSet::ProcessManifestWrites(
   // SwitchMemtable().
   std::unordered_map<uint32_t, MutableCFState> curr_state;
   if (new_descriptor_log) {
-    pending_manifest_file_number_ = NewFileNumber();
-    batch_edits.back()->SetNextFile(next_file_number_.load());
+    pending_manifest_file_number_ = NewFlushNumber();
+    batch_edits.back()->SetNextFlush(next_flush_number_.load());
+    batch_edits.back()->SetNextCompaction(next_compaction_number_.load());
 
     // if we are writing out new snapshot make sure to persist max column
     // family.
@@ -4235,7 +4239,8 @@ Status VersionSet::LogAndApply(
 
 void VersionSet::LogAndApplyCFHelper(VersionEdit* edit) {
   assert(edit->IsColumnFamilyManipulation());
-  edit->SetNextFile(next_file_number_.load());
+  edit->SetNextFlush(next_flush_number_.load());
+  edit->SetNextCompaction(next_compaction_number_.load());
   // The log might have data that is not visible to memtbale and hence have not
   // updated the last_sequence_ yet. It is also possible that the log has is
   // expecting some new data that is not written yet. Since LastSequence is an
@@ -4261,13 +4266,14 @@ Status VersionSet::LogAndApplyHelper(ColumnFamilyData* cfd,
 
   if (edit->has_log_number_) {
     assert(edit->log_number_ >= cfd->GetLogNumber());
-    assert(edit->log_number_ < next_file_number_.load());
+    assert(edit->log_number_ < next_flush_number_.load());
   }
 
   if (!edit->has_prev_log_number_) {
     edit->SetPrevLogNumber(prev_log_number_);
   }
-  edit->SetNextFile(next_file_number_.load());
+  edit->SetNextFlush(next_flush_number_.load());
+  edit->SetNextCompaction(next_compaction_number_.load());
   // The log might have data that is not visible to memtbale and hence have not
   // updated the last_sequence_ yet. It is also possible that the log has is
   // expecting some new data that is not written yet. Since LastSequence is an
@@ -4405,8 +4411,16 @@ Status VersionSet::ExtractInfoFromVersionEdit(
     version_edit_params->SetPrevLogNumber(from_edit.prev_log_number_);
   }
 
-  if (from_edit.has_next_file_number_) {
-    version_edit_params->SetNextFile(from_edit.next_file_number_);
+  if (from_edit.has_next_flush_number_) {
+    version_edit_params->SetNextFlush(from_edit.next_flush_number_);
+  }
+
+  if (from_edit.has_next_compaction_number_) {
+    version_edit_params->SetNextCompaction(from_edit.next_flush_number_);
+  }
+
+  if (from_edit.has_next_compaction_number_) {
+    version_edit_params->SetNextCompaction(from_edit.next_compaction_number_);
   }
 
   if (from_edit.has_max_column_family_) {
@@ -4599,7 +4613,7 @@ Status VersionSet::Recover(
   }
 
   if (s.ok()) {
-    if (!version_edit_params.has_next_file_number_) {
+    if (!version_edit_params.has_next_flush_number_) {
       s = Status::Corruption("no meta-nextfile entry in descriptor");
     } else if (!version_edit_params.has_log_number_) {
       s = Status::Corruption("no meta-lognumber entry in descriptor");
@@ -4690,7 +4704,7 @@ Status VersionSet::Recover(
     }
 
     manifest_file_size_ = current_manifest_file_size;
-    next_file_number_.store(version_edit_params.next_file_number_ + 1);
+    next_flush_number_.store(version_edit_params.next_flush_number_ + 1);
     last_allocated_sequence_ = version_edit_params.last_sequence_;
     last_published_sequence_ = version_edit_params.last_sequence_;
     last_sequence_ = version_edit_params.last_sequence_;
@@ -4703,7 +4717,7 @@ Status VersionSet::Recover(
         ", last_sequence is %" PRIu64 ", log_number is %" PRIu64
         ",prev_log_number is %" PRIu64 ",max_column_family is %" PRIu32
         ",min_log_number_to_keep is %" PRIu64 "\n",
-        manifest_path.c_str(), manifest_file_number_, next_file_number_.load(),
+        manifest_path.c_str(), manifest_file_number_, next_flush_number_.load(),
         last_sequence_.load(), version_edit_params.log_number_,
         prev_log_number_, column_family_set_->GetMaxColumnFamily(),
         min_log_number_to_keep_2pc());
@@ -5010,7 +5024,7 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
       const FileMetaData* const meta = new_last_level[i];
       assert(meta);
 
-      const uint64_t file_number = meta->fd.GetNumber();
+      const uint64_t file_number = meta->fd.GetFlushNumber();
 
       vstorage->file_locations_[file_number] =
           VersionStorageInfo::FileLocation(new_levels - 1, i);
@@ -5049,7 +5063,7 @@ Status VersionSet::GetLiveFilesChecksumInfo(FileChecksumList* checksum_list) {
     for (int level = 0; level < cfd->NumberLevels(); level++) {
       for (const auto& file :
            cfd->current()->storage_info()->LevelFiles(level)) {
-        checksum_list->InsertOneFileChecksum(file->fd.GetNumber(),
+        checksum_list->InsertOneFileChecksum(file->fd.GetFlushNumber(),
                                              file->file_checksum,
                                              file->file_checksum_func_name);
       }
@@ -5185,8 +5199,8 @@ Status VersionSet::DumpManifest(Options& options, std::string& dscname,
         have_prev_log_number = true;
       }
 
-      if (edit.has_next_file_number_) {
-        next_file = edit.next_file_number_;
+      if (edit.has_next_flush_number_) {
+        next_file = edit.next_flush_number_;
         have_next_file = true;
       }
 
@@ -5249,7 +5263,7 @@ Status VersionSet::DumpManifest(Options& options, std::string& dscname,
       delete v;
     }
 
-    next_file_number_.store(next_file + 1);
+    next_flush_number_.store(next_file + 1);
     last_allocated_sequence_ = last_sequence;
     last_published_sequence_ = last_sequence;
     last_sequence_ = last_sequence;
@@ -5259,7 +5273,7 @@ Status VersionSet::DumpManifest(Options& options, std::string& dscname,
            "  prev_log_number %" PRIu64 " max_column_family %" PRIu32
            " min_log_number_to_keep "
            "%" PRIu64 "\n",
-           next_file_number_.load(), last_sequence, previous_log_number,
+           next_flush_number_.load(), last_sequence, previous_log_number,
            column_family_set_->GetMaxColumnFamily(),
            min_log_number_to_keep_2pc());
   }
@@ -5271,8 +5285,8 @@ Status VersionSet::DumpManifest(Options& options, std::string& dscname,
 void VersionSet::MarkFileNumberUsed(uint64_t number) {
   // only called during recovery and repair which are single threaded, so this
   // works because there can't be concurrent calls
-  if (next_file_number_.load(std::memory_order_relaxed) <= number) {
-    next_file_number_.store(number + 1, std::memory_order_relaxed);
+  if (next_flush_number_.load(std::memory_order_relaxed) <= number) {
+    next_flush_number_.store(number + 1, std::memory_order_relaxed);
   }
 }
 // Called only either from ::LogAndApply which is protected by mutex or during
@@ -5350,7 +5364,7 @@ Status VersionSet::WriteCurrentStateToManifest(
       for (int level = 0; level < cfd->NumberLevels(); level++) {
         for (const auto& f :
              cfd->current()->storage_info()->LevelFiles(level)) {
-          edit.AddFile(level, f->fd.GetNumber(), f->fd.GetPathId(),
+          edit.AddFile(level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(), f->fd.GetPathId(),
                        f->fd.GetFileSize(), f->smallest, f->largest,
                        f->fd.smallest_seqno, f->fd.largest_seqno,
                        f->marked_for_compaction, f->oldest_blob_file_number,
@@ -5746,11 +5760,11 @@ bool VersionSet::VerifyCompactionFileConsistency(Compaction* c) {
   for (size_t input = 0; input < c->num_input_levels(); ++input) {
     int level = c->level(input);
     for (size_t i = 0; i < c->num_input_files(input); ++i) {
-      uint64_t number = c->input(input, i)->fd.GetNumber();
+      uint64_t number = c->input(input, i)->fd.GetFlushNumber();
       bool found = false;
       for (size_t j = 0; j < vstorage->files_[level].size(); j++) {
         FileMetaData* f = vstorage->files_[level][j];
-        if (f->fd.GetNumber() == number) {
+        if (f->fd.GetFlushNumber() == number) {
           found = true;
           break;
         }
@@ -5766,7 +5780,7 @@ bool VersionSet::VerifyCompactionFileConsistency(Compaction* c) {
   return true;     // everything good
 }
 
-Status VersionSet::GetMetadataForFile(uint64_t number, int* filelevel,
+Status VersionSet::GetMetadataForFile(uint64_t number1, uint64_t number2, int* filelevel,
                                       FileMetaData** meta,
                                       ColumnFamilyData** cfd) {
   for (auto cfd_iter : *column_family_set_) {
@@ -5777,7 +5791,7 @@ Status VersionSet::GetMetadataForFile(uint64_t number, int* filelevel,
     const auto* vstorage = version->storage_info();
     for (int level = 0; level < vstorage->num_levels(); level++) {
       for (const auto& file : vstorage->LevelFiles(level)) {
-        if (file->fd.GetNumber() == number) {
+        if (file->fd.GetFlushNumber() == number1 && file->fd.GetMergeNumber() == number2) {
           *meta = file;
           *filelevel = level;
           *cfd = cfd_iter;
@@ -5806,9 +5820,10 @@ void VersionSet::GetLiveFilesMetaData(std::vector<LiveFileMetaData>* metadata) {
           assert(!cfd->ioptions()->cf_paths.empty());
           filemetadata.db_path = cfd->ioptions()->cf_paths.back().path;
         }
-        const uint64_t file_number = file->fd.GetNumber();
-        filemetadata.name = MakeTableFileName("", file_number);
-        filemetadata.file_number = file_number;
+        const uint64_t flush_num = file->fd.GetFlushNumber();
+        const uint64_t compaction_num = file->fd.GetMergeNumber();
+        filemetadata.name = MakeTableFileName("", flush_num, compaction_num);
+        filemetadata.flush_number = flush_num;
         filemetadata.level = level;
         filemetadata.size = static_cast<size_t>(file->fd.GetFileSize());
         filemetadata.smallestkey = file->smallest.user_key().ToString();
@@ -5842,7 +5857,7 @@ void VersionSet::GetObsoleteFiles(std::vector<ObsoleteFileInfo>* files,
 
   std::vector<ObsoleteFileInfo> pending_files;
   for (auto& f : obsolete_files_) {
-    if (f.metadata->fd.GetNumber() < min_pending_output) {
+    if (f.metadata->fd.GetFlushNumber() < min_pending_output) {
       files->emplace_back(std::move(f));
     } else {
       pending_files.emplace_back(std::move(f));
@@ -5908,9 +5923,9 @@ uint64_t VersionSet::GetTotalSstFilesSize(Version* dummy_versions) {
     VersionStorageInfo* storage_info = v->storage_info();
     for (int level = 0; level < storage_info->num_levels_; level++) {
       for (const auto& file_meta : storage_info->LevelFiles(level)) {
-        if (unique_files.find(file_meta->fd.packed_number_and_path_id) ==
+        if (unique_files.find(file_meta->fd.flush_number) ==
             unique_files.end()) {
-          unique_files.insert(file_meta->fd.packed_number_and_path_id);
+          unique_files.insert(file_meta->fd.flush_number);
           total_files_size += file_meta->fd.GetFileSize();
         }
       }
@@ -5991,7 +6006,7 @@ Status ReactiveVersionSet::Recover(
                        column_families_not_found, builders,
                        manifest_reader_status->get(), &version_edit);
     if (s.ok()) {
-      bool enough = version_edit.has_next_file_number_ &&
+      bool enough = version_edit.has_next_flush_number_ &&
                     version_edit.has_log_number_ &&
                     version_edit.has_last_sequence_;
       if (enough) {
@@ -6086,7 +6101,7 @@ Status ReactiveVersionSet::Recover(
     }
   }
   if (s.ok()) {
-    next_file_number_.store(version_edit.next_file_number_ + 1);
+    next_flush_number_.store(version_edit.next_flush_number_ + 1);
     last_allocated_sequence_ = version_edit.last_sequence_;
     last_published_sequence_ = version_edit.last_sequence_;
     last_sequence_ = version_edit.last_sequence_;
@@ -6322,8 +6337,11 @@ Status ReactiveVersionSet::ApplyOneVersionEditToBuilder(
   }
 
   if (s.ok()) {
-    if (version_edit->HasNextFile()) {
-      next_file_number_.store(version_edit->next_file_number_ + 1);
+    if (version_edit->HasNextFlush()) {
+      next_flush_number_.store(version_edit->next_flush_number_ + 1);
+    }
+    if (version_edit->HasNextCompaction()) {
+      next_compaction_number_.store(version_edit->next_compaction_number_ + 1);
     }
     if (version_edit->has_last_sequence_) {
       last_allocated_sequence_ = version_edit->last_sequence_;

@@ -32,7 +32,7 @@ BlobFileBuilder::BlobFileBuilder(
     const std::string& column_family_name, Env::IOPriority io_priority,
     Env::WriteLifeTimeHint write_hint,
     std::vector<BlobFileAddition>* blob_file_additions)
-    : BlobFileBuilder([versions]() { return versions->NewFileNumber(); }, env,
+    : BlobFileBuilder([versions]() { return versions->NewFlushNumber(); }, env,
                       fs, immutable_cf_options, mutable_cf_options,
                       file_options, job_id, column_family_id,
                       column_family_name, io_priority, write_hint,

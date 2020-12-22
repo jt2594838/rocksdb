@@ -42,7 +42,7 @@ bool NewestFirstBySeqNo(FileMetaData* a, FileMetaData* b) {
     return a->fd.smallest_seqno > b->fd.smallest_seqno;
   }
   // Break ties by file number
-  return a->fd.GetNumber() > b->fd.GetNumber();
+  return a->fd.GetFlushNumber() > b->fd.GetFlushNumber();
 }
 
 namespace {
@@ -53,7 +53,7 @@ bool BySmallestKey(FileMetaData* a, FileMetaData* b,
     return (r < 0);
   }
   // Break ties by file number
-  return (a->fd.GetNumber() < b->fd.GetNumber());
+  return (a->fd.GetFlushNumber() < b->fd.GetFlushNumber());
 }
 }  // namespace
 
@@ -293,12 +293,12 @@ class VersionBuilder::Rep {
       }
 
       assert(level_files[0]);
-      UpdateExpectedLinkedSsts(level_files[0]->fd.GetNumber(),
+      UpdateExpectedLinkedSsts(level_files[0]->fd.GetFlushNumber(),
                                level_files[0]->oldest_blob_file_number,
                                &expected_linked_ssts);
       for (size_t i = 1; i < level_files.size(); i++) {
         assert(level_files[i]);
-        UpdateExpectedLinkedSsts(level_files[i]->fd.GetNumber(),
+        UpdateExpectedLinkedSsts(level_files[i]->fd.GetFlushNumber(),
                                  level_files[i]->oldest_blob_file_number,
                                  &expected_linked_ssts);
 
@@ -324,16 +324,16 @@ class VersionBuilder::Rep {
                   NumberToString(f1->fd.largest_seqno) +
                   " vs. file with global_seqno" +
                   NumberToString(external_file_seqno) + " with fileNumber " +
-                  NumberToString(f1->fd.GetNumber()));
+                  NumberToString(f1->fd.GetFlushNumber()));
             }
           } else if (f1->fd.smallest_seqno <= f2->fd.smallest_seqno) {
             return Status::Corruption(
                 "L0 files seqno " + NumberToString(f1->fd.smallest_seqno) +
                 " " + NumberToString(f1->fd.largest_seqno) + " " +
-                NumberToString(f1->fd.GetNumber()) + " vs. " +
+                NumberToString(f1->fd.GetFlushNumber()) + " vs. " +
                 NumberToString(f2->fd.smallest_seqno) + " " +
                 NumberToString(f2->fd.largest_seqno) + " " +
-                NumberToString(f2->fd.GetNumber()));
+                NumberToString(f2->fd.GetFlushNumber()));
           }
         } else {
 #ifndef NDEBUG
@@ -557,7 +557,7 @@ class VersionBuilder::Rep {
   Status ApplyFileAddition(int level, const FileMetaData& meta) {
     assert(level != VersionStorageInfo::FileLocation::Invalid().GetLevel());
 
-    const uint64_t file_number = meta.fd.GetNumber();
+    const uint64_t file_number = meta.fd.GetFlushNumber();
 
     const int current_level = GetCurrentLevelForTableFile(file_number);
 
@@ -970,7 +970,7 @@ class VersionBuilder::Rep {
   }
 
   void MaybeAddFile(VersionStorageInfo* vstorage, int level, FileMetaData* f) {
-    const uint64_t file_number = f->fd.GetNumber();
+    const uint64_t file_number = f->fd.GetFlushNumber();
 
     const auto& level_state = levels_[level];
 

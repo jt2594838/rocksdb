@@ -102,7 +102,7 @@ class TestCompactionListener : public EventListener {
     for (size_t i = 0; i < ci.input_file_infos.size(); ++i) {
       ASSERT_EQ(ci.input_file_infos[i].level, ci.base_input_level);
       ASSERT_EQ(ci.input_file_infos[i].file_number,
-                TableFileNameToNumber(ci.input_files[i]));
+                TableFileNameToFlushNumber(ci.input_files[i]));
     }
 
     ASSERT_GT(ci.output_files.size(), 0U);
@@ -119,12 +119,12 @@ class TestCompactionListener : public EventListener {
     for (size_t i = 0; i < ci.output_file_infos.size(); ++i) {
       ASSERT_EQ(ci.output_file_infos[i].level, ci.output_level);
       ASSERT_EQ(ci.output_file_infos[i].file_number,
-                TableFileNameToNumber(ci.output_files[i]));
+                TableFileNameToFlushNumber(ci.output_files[i]));
 
       auto it = std::find_if(
           files_by_level[ci.output_level].begin(),
           files_by_level[ci.output_level].end(), [&](const FileMetaData& meta) {
-            return meta.fd.GetNumber() == ci.output_file_infos[i].file_number;
+            return meta.fd.GetFlushNumber() == ci.output_file_infos[i].file_number;
           });
       ASSERT_NE(it, files_by_level[ci.output_level].end());
 
@@ -265,7 +265,7 @@ class TestFlushListener : public EventListener {
     ASSERT_EQ(prev_fc_info_.cf_name, info.cf_name);
     ASSERT_EQ(prev_fc_info_.job_id, info.job_id);
     ASSERT_EQ(prev_fc_info_.file_path, info.file_path);
-    ASSERT_EQ(TableFileNameToNumber(info.file_path), info.file_number);
+    ASSERT_EQ(TableFileNameToFlushNumber(info.file_path), info.file_number);
 
     // Note: the following chunk relies on the notification pertaining to the
     // database pointed to by DBTestBase::db_, and is thus bypassed when
@@ -280,7 +280,7 @@ class TestFlushListener : public EventListener {
       ASSERT_FALSE(files_by_level.empty());
       auto it = std::find_if(files_by_level[0].begin(), files_by_level[0].end(),
                              [&](const FileMetaData& meta) {
-                               return meta.fd.GetNumber() == info.file_number;
+                               return meta.fd.GetFlushNumber() == info.file_number;
                              });
       ASSERT_NE(it, files_by_level[0].end());
       ASSERT_EQ(info.oldest_blob_file_number, it->oldest_blob_file_number);

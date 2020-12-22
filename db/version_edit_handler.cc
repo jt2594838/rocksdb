@@ -259,13 +259,13 @@ void VersionEditHandler::CheckIterationResult(const log::Reader& reader,
   if (!s->ok()) {
     read_buffer_.Clear();
   } else if (!version_edit_params_.has_log_number_ ||
-             !version_edit_params_.has_next_file_number_ ||
+             !version_edit_params_.has_next_flush_number_ ||
              !version_edit_params_.has_last_sequence_) {
     std::string msg("no ");
     if (!version_edit_params_.has_log_number_) {
       msg.append("log_file_number, ");
     }
-    if (!version_edit_params_.has_next_file_number_) {
+    if (!version_edit_params_.has_next_flush_number_) {
       msg.append("next_file_number, ");
     }
     if (!version_edit_params_.has_last_sequence_) {
@@ -333,8 +333,8 @@ void VersionEditHandler::CheckIterationResult(const log::Reader& reader,
   if (s->ok()) {
     version_set_->manifest_file_size_ = reader.GetReadOffset();
     assert(version_set_->manifest_file_size_ > 0);
-    version_set_->next_file_number_.store(
-        version_edit_params_.next_file_number_ + 1);
+    version_set_->next_flush_number_.store(
+        version_edit_params_.next_flush_number_ + 1);
     version_set_->last_allocated_sequence_ =
         version_edit_params_.last_sequence_;
     version_set_->last_published_sequence_ =
@@ -462,8 +462,8 @@ Status VersionEditHandler::ExtractInfoFromVersionEdit(ColumnFamilyData* cfd,
     if (edit.has_prev_log_number_) {
       version_edit_params_.SetPrevLogNumber(edit.prev_log_number_);
     }
-    if (edit.has_next_file_number_) {
-      version_edit_params_.SetNextFile(edit.next_file_number_);
+    if (edit.has_next_flush_number_) {
+      version_edit_params_.SetNextFlush(edit.next_flush_number_);
     }
     if (edit.has_max_column_family_) {
       version_edit_params_.SetMaxColumnFamily(edit.max_column_family_);
@@ -540,7 +540,7 @@ Status VersionEditHandlerPointInTime::MaybeCreateVersion(
   std::unordered_set<uint64_t>& missing_files = missing_files_iter->second;
   const bool prev_has_missing_files = !missing_files.empty();
   for (const auto& file : edit.GetDeletedFiles()) {
-    uint64_t file_num = file.second;
+    uint64_t file_num = file.second.first;
     auto fiter = missing_files.find(file_num);
     if (fiter != missing_files.end()) {
       missing_files.erase(fiter);
@@ -550,19 +550,20 @@ Status VersionEditHandlerPointInTime::MaybeCreateVersion(
   for (const auto& elem : edit.GetNewFiles()) {
     const FileMetaData& meta = elem.second;
     const FileDescriptor& fd = meta.fd;
-    uint64_t file_num = fd.GetNumber();
+    uint64_t flush_num = fd.GetFlushNumber();
+    uint64_t compaction_num = fd.GetMergeNumber();
     const std::string fpath =
-        MakeTableFileName(cfd->ioptions()->cf_paths[0].path, file_num);
+        MakeTableFileName(cfd->ioptions()->cf_paths[0].path, flush_num, compaction_num);
     s = version_set_->VerifyFileMetadata(fpath, meta);
     if (s.IsPathNotFound() || s.IsNotFound() || s.IsCorruption()) {
-      missing_files.insert(file_num);
+      missing_files.insert(flush_num);
       s = Status::OK();
     } else if (!s.ok()) {
       break;
     }
   }
   bool missing_info = !version_edit_params_.has_log_number_ ||
-                      !version_edit_params_.has_next_file_number_ ||
+                      !version_edit_params_.has_next_flush_number_ ||
                       !version_edit_params_.has_last_sequence_;
 
   // Create version before apply edit

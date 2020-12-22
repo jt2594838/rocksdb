@@ -100,20 +100,27 @@ extern uint64_t PackFileNumberAndPathId(uint64_t number, uint64_t path_id);
 struct FileDescriptor {
   // Table reader in table_reader_handle
   TableReader* table_reader;
-  uint64_t packed_number_and_path_id;
-  uint64_t file_size;  // File size in bytes
+  uint64_t flush_number;
+  uint64_t merge_number;
+  uint32_t path_id;
+  uint64_t file_size;             // File size in bytes
   SequenceNumber smallest_seqno;  // The smallest seqno in this file
   SequenceNumber largest_seqno;   // The largest seqno in this file
 
-  FileDescriptor() : FileDescriptor(0, 0, 0) {}
+  FileDescriptor() : FileDescriptor(0, 0, 0, 0) {}
 
-  FileDescriptor(uint64_t number, uint32_t path_id, uint64_t _file_size)
-      : FileDescriptor(number, path_id, _file_size, kMaxSequenceNumber, 0) {}
+  FileDescriptor(uint64_t flush_number, uint64_t merge_number, uint32_t path_id,
+                 uint64_t _file_size)
+      : FileDescriptor(flush_number, merge_number, path_id, _file_size,
+                       kMaxSequenceNumber, 0) {}
 
-  FileDescriptor(uint64_t number, uint32_t path_id, uint64_t _file_size,
-                 SequenceNumber _smallest_seqno, SequenceNumber _largest_seqno)
+  FileDescriptor(uint64_t flush_number, uint64_t merge_number, uint32_t path_id,
+                 uint64_t _file_size, SequenceNumber _smallest_seqno,
+                 SequenceNumber _largest_seqno)
       : table_reader(nullptr),
-        packed_number_and_path_id(PackFileNumberAndPathId(number, path_id)),
+        flush_number(flush_number),
+        merge_number(merge_number),
+        path_id(path_id),
         file_size(_file_size),
         smallest_seqno(_smallest_seqno),
         largest_seqno(_largest_seqno) {}
@@ -122,20 +129,18 @@ struct FileDescriptor {
 
   FileDescriptor& operator=(const FileDescriptor& fd) {
     table_reader = fd.table_reader;
-    packed_number_and_path_id = fd.packed_number_and_path_id;
+    flush_number = fd.flush_number;
+    merge_number = fd.merge_number;
+    path_id = fd.path_id;
     file_size = fd.file_size;
     smallest_seqno = fd.smallest_seqno;
     largest_seqno = fd.largest_seqno;
     return *this;
   }
 
-  uint64_t GetNumber() const {
-    return packed_number_and_path_id & kFileNumberMask;
-  }
-  uint32_t GetPathId() const {
-    return static_cast<uint32_t>(
-        packed_number_and_path_id / (kFileNumberMask + 1));
-  }
+  uint64_t GetFlushNumber() const { return flush_number; }
+  uint64_t GetMergeNumber() const { return merge_number; }
+  uint32_t GetPathId() const { return path_id; }
   uint64_t GetFileSize() const { return file_size; }
 };
 
@@ -153,8 +158,8 @@ struct FileSampledStats {
 
 struct FileMetaData {
   FileDescriptor fd;
-  InternalKey smallest;            // Smallest internal key served by table
-  InternalKey largest;             // Largest internal key served by table
+  InternalKey smallest;  // Smallest internal key served by table
+  InternalKey largest;   // Largest internal key served by table
 
   // Needs to be disposed when refs becomes 0.
   Cache::Handle* table_reader_handle = nullptr;
@@ -204,14 +209,14 @@ struct FileMetaData {
 
   FileMetaData() = default;
 
-  FileMetaData(uint64_t file, uint32_t file_path_id, uint64_t file_size,
+  FileMetaData(uint64_t flush_num, uint64_t compaction_num, uint32_t file_path_id, uint64_t file_size,
                const InternalKey& smallest_key, const InternalKey& largest_key,
                const SequenceNumber& smallest_seq,
                const SequenceNumber& largest_seq, bool marked_for_compact,
                uint64_t oldest_blob_file, uint64_t _oldest_ancester_time,
                uint64_t _file_creation_time, const std::string& _file_checksum,
                const std::string& _file_checksum_func_name)
-      : fd(file, file_path_id, file_size, smallest_seq, largest_seq),
+      : fd(flush_num, compaction_num, file_path_id, file_size, smallest_seq, largest_seq),
         smallest(smallest_key),
         largest(largest_key),
         marked_for_compaction(marked_for_compact),
@@ -273,15 +278,11 @@ struct FileMetaData {
 struct FdWithKeyRange {
   FileDescriptor fd;
   FileMetaData* file_metadata;  // Point to all metadata
-  Slice smallest_key;    // slice that contain smallest key
-  Slice largest_key;     // slice that contain largest key
+  Slice smallest_key;           // slice that contain smallest key
+  Slice largest_key;            // slice that contain largest key
 
   FdWithKeyRange()
-      : fd(),
-        file_metadata(nullptr),
-        smallest_key(),
-        largest_key() {
-  }
+      : fd(), file_metadata(nullptr), smallest_key(), largest_key() {}
 
   FdWithKeyRange(FileDescriptor _fd, Slice _smallest_key, Slice _largest_key,
                  FileMetaData* _file_metadata)
@@ -338,12 +339,19 @@ class VersionEdit {
   bool HasPrevLogNumber() const { return has_prev_log_number_; }
   uint64_t GetPrevLogNumber() const { return prev_log_number_; }
 
-  void SetNextFile(uint64_t num) {
-    has_next_file_number_ = true;
-    next_file_number_ = num;
+  void SetNextFlush(uint64_t num) {
+    has_next_flush_number_ = true;
+    next_flush_number_ = num;
   }
-  bool HasNextFile() const { return has_next_file_number_; }
-  uint64_t GetNextFile() const { return next_file_number_; }
+  bool HasNextFlush() const { return has_next_flush_number_; }
+  uint64_t GetNextFlush() const { return next_flush_number_; }
+
+  void SetNextCompaction(uint64_t num) {
+    has_next_compaction_number_ = true;
+    next_compaction_number_ = num;
+  }
+  bool HasNextCompaction() const { return has_next_compaction_number_; }
+  uint64_t GetNextCompaction() const { return next_compaction_number_; }
 
   void SetMaxColumnFamily(uint32_t max_column_family) {
     has_max_column_family_ = true;
@@ -367,12 +375,12 @@ class VersionEdit {
   SequenceNumber GetLastSequence() const { return last_sequence_; }
 
   // Delete the specified table file from the specified level.
-  void DeleteFile(int level, uint64_t file) {
-    deleted_files_.emplace(level, file);
+  void DeleteFile(int level, uint64_t flush_num, uint64_t compaction_num) {
+    deleted_files_.emplace(level, std::pair<uint64_t, uint64_t>(flush_num, compaction_num));
   }
 
   // Retrieve the table files deleted as well as their associated levels.
-  using DeletedFiles = std::set<std::pair<int, uint64_t>>;
+  using DeletedFiles = std::set<std::pair<int, std::pair<uint64_t, uint64_t>>>;
   const DeletedFiles& GetDeletedFiles() const { return deleted_files_; }
 
   // Add the specified table file at the specified level.
@@ -380,7 +388,7 @@ class VersionEdit {
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
   // REQUIRES: "oldest_blob_file_number" is the number of the oldest blob file
   // referred to by this file if any, kInvalidBlobFileNumber otherwise.
-  void AddFile(int level, uint64_t file, uint32_t file_path_id,
+  void AddFile(int level, uint64_t flush_num, uint64_t compaction_num, uint32_t file_path_id,
                uint64_t file_size, const InternalKey& smallest,
                const InternalKey& largest, const SequenceNumber& smallest_seqno,
                const SequenceNumber& largest_seqno, bool marked_for_compaction,
@@ -389,7 +397,7 @@ class VersionEdit {
                const std::string& file_checksum_func_name) {
     assert(smallest_seqno <= largest_seqno);
     new_files_.emplace_back(
-        level, FileMetaData(file, file_path_id, file_size, smallest, largest,
+        level, FileMetaData(flush_num, compaction_num, file_path_id, file_size, smallest, largest,
                             smallest_seqno, largest_seqno,
                             marked_for_compaction, oldest_blob_file_number,
                             oldest_ancester_time, file_creation_time,
@@ -521,7 +529,8 @@ class VersionEdit {
   std::string comparator_;
   uint64_t log_number_ = 0;
   uint64_t prev_log_number_ = 0;
-  uint64_t next_file_number_ = 0;
+  uint64_t next_flush_number_ = 0;
+  uint64_t next_compaction_number_ = 0;
   uint32_t max_column_family_ = 0;
   // The most recent WAL log number that is deleted
   uint64_t min_log_number_to_keep_ = 0;
@@ -530,7 +539,8 @@ class VersionEdit {
   bool has_comparator_ = false;
   bool has_log_number_ = false;
   bool has_prev_log_number_ = false;
-  bool has_next_file_number_ = false;
+  bool has_next_flush_number_ = false;
+  bool has_next_compaction_number_ = false;
   bool has_max_column_family_ = false;
   bool has_min_log_number_to_keep_ = false;
   bool has_last_sequence_ = false;

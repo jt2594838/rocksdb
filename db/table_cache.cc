@@ -103,7 +103,7 @@ Status TableCache::GetTableReader(
     bool prefetch_index_and_filter_in_cache,
     size_t max_file_size_for_l0_meta_pin) {
   std::string fname =
-      TableFileName(ioptions_.cf_paths, fd.GetNumber(), fd.GetPathId());
+      TableFileName(ioptions_.cf_paths, fd.GetFlushNumber(), fd.GetMergeNumber(), fd.GetPathId());
   std::unique_ptr<FSRandomAccessFile> file;
   FileOptions fopts = file_options;
   Status s = PrepareIOFromReadOptions(ro, ioptions_.env, fopts.io_options);
@@ -147,7 +147,7 @@ Status TableCache::GetTableReader(
 
 void TableCache::EraseHandle(const FileDescriptor& fd, Cache::Handle* handle) {
   ReleaseHandle(handle);
-  uint64_t number = fd.GetNumber();
+  uint64_t number = fd.GetFlushNumber();
   Slice key = GetSliceForFileNumber(&number);
   cache_->Erase(key);
 }
@@ -163,7 +163,7 @@ Status TableCache::FindTable(const ReadOptions& ro,
                              size_t max_file_size_for_l0_meta_pin) {
   PERF_TIMER_GUARD_WITH_ENV(find_table_nanos, ioptions_.env);
   Status s;
-  uint64_t number = fd.GetNumber();
+  uint64_t number = fd.GetFlushNumber();
   Slice key = GetSliceForFileNumber(&number);
   *handle = cache_->Lookup(key);
   TEST_SYNC_POINT_CALLBACK("TableCache::FindTable:0",
@@ -258,7 +258,7 @@ InternalIterator* TableCache::NewIterator(
     }
   }
   if (s.ok() && range_del_agg != nullptr && !options.ignore_range_deletions) {
-    if (range_del_agg->AddFile(fd.GetNumber())) {
+    if (range_del_agg->AddFile(fd.GetFlushNumber())) {
       std::unique_ptr<FragmentedRangeTombstoneIterator> range_del_iter(
           static_cast<FragmentedRangeTombstoneIterator*>(
               table_reader->NewRangeTombstoneIterator(options)));
@@ -318,7 +318,7 @@ void TableCache::CreateRowCacheKeyPrefix(const ReadOptions& options,
                                          const Slice& internal_key,
                                          GetContext* get_context,
                                          IterKey& row_cache_key) {
-  uint64_t fd_number = fd.GetNumber();
+  uint64_t fd_number = fd.GetFlushNumber();
   // We use the user key as cache key instead of the internal key,
   // otherwise the whole cache would be invalidated every time the
   // sequence key increases. However, to support caching snapshot
