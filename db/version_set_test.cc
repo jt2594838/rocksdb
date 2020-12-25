@@ -430,18 +430,18 @@ TEST_F(VersionStorageInfoTest, FileLocationAndMetaDataByNumber) {
 
   ASSERT_EQ(vstorage_.GetFileLocation(11U),
             VersionStorageInfo::FileLocation(0, 0));
-  ASSERT_NE(vstorage_.GetFileMetaDataByNumber(11U), nullptr);
+  ASSERT_NE(vstorage_.GetFileMetaDataByName(11U), nullptr);
 
   ASSERT_EQ(vstorage_.GetFileLocation(12U),
             VersionStorageInfo::FileLocation(0, 1));
-  ASSERT_NE(vstorage_.GetFileMetaDataByNumber(12U), nullptr);
+  ASSERT_NE(vstorage_.GetFileMetaDataByName(12U), nullptr);
 
   ASSERT_EQ(vstorage_.GetFileLocation(7U),
             VersionStorageInfo::FileLocation(2, 0));
-  ASSERT_NE(vstorage_.GetFileMetaDataByNumber(7U), nullptr);
+  ASSERT_NE(vstorage_.GetFileMetaDataByName(7U), nullptr);
 
   ASSERT_FALSE(vstorage_.GetFileLocation(999U).IsValid());
-  ASSERT_EQ(vstorage_.GetFileMetaDataByNumber(999U), nullptr);
+  ASSERT_EQ(vstorage_.GetFileMetaDataByName(999U), nullptr);
 }
 
 class VersionStorageInfoTimestampTest : public VersionStorageInfoTestBase {

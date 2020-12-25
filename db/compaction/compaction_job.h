@@ -152,7 +152,7 @@ class CompactionJob {
   void assignSubJobNode(SubcompactionState& subcompactionState);
   static void ConstructCompactionOutPut(TFileMetadata& file_meta,
                             SubcompactionState* sub_comp);
-  void AdvanceOtherFileNumbers(uint64_t i);
+  void AdvanceOtherFileNumbers(uint64_t new_compaction_num);
 
   int job_id_;
   int curr_node_index;

@@ -469,24 +469,24 @@ void CompactionJob::Prepare() {
       sub_comp.start_file_num = file_start_num;
       sub_comp.max_output_file_num = max_file_num;
     } else {
-      sub_comp.start_file_num = versions_->GetFileNumber();
+      sub_comp.start_file_num = versions_->GetFlushNumber();
       sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
-    versions_->FetchAddFlushNumber(is_remote ? max_file_num
+    versions_->FetchAddCompactionNumber(is_remote ? max_file_num
                                              : max_file_per_sub_comp);
   }
 
   if (!is_remote) {
-    AdvanceOtherFileNumbers(versions_->GetFileNumber());
+    AdvanceOtherFileNumbers(versions_->GetCompactionNumber());
   }
 }
 
-void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_file_num) {
+void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_compaction_num) {
   for (ClusterNode* node : db_options_.nodes) {
     if (*node != *(db_options_.this_node)) {
       ThriftServiceClient* client = RpcUtils::CreateClient(node);
       if (client != nullptr) {
-        client->SetFileNumber(new_file_num);
+        client->SetCompactionNumber(new_compaction_num);
         delete client;
       } else {
         ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
@@ -499,7 +499,7 @@ void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_file_num) {
 void CompactionJob::GenFileNumbers() {
   uint64_t required_file_numbers = sizes_.size() * max_file_per_sub_comp;
   uint64_t start_file_num =
-      versions_->FetchAddFlushNumber(required_file_numbers);
+      versions_->FetchAddCompactionNumber(required_file_numbers);
   start_file_nums.push_back(start_file_num);
   for (uint64_t i = 1; i < sizes_.size(); i++) {
     start_file_num += max_file_per_sub_comp;

@@ -187,7 +187,7 @@ void FlushJob::PickMemTable() {
   edit_->SetColumnFamily(cfd_->GetID());
 
   // path 0 for level 0 file.
-  meta_.fd = FileDescriptor(versions_->NewFlushNumber(), 0, 0);
+  meta_.fd = FileDescriptor(versions_->NewFlushNumber(), 0, 0, 0);
 
   base_ = cfd_->current();
   base_->Ref();  // it is likely that we do not need this reference
@@ -434,7 +434,7 @@ Status FlushJob::WriteLevel0Table() {
     // threads could be concurrently producing compacted files for
     // that key range.
     // Add file to L0
-    edit_->AddFile(0 /* level */, meta_.fd.GetFlushNumber(), meta_.fd.GetPathId(),
+    edit_->AddFile(0 /* level */, meta_.fd.GetFlushNumber(), meta_.fd.GetMergeNumber(), meta_.fd.GetPathId(),
                    meta_.fd.GetFileSize(), meta_.smallest, meta_.largest,
                    meta_.fd.smallest_seqno, meta_.fd.largest_seqno,
                    meta_.marked_for_compaction, meta_.oldest_blob_file_number,
@@ -466,10 +466,10 @@ std::unique_ptr<FlushJobInfo> FlushJob::GetFlushJobInfo() const {
   info->cf_id = cfd_->GetID();
   info->cf_name = cfd_->GetName();
 
-  const uint64_t file_number = meta_.fd.GetFlushNumber();
+  const uint64_t flush_number = meta_.fd.GetFlushNumber();
   info->file_path =
-      MakeTableFileName(cfd_->ioptions()->cf_paths[0].path, file_number);
-  info->file_number = file_number;
+      MakeTableFileName(cfd_->ioptions()->cf_paths[0].path, flush_number, 0);
+  info->file_number = flush_number;
   info->oldest_blob_file_number = meta_.oldest_blob_file_number;
   info->thread_id = db_options_.env->GetThreadID();
   info->job_id = job_context_->job_id;

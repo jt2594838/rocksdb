@@ -83,7 +83,7 @@ class VersionBuilder::Rep {
   struct LevelState {
     std::unordered_set<uint64_t> deleted_files;
     // Map from file number to file meta data.
-    std::unordered_map<uint64_t, FileMetaData*> added_files;
+    std::unordered_map<std::string, FileMetaData*> added_files;
   };
 
   class BlobFileMetaDataDelta {
@@ -182,7 +182,7 @@ class VersionBuilder::Rep {
   // than num_levels_.
   bool has_invalid_levels_;
   // Current levels of table files affected by additions/deletions.
-  std::unordered_map<uint64_t, int> table_file_levels_;
+  std::unordered_map<std::string, int> table_file_levels_;
   FileComparator level_zero_cmp_;
   FileComparator level_nonzero_cmp_;
 
@@ -462,23 +462,23 @@ class VersionBuilder::Rep {
     return Status::OK();
   }
 
-  int GetCurrentLevelForTableFile(uint64_t file_number) const {
-    auto it = table_file_levels_.find(file_number);
+  int GetCurrentLevelForTableFile(std::string& file_name) const {
+    auto it = table_file_levels_.find(file_name);
     if (it != table_file_levels_.end()) {
       return it->second;
     }
 
     assert(base_vstorage_);
-    return base_vstorage_->GetFileLocation(file_number).GetLevel();
+    return base_vstorage_->GetFileLocation(file_name).GetLevel();
   }
 
   uint64_t GetOldestBlobFileNumberForTableFile(int level,
-                                               uint64_t file_number) const {
+                                               std::string& file_name) const {
     assert(level < num_levels_);
 
     const auto& added_files = levels_[level].added_files;
 
-    auto it = added_files.find(file_number);
+    auto it = added_files.find(file_name);
     if (it != added_files.end()) {
       const FileMetaData* const meta = it->second;
       assert(meta);
@@ -488,16 +488,17 @@ class VersionBuilder::Rep {
 
     assert(base_vstorage_);
     const FileMetaData* const meta =
-        base_vstorage_->GetFileMetaDataByNumber(file_number);
+        base_vstorage_->GetFileMetaDataByName(file_name);
     assert(meta);
 
     return meta->oldest_blob_file_number;
   }
 
-  Status ApplyFileDeletion(int level, uint64_t file_number) {
+  Status ApplyFileDeletion(int level, uint64_t flush_num, uint64_t compaction_number) {
     assert(level != VersionStorageInfo::FileLocation::Invalid().GetLevel());
+    std::string file_name = MakeTableFileName(flush_num, compaction_number);
 
-    const int current_level = GetCurrentLevelForTableFile(file_number);
+    const int current_level = GetCurrentLevelForTableFile(file_name);
 
     if (level != current_level) {
       if (level >= num_levels_) {
@@ -505,7 +506,7 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot delete table file #" << file_number << " from level "
+      oss << "Cannot delete table file #" << flush_num << " from level "
           << level << " since it is ";
       if (current_level ==
           VersionStorageInfo::FileLocation::Invalid().GetLevel()) {
@@ -521,34 +522,34 @@ class VersionBuilder::Rep {
       assert(invalid_level_sizes_[level] > 0);
       --invalid_level_sizes_[level];
 
-      table_file_levels_[file_number] =
+      table_file_levels_[file_name] =
           VersionStorageInfo::FileLocation::Invalid().GetLevel();
 
       return Status::OK();
     }
 
     const uint64_t blob_file_number =
-        GetOldestBlobFileNumberForTableFile(level, file_number);
+        GetOldestBlobFileNumberForTableFile(level, file_name);
 
     if (blob_file_number != kInvalidBlobFileNumber &&
         IsBlobFileInVersion(blob_file_number)) {
-      blob_file_meta_deltas_[blob_file_number].UnlinkSst(file_number);
+      blob_file_meta_deltas_[blob_file_number].UnlinkSst(flush_num);
     }
 
     auto& level_state = levels_[level];
 
     auto& add_files = level_state.added_files;
-    auto add_it = add_files.find(file_number);
+    auto add_it = add_files.find(file_name);
     if (add_it != add_files.end()) {
       UnrefFile(add_it->second);
       add_files.erase(add_it);
     }
 
     auto& del_files = level_state.deleted_files;
-    assert(del_files.find(file_number) == del_files.end());
-    del_files.emplace(file_number);
+    assert(del_files.find(flush_num) == del_files.end());
+    del_files.emplace(flush_num);
 
-    table_file_levels_[file_number] =
+    table_file_levels_[file_name] =
         VersionStorageInfo::FileLocation::Invalid().GetLevel();
 
     return Status::OK();
@@ -556,10 +557,11 @@ class VersionBuilder::Rep {
 
   Status ApplyFileAddition(int level, const FileMetaData& meta) {
     assert(level != VersionStorageInfo::FileLocation::Invalid().GetLevel());
+    const uint64_t compaction_number = meta.fd.GetMergeNumber();
+    const uint64_t flush_number = meta.fd.GetFlushNumber();
+    std::string file_name = MakeTableFileName(flush_number, compaction_number);
 
-    const uint64_t file_number = meta.fd.GetFlushNumber();
-
-    const int current_level = GetCurrentLevelForTableFile(file_number);
+    const int current_level = GetCurrentLevelForTableFile(file_name);
 
     if (current_level !=
         VersionStorageInfo::FileLocation::Invalid().GetLevel()) {
@@ -568,14 +570,14 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot add table file #" << file_number << " to level " << level
+      oss << "Cannot add table file #" << flush_number << " to level " << level
           << " since it is already in the LSM tree on level " << current_level;
       return Status::Corruption("VersionBuilder", oss.str());
     }
 
     if (level >= num_levels_) {
       ++invalid_level_sizes_[level];
-      table_file_levels_[file_number] = level;
+      table_file_levels_[file_name] = level;
 
       return Status::OK();
     }
@@ -583,7 +585,7 @@ class VersionBuilder::Rep {
     auto& level_state = levels_[level];
 
     auto& del_files = level_state.deleted_files;
-    auto del_it = del_files.find(file_number);
+    auto del_it = del_files.find(flush_number);
     if (del_it != del_files.end()) {
       del_files.erase(del_it);
     }
@@ -592,17 +594,17 @@ class VersionBuilder::Rep {
     f->refs = 1;
 
     auto& add_files = level_state.added_files;
-    assert(add_files.find(file_number) == add_files.end());
-    add_files.emplace(file_number, f);
+    assert(add_files.find(file_name) == add_files.end());
+    add_files.emplace(file_name, f);
 
     const uint64_t blob_file_number = f->oldest_blob_file_number;
 
     if (blob_file_number != kInvalidBlobFileNumber &&
         IsBlobFileInVersion(blob_file_number)) {
-      blob_file_meta_deltas_[blob_file_number].LinkSst(file_number);
+      blob_file_meta_deltas_[blob_file_number].LinkSst(flush_number);
     }
 
-    table_file_levels_[file_number] = level;
+    table_file_levels_[file_name] = level;
 
     return Status::OK();
   }
@@ -639,9 +641,10 @@ class VersionBuilder::Rep {
     // Delete table files
     for (const auto& deleted_file : edit->GetDeletedFiles()) {
       const int level = deleted_file.first;
-      const uint64_t file_number = deleted_file.second;
+      const uint64_t flush_number = deleted_file.second.first;
+      const uint64_t compaction_number = deleted_file.second.second;
 
-      const Status s = ApplyFileDeletion(level, file_number);
+      const Status s = ApplyFileDeletion(level, flush_number, compaction_number);
       if (!s.ok()) {
         return s;
       }
@@ -970,19 +973,21 @@ class VersionBuilder::Rep {
   }
 
   void MaybeAddFile(VersionStorageInfo* vstorage, int level, FileMetaData* f) {
-    const uint64_t file_number = f->fd.GetFlushNumber();
+    const uint64_t flush_num = f->fd.GetFlushNumber();
+    const uint64_t compaction_num = f->fd.GetMergeNumber();
+    std::string file_name = MakeTableFileName(flush_num, compaction_num);
 
     const auto& level_state = levels_[level];
 
     const auto& del_files = level_state.deleted_files;
-    const auto del_it = del_files.find(file_number);
+    const auto del_it = del_files.find(flush_num);
 
     if (del_it != del_files.end()) {
       // f is to-be-deleted table file
       vstorage->RemoveCurrentStats(f);
     } else {
       const auto& add_files = level_state.added_files;
-      const auto add_it = add_files.find(file_number);
+      const auto add_it = add_files.find(file_name);
 
       // Note: if the file appears both in the base version and in the added
       // list, the added FileMetaData supersedes the one in the base version.

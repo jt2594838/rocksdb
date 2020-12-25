@@ -18,7 +18,7 @@ class RocksService : ThriftServiceIf {
   void PushFiles(const TCompactionResult& result,
                  const std::string& source_ip,
                  int32_t source_port) override;
-  void SetFileNumber(int64_t new_file_num) override;
+  void SetCompactionNumber(int64_t new_file_num) override;
   void InstallCompaction(TStatus& _return,
                          const TInstallCompactionRequest& request) override;
   void Put(TStatus& _return, const std::string& key,

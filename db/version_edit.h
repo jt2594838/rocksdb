@@ -40,6 +40,7 @@ enum Tag : uint32_t {
   // 8 was used for large value refs
   kPrevLogNumber = 9,
   kMinLogNumberToKeep = 10,
+  kNextCompactionNumber = 11,
 
   // these are new formats divergent from open source leveldb
   kNewFile2 = 100,
@@ -109,18 +110,18 @@ struct FileDescriptor {
 
   FileDescriptor() : FileDescriptor(0, 0, 0, 0) {}
 
-  FileDescriptor(uint64_t flush_number, uint64_t merge_number, uint32_t path_id,
+  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number, uint32_t _path_id,
                  uint64_t _file_size)
-      : FileDescriptor(flush_number, merge_number, path_id, _file_size,
+      : FileDescriptor(_flush_number, _merge_number, _path_id, _file_size,
                        kMaxSequenceNumber, 0) {}
 
-  FileDescriptor(uint64_t flush_number, uint64_t merge_number, uint32_t path_id,
+  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number, uint32_t _path_id,
                  uint64_t _file_size, SequenceNumber _smallest_seqno,
                  SequenceNumber _largest_seqno)
       : table_reader(nullptr),
-        flush_number(flush_number),
-        merge_number(merge_number),
-        path_id(path_id),
+        flush_number(_flush_number),
+        merge_number(_merge_number),
+        path_id(_path_id),
         file_size(_file_size),
         smallest_seqno(_smallest_seqno),
         largest_seqno(_largest_seqno) {}

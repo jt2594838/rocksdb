@@ -373,7 +373,7 @@ void MemTableList::RollbackMemtableFlush(const autovector<MemTable*>& mems,
   // Maybe a succeeding attempt to flush will be successful.
   for (MemTable* m : mems) {
     assert(m->flush_in_progress_);
-    assert(m->file_number_ == 0);
+    assert(m->flush_number_ == 0);
 
     m->flush_in_progress_ = false;
     m->flush_completed_ = false;
@@ -405,7 +405,7 @@ Status MemTableList::TryInstallMemtableFlushResults(
     assert(i == 0 || mems[i]->GetEdits()->NumEntries() == 0);
 
     mems[i]->flush_completed_ = true;
-    mems[i]->file_number_ = file_number;
+    mems[i]->flush_number_ = file_number;
   }
 
   // if some other thread is already committing, then return
@@ -443,11 +443,11 @@ Status MemTableList::TryInstallMemtableFlushResults(
       if (!m->flush_completed_) {
         break;
       }
-      if (it == memlist.rbegin() || batch_file_number != m->file_number_) {
-        batch_file_number = m->file_number_;
+      if (it == memlist.rbegin() || batch_file_number != m->flush_number_) {
+        batch_file_number = m->flush_number_;
         ROCKS_LOG_BUFFER(log_buffer,
                          "[%s] Level-0 commit table #%" PRIu64 " started",
-                         cfd->GetName().c_str(), m->file_number_);
+                         cfd->GetName().c_str(), m->flush_number_);
         edit_list.push_back(&m->edit_);
         memtables_to_flush.push_back(m);
 #ifndef ROCKSDB_LITE
@@ -504,8 +504,8 @@ Status MemTableList::TryInstallMemtableFlushResults(
           MemTable* m = current_->memlist_.back();
           ROCKS_LOG_BUFFER(log_buffer, "[%s] Level-0 commit table #%" PRIu64
                                        ": memtable #%" PRIu64 " done",
-                           cfd->GetName().c_str(), m->file_number_, mem_id);
-          assert(m->file_number_ > 0);
+                           cfd->GetName().c_str(), m->flush_number_, mem_id);
+          assert(m->flush_number_ > 0);
           current_->Remove(m, to_delete);
           UpdateCachedValuesFromMemTableListVersion();
           ResetTrimHistoryNeeded();
@@ -517,12 +517,12 @@ Status MemTableList::TryInstallMemtableFlushResults(
           // commit failed. setup state so that we can flush again.
           ROCKS_LOG_BUFFER(log_buffer, "Level-0 commit table #%" PRIu64
                                        ": memtable #%" PRIu64 " failed",
-                           m->file_number_, mem_id);
+                           m->flush_number_, mem_id);
           m->flush_completed_ = false;
           m->flush_in_progress_ = false;
           m->edit_.Clear();
           num_flush_not_started_++;
-          m->file_number_ = 0;
+          m->flush_number_ = 0;
           imm_flush_needed.store(true, std::memory_order_release);
           ++mem_id;
         }
@@ -669,7 +669,7 @@ Status InstallMemtableAtomicFlushResults(
     for (size_t i = 0; i != mems_list[k]->size(); ++i) {
       assert(i == 0 || (*mems_list[k])[i]->GetEdits()->NumEntries() == 0);
       (*mems_list[k])[i]->SetFlushCompleted(true);
-      (*mems_list[k])[i]->SetFileNumber(file_metas[k]->fd.GetFlushNumber());
+      (*mems_list[k])[i]->SetFlushNumber(file_metas[k]->fd.GetFlushNumber());
     }
   }
 
@@ -711,12 +711,12 @@ Status InstallMemtableAtomicFlushResults(
       }
       auto* imm = (imm_lists == nullptr) ? cfds[i]->imm() : imm_lists->at(i);
       for (auto m : *mems_list[i]) {
-        assert(m->GetFileNumber() > 0);
+        assert(m->GetFlushNumber() > 0);
         uint64_t mem_id = m->GetID();
         ROCKS_LOG_BUFFER(log_buffer,
                          "[%s] Level-0 commit table #%" PRIu64
                          ": memtable #%" PRIu64 " done",
-                         cfds[i]->GetName().c_str(), m->GetFileNumber(),
+                         cfds[i]->GetName().c_str(), m->GetFlushNumber(),
                          mem_id);
         imm->current_->Remove(m, to_delete);
         imm->UpdateCachedValuesFromMemTableListVersion();
@@ -731,12 +731,12 @@ Status InstallMemtableAtomicFlushResults(
         ROCKS_LOG_BUFFER(log_buffer,
                          "[%s] Level-0 commit table #%" PRIu64
                          ": memtable #%" PRIu64 " failed",
-                         cfds[i]->GetName().c_str(), m->GetFileNumber(),
+                         cfds[i]->GetName().c_str(), m->GetFlushNumber(),
                          mem_id);
         m->SetFlushCompleted(false);
         m->SetFlushInProgress(false);
         m->GetEdits()->Clear();
-        m->SetFileNumber(0);
+        m->SetFlushNumber(0);
         imm->num_flush_not_started_++;
       }
       imm->imm_flush_needed.store(true, std::memory_order_release);

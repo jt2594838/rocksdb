@@ -892,7 +892,7 @@ TEST_F(MemTableListTest, AtomicFlusTest) {
   for (auto i = 0; i != num_cfs; ++i) {
     for (auto j = 0; j != num_tables_per_cf; ++j) {
       if (static_cast<uint64_t>(j) <= flush_memtable_ids[i]) {
-        ASSERT_LT(0, tables[i][j]->GetFileNumber());
+        ASSERT_LT(0, tables[i][j]->GetFlushNumber());
       }
     }
     ASSERT_EQ(

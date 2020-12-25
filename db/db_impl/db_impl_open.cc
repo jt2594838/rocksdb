@@ -1276,7 +1276,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
   std::unique_ptr<std::list<uint64_t>::iterator> pending_outputs_inserted_elem(
       new std::list<uint64_t>::iterator(
           CaptureCurrentFileNumberInPendingOutputs()));
-  meta.fd = FileDescriptor(versions_->NewFlushNumber(), 0, 0);
+  meta.fd = FileDescriptor(versions_->NewFlushNumber(), 0, 0, 0);
   ReadOptions ro;
   ro.total_order_seek = true;
   Arena arena;
@@ -1348,7 +1348,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
   // should not be added to the manifest.
   int level = 0;
   if (s.ok() && meta.fd.GetFileSize() > 0) {
-    edit->AddFile(level, meta.fd.GetFlushNumber(), meta.fd.GetPathId(),
+    edit->AddFile(level, meta.fd.GetFlushNumber(), meta.fd.GetMergeNumber(), meta.fd.GetPathId(),
                   meta.fd.GetFileSize(), meta.smallest, meta.largest,
                   meta.fd.smallest_seqno, meta.fd.largest_seqno,
                   meta.marked_for_compaction, meta.oldest_blob_file_number,

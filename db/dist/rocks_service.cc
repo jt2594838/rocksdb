@@ -93,14 +93,14 @@ void RocksService::PushFiles(const TCompactionResult& result,
   }
 }
 
-void RocksService::SetFileNumber(const int64_t new_file_num) {
+void RocksService::SetCompactionNumber(const int64_t new_compaction_num) {
   db->mutex()->Lock();
-  if (db->versions_->GetFileNumber() < static_cast<uint64_t>(new_file_num)) {
-    db->versions_->SetFileNumber(new_file_num);
+  if (db->versions_->GetCompactionNumber() < static_cast<uint64_t>(new_compaction_num)) {
+    db->versions_->SetCompactionNumber(new_compaction_num);
     ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                   "New file number is "
+                   "New compaction number is "
                    "updated to %ld",
-                   new_file_num);
+                   new_compaction_num);
   }
   db->mutex()->Unlock();
 }

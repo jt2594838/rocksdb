@@ -75,7 +75,7 @@ service ThriftService {
     TCompactionResult CompactFiles(1: TCompactFilesRequest request)
     binary DownLoadFile(1: string file_name, 2: i64 offset, 3: i32 size)
     void PushFiles(1: TCompactionResult output_files, 2: string source_ip, 3: i32 source_port)
-    void SetFileNumber(1: i64 new_file_num)
+    void SetCompactionNumber(1: i64 new_compaction_num)
     TStatus InstallCompaction(1: TInstallCompactionRequest request);
     TStatus Put(1: string key, 2: string value)
     GetResult Get(1: string key)

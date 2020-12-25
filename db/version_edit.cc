@@ -116,6 +116,9 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
   if (has_next_flush_number_) {
     PutVarint32Varint64(dst, kNextFileNumber, next_flush_number_);
   }
+  if (has_next_compaction_number_) {
+    PutVarint32Varint64(dst, kNextCompactionNumber, next_compaction_number_);
+  }
   if (has_max_column_family_) {
     PutVarint32Varint32(dst, kMaxColumnFamily, max_column_family_);
   }
@@ -123,8 +126,8 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint32Varint64(dst, kLastSequence, last_sequence_);
   }
   for (const auto& deleted : deleted_files_) {
-    PutVarint32Varint32Varint64(dst, kDeletedFile, deleted.first /* level */,
-                                deleted.second /* file number */);
+    PutVarint32Varint32(dst, kDeletedFile, deleted.first);
+    PutVarint64Varint64(dst, deleted.second.first, deleted.second.second);
   }
 
   bool min_log_num_written = false;
@@ -136,6 +139,7 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint32(dst, kNewFile4);
     PutVarint32Varint64(dst, new_files_[i].first /* level */,
                         f.fd.GetFlushNumber());
+    PutVarint64(dst, f.fd.GetMergeNumber());
     PutVarint64(dst, f.fd.GetFileSize());
     PutLengthPrefixedSlice(dst, f.smallest.Encode());
     PutLengthPrefixedSlice(dst, f.largest.Encode());
@@ -284,11 +288,13 @@ const char* VersionEdit::DecodeNewFile4From(Slice* input) {
   int level = 0;
   FileMetaData f;
   uint64_t number = 0;
+  uint64_t number2 = 0;
   uint32_t path_id = 0;
   uint64_t file_size = 0;
   SequenceNumber smallest_seqno = 0;
   SequenceNumber largest_seqno = kMaxSequenceNumber;
   if (GetLevel(input, &level, &msg) && GetVarint64(input, &number) &&
+      GetVarint64(input, &number2) &&
       GetVarint64(input, &file_size) && GetInternalKey(input, &f.smallest) &&
       GetInternalKey(input, &f.largest) &&
       GetVarint64(input, &smallest_seqno) &&
@@ -363,7 +369,7 @@ const char* VersionEdit::DecodeNewFile4From(Slice* input) {
     return "new-file4 entry";
   }
   f.fd =
-      FileDescriptor(number, path_id, file_size, smallest_seqno, largest_seqno);
+      FileDescriptor(number, number2, path_id, file_size, smallest_seqno, largest_seqno);
   new_files_.push_back(std::make_pair(level, f));
   return nullptr;
 }
@@ -422,6 +428,14 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
         }
         break;
 
+      case kNextCompactionNumber:
+        if (GetVarint64(&input, &next_compaction_number_)) {
+          has_next_compaction_number_ = true;
+        } else {
+          msg = "next compaction number";
+        }
+        break;
+
       case kMaxColumnFamily:
         if (GetVarint32(&input, &max_column_family_)) {
           has_max_column_family_ = true;
@@ -461,8 +475,9 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
 
       case kDeletedFile: {
         uint64_t number = 0;
-        if (GetLevel(&input, &level, &msg) && GetVarint64(&input, &number)) {
-          deleted_files_.insert(std::make_pair(level, number));
+        uint64_t compaction_number = 0;
+        if (GetLevel(&input, &level, &msg) && GetVarint64(&input, &number) && GetVarint64(&input, &compaction_number)) {
+          deleted_files_.insert(std::make_pair(level, std::make_pair(number, compaction_number)));
         } else {
           if (!msg) {
             msg = "deleted file";
@@ -478,7 +493,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
             GetVarint64(&input, &file_size) &&
             GetInternalKey(&input, &f.smallest) &&
             GetInternalKey(&input, &f.largest)) {
-          f.fd = FileDescriptor(number, 0, file_size);
+          f.fd = FileDescriptor(number, 0, 0, file_size);
           new_files_.push_back(std::make_pair(level, f));
         } else {
           if (!msg) {
@@ -498,7 +513,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
             GetInternalKey(&input, &f.largest) &&
             GetVarint64(&input, &smallest_seqno) &&
             GetVarint64(&input, &largest_seqno)) {
-          f.fd = FileDescriptor(number, 0, file_size, smallest_seqno,
+          f.fd = FileDescriptor(number, 0, 0, file_size, smallest_seqno,
                                 largest_seqno);
           new_files_.push_back(std::make_pair(level, f));
         } else {
@@ -521,7 +536,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
             GetInternalKey(&input, &f.largest) &&
             GetVarint64(&input, &smallest_seqno) &&
             GetVarint64(&input, &largest_seqno)) {
-          f.fd = FileDescriptor(number, path_id, file_size, smallest_seqno,
+          f.fd = FileDescriptor(number, 0, path_id, file_size, smallest_seqno,
                                 largest_seqno);
           new_files_.push_back(std::make_pair(level, f));
         } else {
@@ -683,7 +698,9 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append("\n  DeleteFile: ");
     AppendNumberTo(&r, deleted_file.first);
     r.append(" ");
-    AppendNumberTo(&r, deleted_file.second);
+    AppendNumberTo(&r, deleted_file.second.first);
+    r.append(" ");
+    AppendNumberTo(&r, deleted_file.second.second);
   }
   for (size_t i = 0; i < new_files_.size(); i++) {
     const FileMetaData& f = new_files_[i].second;
@@ -785,7 +802,8 @@ std::string VersionEdit::DebugJSON(int edit_num, bool hex_key) const {
     for (const auto& deleted_file : deleted_files_) {
       jw.StartArrayedObject();
       jw << "Level" << deleted_file.first;
-      jw << "FileNumber" << deleted_file.second;
+      jw << "FlushNumber" << deleted_file.second.first;
+      jw << "CompactionNumber" << deleted_file.second.second;
       jw.EndArrayedObject();
     }
 

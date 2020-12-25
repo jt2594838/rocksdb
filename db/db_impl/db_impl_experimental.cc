@@ -124,8 +124,8 @@ Status DBImpl::PromoteL0(ColumnFamilyHandle* column_family, int target_level) {
 
     edit.SetColumnFamily(cfd->GetID());
     for (const auto& f : l0_files) {
-      edit.DeleteFile(0, f->fd.GetFlushNumber());
-      edit.AddFile(target_level, f->fd.GetFlushNumber(), f->fd.GetPathId(),
+      edit.DeleteFile(0, f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
+      edit.AddFile(target_level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(), f->fd.GetPathId(),
                    f->fd.GetFileSize(), f->smallest, f->largest,
                    f->fd.smallest_seqno, f->fd.largest_seqno,
                    f->marked_for_compaction, f->oldest_blob_file_number,

@@ -2654,10 +2654,12 @@ void VersionStorageInfo::AddFile(int level, FileMetaData* f) {
 
   f->refs++;
 
-  const uint64_t file_number = f->fd.GetFlushNumber();
+  const uint64_t flush_number = f->fd.GetFlushNumber();
+  const uint64_t compaction_number = f->fd.GetMergeNumber();
+  std::string file_name = MakeTableFileName(flush_number, compaction_number);
 
-  assert(file_locations_.find(file_number) == file_locations_.end());
-  file_locations_.emplace(file_number,
+  assert(file_locations_.find(file_name) == file_locations_.end());
+  file_locations_.emplace(file_name,
                           FileLocation(level, level_files.size() - 1));
 }
 
@@ -3464,7 +3466,7 @@ bool VersionStorageInfo::RangeMightExistAfterSortedRun(
   return false;
 }
 
-void Version::AddLiveFiles(std::vector<uint64_t>* live_table_files,
+void Version::AddLiveFiles(std::vector<std::string>* live_table_files,
                            std::vector<uint64_t>* live_blob_files) const {
   assert(live_table_files);
   assert(live_blob_files);
@@ -3474,7 +3476,7 @@ void Version::AddLiveFiles(std::vector<uint64_t>* live_table_files,
     for (const auto& meta : level_files) {
       assert(meta);
 
-      live_table_files->emplace_back(meta->fd.GetFlushNumber());
+      live_table_files->emplace_back(MakeTableFileName(meta->fd.GetFlushNumber(), meta->fd.GetMergeNumber()));
     }
   }
 
@@ -5024,9 +5026,11 @@ Status VersionSet::ReduceNumberOfLevels(const std::string& dbname,
       const FileMetaData* const meta = new_last_level[i];
       assert(meta);
 
-      const uint64_t file_number = meta->fd.GetFlushNumber();
+      const uint64_t flush_number = meta->fd.GetFlushNumber();
+      const uint64_t compaction_number = meta->fd.GetMergeNumber();
+      std::string file_name = MakeTableFileName(flush_number, compaction_number);
 
-      vstorage->file_locations_[file_number] =
+      vstorage->file_locations_[file_name] =
           VersionStorageInfo::FileLocation(new_levels - 1, i);
     }
   }
@@ -5607,7 +5611,7 @@ uint64_t VersionSet::ApproximateSize(Version* v, const FdWithKeyRange& f,
       v->GetMutableCFOptions().prefix_extractor.get());
 }
 
-void VersionSet::AddLiveFiles(std::vector<uint64_t>* live_table_files,
+void VersionSet::AddLiveFiles(std::vector<std::string>* live_table_files,
                               std::vector<uint64_t>* live_blob_files) const {
   assert(live_table_files);
   assert(live_blob_files);

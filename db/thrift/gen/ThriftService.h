@@ -25,7 +25,7 @@ class ThriftServiceIf {
   virtual void CompactFiles(TCompactionResult& _return, const TCompactFilesRequest& request) = 0;
   virtual void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size) = 0;
   virtual void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port) = 0;
-  virtual void SetFileNumber(const int64_t new_file_num) = 0;
+  virtual void SetCompactionNumber(const int64_t new_compaction_num) = 0;
   virtual void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request) = 0;
   virtual void Put(TStatus& _return, const std::string& key, const std::string& value) = 0;
   virtual void Get(GetResult& _return, const std::string& key) = 0;
@@ -69,7 +69,7 @@ class ThriftServiceNull : virtual public ThriftServiceIf {
   void PushFiles(const TCompactionResult& /* output_files */, const std::string& /* source_ip */, const int32_t /* source_port */) {
     return;
   }
-  void SetFileNumber(const int64_t /* new_file_num */) {
+  void SetCompactionNumber(const int64_t /* new_compaction_num */) {
     return;
   }
   void InstallCompaction(TStatus& /* _return */, const TInstallCompactionRequest& /* request */) {
@@ -411,37 +411,37 @@ class ThriftService_PushFiles_presult {
 
 };
 
-typedef struct _ThriftService_SetFileNumber_args__isset {
-  _ThriftService_SetFileNumber_args__isset() : new_file_num(false) {}
-  bool new_file_num :1;
-} _ThriftService_SetFileNumber_args__isset;
+typedef struct _ThriftService_SetCompactionNumber_args__isset {
+  _ThriftService_SetCompactionNumber_args__isset() : new_compaction_num(false) {}
+  bool new_compaction_num :1;
+} _ThriftService_SetCompactionNumber_args__isset;
 
-class ThriftService_SetFileNumber_args {
+class ThriftService_SetCompactionNumber_args {
  public:
 
-  ThriftService_SetFileNumber_args(const ThriftService_SetFileNumber_args&);
-  ThriftService_SetFileNumber_args& operator=(const ThriftService_SetFileNumber_args&);
-  ThriftService_SetFileNumber_args() : new_file_num(0) {
+  ThriftService_SetCompactionNumber_args(const ThriftService_SetCompactionNumber_args&);
+  ThriftService_SetCompactionNumber_args& operator=(const ThriftService_SetCompactionNumber_args&);
+  ThriftService_SetCompactionNumber_args() : new_compaction_num(0) {
   }
 
-  virtual ~ThriftService_SetFileNumber_args() noexcept;
-  int64_t new_file_num;
+  virtual ~ThriftService_SetCompactionNumber_args() noexcept;
+  int64_t new_compaction_num;
 
-  _ThriftService_SetFileNumber_args__isset __isset;
+  _ThriftService_SetCompactionNumber_args__isset __isset;
 
-  void __set_new_file_num(const int64_t val);
+  void __set_new_compaction_num(const int64_t val);
 
-  bool operator == (const ThriftService_SetFileNumber_args & rhs) const
+  bool operator == (const ThriftService_SetCompactionNumber_args & rhs) const
   {
-    if (!(new_file_num == rhs.new_file_num))
+    if (!(new_compaction_num == rhs.new_compaction_num))
       return false;
     return true;
   }
-  bool operator != (const ThriftService_SetFileNumber_args &rhs) const {
+  bool operator != (const ThriftService_SetCompactionNumber_args &rhs) const {
     return !(*this == rhs);
   }
 
-  bool operator < (const ThriftService_SetFileNumber_args & ) const;
+  bool operator < (const ThriftService_SetCompactionNumber_args & ) const;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
@@ -449,37 +449,37 @@ class ThriftService_SetFileNumber_args {
 };
 
 
-class ThriftService_SetFileNumber_pargs {
+class ThriftService_SetCompactionNumber_pargs {
  public:
 
 
-  virtual ~ThriftService_SetFileNumber_pargs() noexcept;
-  const int64_t* new_file_num;
+  virtual ~ThriftService_SetCompactionNumber_pargs() noexcept;
+  const int64_t* new_compaction_num;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
 };
 
 
-class ThriftService_SetFileNumber_result {
+class ThriftService_SetCompactionNumber_result {
  public:
 
-  ThriftService_SetFileNumber_result(const ThriftService_SetFileNumber_result&);
-  ThriftService_SetFileNumber_result& operator=(const ThriftService_SetFileNumber_result&);
-  ThriftService_SetFileNumber_result() {
+  ThriftService_SetCompactionNumber_result(const ThriftService_SetCompactionNumber_result&);
+  ThriftService_SetCompactionNumber_result& operator=(const ThriftService_SetCompactionNumber_result&);
+  ThriftService_SetCompactionNumber_result() {
   }
 
-  virtual ~ThriftService_SetFileNumber_result() noexcept;
+  virtual ~ThriftService_SetCompactionNumber_result() noexcept;
 
-  bool operator == (const ThriftService_SetFileNumber_result & /* rhs */) const
+  bool operator == (const ThriftService_SetCompactionNumber_result & /* rhs */) const
   {
     return true;
   }
-  bool operator != (const ThriftService_SetFileNumber_result &rhs) const {
+  bool operator != (const ThriftService_SetCompactionNumber_result &rhs) const {
     return !(*this == rhs);
   }
 
-  bool operator < (const ThriftService_SetFileNumber_result & ) const;
+  bool operator < (const ThriftService_SetCompactionNumber_result & ) const;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
@@ -487,11 +487,11 @@ class ThriftService_SetFileNumber_result {
 };
 
 
-class ThriftService_SetFileNumber_presult {
+class ThriftService_SetCompactionNumber_presult {
  public:
 
 
-  virtual ~ThriftService_SetFileNumber_presult() noexcept;
+  virtual ~ThriftService_SetCompactionNumber_presult() noexcept;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
 
@@ -1034,9 +1034,9 @@ class ThriftServiceClient : virtual public ThriftServiceIf {
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void send_PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void recv_PushFiles();
-  void SetFileNumber(const int64_t new_file_num);
-  void send_SetFileNumber(const int64_t new_file_num);
-  void recv_SetFileNumber();
+  void SetCompactionNumber(const int64_t new_compaction_num);
+  void send_SetCompactionNumber(const int64_t new_compaction_num);
+  void recv_SetCompactionNumber();
   void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request);
   void send_InstallCompaction(const TInstallCompactionRequest& request);
   void recv_InstallCompaction(TStatus& _return);
@@ -1070,7 +1070,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_CompactFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_DownLoadFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_PushFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
-  void process_SetFileNumber(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_SetCompactionNumber(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_InstallCompaction(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Put(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Get(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
@@ -1082,7 +1082,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
     processMap_["CompactFiles"] = &ThriftServiceProcessor::process_CompactFiles;
     processMap_["DownLoadFile"] = &ThriftServiceProcessor::process_DownLoadFile;
     processMap_["PushFiles"] = &ThriftServiceProcessor::process_PushFiles;
-    processMap_["SetFileNumber"] = &ThriftServiceProcessor::process_SetFileNumber;
+    processMap_["SetCompactionNumber"] = &ThriftServiceProcessor::process_SetCompactionNumber;
     processMap_["InstallCompaction"] = &ThriftServiceProcessor::process_InstallCompaction;
     processMap_["Put"] = &ThriftServiceProcessor::process_Put;
     processMap_["Get"] = &ThriftServiceProcessor::process_Get;
@@ -1145,13 +1145,13 @@ class ThriftServiceMultiface : virtual public ThriftServiceIf {
     ifaces_[i]->PushFiles(output_files, source_ip, source_port);
   }
 
-  void SetFileNumber(const int64_t new_file_num) {
+  void SetCompactionNumber(const int64_t new_compaction_num) {
     size_t sz = ifaces_.size();
     size_t i = 0;
     for (; i < (sz - 1); ++i) {
-      ifaces_[i]->SetFileNumber(new_file_num);
+      ifaces_[i]->SetCompactionNumber(new_compaction_num);
     }
-    ifaces_[i]->SetFileNumber(new_file_num);
+    ifaces_[i]->SetCompactionNumber(new_compaction_num);
   }
 
   void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request) {
@@ -1245,9 +1245,9 @@ class ThriftServiceConcurrentClient : virtual public ThriftServiceIf {
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   int32_t send_PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void recv_PushFiles(const int32_t seqid);
-  void SetFileNumber(const int64_t new_file_num);
-  int32_t send_SetFileNumber(const int64_t new_file_num);
-  void recv_SetFileNumber(const int32_t seqid);
+  void SetCompactionNumber(const int64_t new_compaction_num);
+  int32_t send_SetCompactionNumber(const int64_t new_compaction_num);
+  void recv_SetCompactionNumber(const int32_t seqid);
   void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request);
   int32_t send_InstallCompaction(const TInstallCompactionRequest& request);
   void recv_InstallCompaction(TStatus& _return, const int32_t seqid);

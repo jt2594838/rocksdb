@@ -35,9 +35,9 @@ class ThriftServiceHandler : virtual public ThriftServiceIf {
     printf("PushFiles\n");
   }
 
-  void SetFileNumber(const int64_t new_file_num) {
+  void SetCompactionNumber(const int64_t new_compaction_num) {
     // Your implementation goes here
-    printf("SetFileNumber\n");
+    printf("SetCompactionNumber\n");
   }
 
   void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request) {

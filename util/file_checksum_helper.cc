@@ -135,13 +135,13 @@ Status GetFileChecksumsFromManifest(Env* src_env, const std::string& abs_path,
 
     // Remove the deleted files from the checksum_list
     for (const auto& deleted_file : edit.GetDeletedFiles()) {
-      checksum_list->RemoveOneFileChecksum(deleted_file.second);
+      checksum_list->RemoveOneFileChecksum(deleted_file.second.first << 32 | deleted_file.second.second);
     }
 
     // Add the new files to the checksum_list
     for (const auto& new_file : edit.GetNewFiles()) {
       checksum_list->InsertOneFileChecksum(
-          new_file.second.fd.GetFlushNumber(), new_file.second.file_checksum,
+          new_file.second.fd.GetFlushNumber() << 32 | new_file.second.fd.GetMergeNumber(), new_file.second.file_checksum,
           new_file.second.file_checksum_func_name);
     }
   }

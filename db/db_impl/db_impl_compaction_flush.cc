@@ -1567,7 +1567,7 @@ Status DBImpl::ReFitLevel(ColumnFamilyData* cfd, int level, int target_level) {
     VersionEdit edit;
     edit.SetColumnFamily(cfd->GetID());
     for (const auto& f : vstorage->LevelFiles(level)) {
-      edit.DeleteFile(level, f->fd.GetFlushNumber());
+      edit.DeleteFile(level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
       edit.AddFile(to_level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(), f->fd.GetPathId(),
                    f->fd.GetFileSize(), f->smallest, f->largest,
                    f->fd.smallest_seqno, f->fd.largest_seqno,
@@ -2956,7 +2956,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                             compaction_job_stats, job_context->job_id);
 
     for (const auto& f : *c->inputs(0)) {
-      c->edit()->DeleteFile(c->level(), f->fd.GetFlushNumber());
+      c->edit()->DeleteFile(c->level(), f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
     }
     status = versions_->LogAndApply(c->column_family_data(),
                                     *c->mutable_cf_options(), c->edit(),
@@ -2996,7 +2996,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       }
       for (size_t i = 0; i < c->num_input_files(l); i++) {
         FileMetaData* f = c->input(l, i);
-        c->edit()->DeleteFile(c->level(l), f->fd.GetFlushNumber());
+        c->edit()->DeleteFile(c->level(l), f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
         c->edit()->AddFile(c->output_level(), f->fd.GetFlushNumber(), f->fd.GetMergeNumber(),
                            f->fd.GetPathId(), f->fd.GetFileSize(), f->smallest,
                            f->largest, f->fd.smallest_seqno,

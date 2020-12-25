@@ -361,7 +361,7 @@ void Compaction::AddInputDeletions(VersionEdit* out_edit) {
   for (size_t which = 0; which < num_input_levels(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
       out_edit->DeleteFile(level(which),
-                           inputs_[which][i]->fd.GetFlushNumber());
+                           inputs_[which][i]->fd.GetFlushNumber(), inputs_[which][i]->fd.GetMergeNumber());
     }
   }
 }

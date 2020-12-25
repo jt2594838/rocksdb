@@ -603,11 +603,11 @@ uint32_t ThriftService_PushFiles_presult::read(::apache::thrift::protocol::TProt
 }
 
 
-ThriftService_SetFileNumber_args::~ThriftService_SetFileNumber_args() noexcept {
+ThriftService_SetCompactionNumber_args::~ThriftService_SetCompactionNumber_args() noexcept {
 }
 
 
-uint32_t ThriftService_SetFileNumber_args::read(::apache::thrift::protocol::TProtocol* iprot) {
+uint32_t ThriftService_SetCompactionNumber_args::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
   uint32_t xfer = 0;
@@ -630,8 +630,8 @@ uint32_t ThriftService_SetFileNumber_args::read(::apache::thrift::protocol::TPro
     {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_I64) {
-          xfer += iprot->readI64(this->new_file_num);
-          this->__isset.new_file_num = true;
+          xfer += iprot->readI64(this->new_compaction_num);
+          this->__isset.new_compaction_num = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -648,13 +648,13 @@ uint32_t ThriftService_SetFileNumber_args::read(::apache::thrift::protocol::TPro
   return xfer;
 }
 
-uint32_t ThriftService_SetFileNumber_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
+uint32_t ThriftService_SetCompactionNumber_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
   uint32_t xfer = 0;
   ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
-  xfer += oprot->writeStructBegin("ThriftService_SetFileNumber_args");
+  xfer += oprot->writeStructBegin("ThriftService_SetCompactionNumber_args");
 
-  xfer += oprot->writeFieldBegin("new_file_num", ::apache::thrift::protocol::T_I64, 1);
-  xfer += oprot->writeI64(this->new_file_num);
+  xfer += oprot->writeFieldBegin("new_compaction_num", ::apache::thrift::protocol::T_I64, 1);
+  xfer += oprot->writeI64(this->new_compaction_num);
   xfer += oprot->writeFieldEnd();
 
   xfer += oprot->writeFieldStop();
@@ -663,17 +663,17 @@ uint32_t ThriftService_SetFileNumber_args::write(::apache::thrift::protocol::TPr
 }
 
 
-ThriftService_SetFileNumber_pargs::~ThriftService_SetFileNumber_pargs() noexcept {
+ThriftService_SetCompactionNumber_pargs::~ThriftService_SetCompactionNumber_pargs() noexcept {
 }
 
 
-uint32_t ThriftService_SetFileNumber_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
+uint32_t ThriftService_SetCompactionNumber_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
   uint32_t xfer = 0;
   ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
-  xfer += oprot->writeStructBegin("ThriftService_SetFileNumber_pargs");
+  xfer += oprot->writeStructBegin("ThriftService_SetCompactionNumber_pargs");
 
-  xfer += oprot->writeFieldBegin("new_file_num", ::apache::thrift::protocol::T_I64, 1);
-  xfer += oprot->writeI64((*(this->new_file_num)));
+  xfer += oprot->writeFieldBegin("new_compaction_num", ::apache::thrift::protocol::T_I64, 1);
+  xfer += oprot->writeI64((*(this->new_compaction_num)));
   xfer += oprot->writeFieldEnd();
 
   xfer += oprot->writeFieldStop();
@@ -682,11 +682,11 @@ uint32_t ThriftService_SetFileNumber_pargs::write(::apache::thrift::protocol::TP
 }
 
 
-ThriftService_SetFileNumber_result::~ThriftService_SetFileNumber_result() noexcept {
+ThriftService_SetCompactionNumber_result::~ThriftService_SetCompactionNumber_result() noexcept {
 }
 
 
-uint32_t ThriftService_SetFileNumber_result::read(::apache::thrift::protocol::TProtocol* iprot) {
+uint32_t ThriftService_SetCompactionNumber_result::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
   uint32_t xfer = 0;
@@ -714,11 +714,11 @@ uint32_t ThriftService_SetFileNumber_result::read(::apache::thrift::protocol::TP
   return xfer;
 }
 
-uint32_t ThriftService_SetFileNumber_result::write(::apache::thrift::protocol::TProtocol* oprot) const {
+uint32_t ThriftService_SetCompactionNumber_result::write(::apache::thrift::protocol::TProtocol* oprot) const {
 
   uint32_t xfer = 0;
 
-  xfer += oprot->writeStructBegin("ThriftService_SetFileNumber_result");
+  xfer += oprot->writeStructBegin("ThriftService_SetCompactionNumber_result");
 
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
@@ -726,11 +726,11 @@ uint32_t ThriftService_SetFileNumber_result::write(::apache::thrift::protocol::T
 }
 
 
-ThriftService_SetFileNumber_presult::~ThriftService_SetFileNumber_presult() noexcept {
+ThriftService_SetCompactionNumber_presult::~ThriftService_SetCompactionNumber_presult() noexcept {
 }
 
 
-uint32_t ThriftService_SetFileNumber_presult::read(::apache::thrift::protocol::TProtocol* iprot) {
+uint32_t ThriftService_SetCompactionNumber_presult::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
   uint32_t xfer = 0;
@@ -1840,19 +1840,19 @@ void ThriftServiceClient::recv_PushFiles()
   return;
 }
 
-void ThriftServiceClient::SetFileNumber(const int64_t new_file_num)
+void ThriftServiceClient::SetCompactionNumber(const int64_t new_compaction_num)
 {
-  send_SetFileNumber(new_file_num);
-  recv_SetFileNumber();
+  send_SetCompactionNumber(new_compaction_num);
+  recv_SetCompactionNumber();
 }
 
-void ThriftServiceClient::send_SetFileNumber(const int64_t new_file_num)
+void ThriftServiceClient::send_SetCompactionNumber(const int64_t new_compaction_num)
 {
   int32_t cseqid = 0;
-  oprot_->writeMessageBegin("SetFileNumber", ::apache::thrift::protocol::T_CALL, cseqid);
+  oprot_->writeMessageBegin("SetCompactionNumber", ::apache::thrift::protocol::T_CALL, cseqid);
 
-  ThriftService_SetFileNumber_pargs args;
-  args.new_file_num = &new_file_num;
+  ThriftService_SetCompactionNumber_pargs args;
+  args.new_compaction_num = &new_compaction_num;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -1860,7 +1860,7 @@ void ThriftServiceClient::send_SetFileNumber(const int64_t new_file_num)
   oprot_->getTransport()->flush();
 }
 
-void ThriftServiceClient::recv_SetFileNumber()
+void ThriftServiceClient::recv_SetCompactionNumber()
 {
 
   int32_t rseqid = 0;
@@ -1880,12 +1880,12 @@ void ThriftServiceClient::recv_SetFileNumber()
     iprot_->readMessageEnd();
     iprot_->getTransport()->readEnd();
   }
-  if (fname.compare("SetFileNumber") != 0) {
+  if (fname.compare("SetCompactionNumber") != 0) {
     iprot_->skip(::apache::thrift::protocol::T_STRUCT);
     iprot_->readMessageEnd();
     iprot_->getTransport()->readEnd();
   }
-  ThriftService_SetFileNumber_presult result;
+  ThriftService_SetCompactionNumber_presult result;
   result.read(iprot_);
   iprot_->readMessageEnd();
   iprot_->getTransport()->readEnd();
@@ -2362,37 +2362,37 @@ void ThriftServiceProcessor::process_PushFiles(int32_t seqid, ::apache::thrift::
   }
 }
 
-void ThriftServiceProcessor::process_SetFileNumber(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
+void ThriftServiceProcessor::process_SetCompactionNumber(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
 {
   void* ctx = NULL;
   if (this->eventHandler_.get() != NULL) {
-    ctx = this->eventHandler_->getContext("ThriftService.SetFileNumber", callContext);
+    ctx = this->eventHandler_->getContext("ThriftService.SetCompactionNumber", callContext);
   }
-  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "ThriftService.SetFileNumber");
+  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "ThriftService.SetCompactionNumber");
 
   if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->preRead(ctx, "ThriftService.SetFileNumber");
+    this->eventHandler_->preRead(ctx, "ThriftService.SetCompactionNumber");
   }
 
-  ThriftService_SetFileNumber_args args;
+  ThriftService_SetCompactionNumber_args args;
   args.read(iprot);
   iprot->readMessageEnd();
   uint32_t bytes = iprot->getTransport()->readEnd();
 
   if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->postRead(ctx, "ThriftService.SetFileNumber", bytes);
+    this->eventHandler_->postRead(ctx, "ThriftService.SetCompactionNumber", bytes);
   }
 
-  ThriftService_SetFileNumber_result result;
+  ThriftService_SetCompactionNumber_result result;
   try {
-    iface_->SetFileNumber(args.new_file_num);
+    iface_->SetCompactionNumber(args.new_compaction_num);
   } catch (const std::exception& e) {
     if (this->eventHandler_.get() != NULL) {
-      this->eventHandler_->handlerError(ctx, "ThriftService.SetFileNumber");
+      this->eventHandler_->handlerError(ctx, "ThriftService.SetCompactionNumber");
     }
 
     ::apache::thrift::TApplicationException x(e.what());
-    oprot->writeMessageBegin("SetFileNumber", ::apache::thrift::protocol::T_EXCEPTION, seqid);
+    oprot->writeMessageBegin("SetCompactionNumber", ::apache::thrift::protocol::T_EXCEPTION, seqid);
     x.write(oprot);
     oprot->writeMessageEnd();
     oprot->getTransport()->writeEnd();
@@ -2401,17 +2401,17 @@ void ThriftServiceProcessor::process_SetFileNumber(int32_t seqid, ::apache::thri
   }
 
   if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->preWrite(ctx, "ThriftService.SetFileNumber");
+    this->eventHandler_->preWrite(ctx, "ThriftService.SetCompactionNumber");
   }
 
-  oprot->writeMessageBegin("SetFileNumber", ::apache::thrift::protocol::T_REPLY, seqid);
+  oprot->writeMessageBegin("SetCompactionNumber", ::apache::thrift::protocol::T_REPLY, seqid);
   result.write(oprot);
   oprot->writeMessageEnd();
   bytes = oprot->getTransport()->writeEnd();
   oprot->getTransport()->flush();
 
   if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->postWrite(ctx, "ThriftService.SetFileNumber", bytes);
+    this->eventHandler_->postWrite(ctx, "ThriftService.SetCompactionNumber", bytes);
   }
 }
 
@@ -2942,20 +2942,20 @@ void ThriftServiceConcurrentClient::recv_PushFiles(const int32_t seqid)
   } // end while(true)
 }
 
-void ThriftServiceConcurrentClient::SetFileNumber(const int64_t new_file_num)
+void ThriftServiceConcurrentClient::SetCompactionNumber(const int64_t new_compaction_num)
 {
-  int32_t seqid = send_SetFileNumber(new_file_num);
-  recv_SetFileNumber(seqid);
+  int32_t seqid = send_SetCompactionNumber(new_compaction_num);
+  recv_SetCompactionNumber(seqid);
 }
 
-int32_t ThriftServiceConcurrentClient::send_SetFileNumber(const int64_t new_file_num)
+int32_t ThriftServiceConcurrentClient::send_SetCompactionNumber(const int64_t new_compaction_num)
 {
   int32_t cseqid = this->sync_->generateSeqId();
   ::apache::thrift::async::TConcurrentSendSentry sentry(this->sync_.get());
-  oprot_->writeMessageBegin("SetFileNumber", ::apache::thrift::protocol::T_CALL, cseqid);
+  oprot_->writeMessageBegin("SetCompactionNumber", ::apache::thrift::protocol::T_CALL, cseqid);
 
-  ThriftService_SetFileNumber_pargs args;
-  args.new_file_num = &new_file_num;
+  ThriftService_SetCompactionNumber_pargs args;
+  args.new_compaction_num = &new_compaction_num;
   args.write(oprot_);
 
   oprot_->writeMessageEnd();
@@ -2966,7 +2966,7 @@ int32_t ThriftServiceConcurrentClient::send_SetFileNumber(const int64_t new_file
   return cseqid;
 }
 
-void ThriftServiceConcurrentClient::recv_SetFileNumber(const int32_t seqid)
+void ThriftServiceConcurrentClient::recv_SetCompactionNumber(const int32_t seqid)
 {
 
   int32_t rseqid = 0;
@@ -2995,7 +2995,7 @@ void ThriftServiceConcurrentClient::recv_SetFileNumber(const int32_t seqid)
         iprot_->readMessageEnd();
         iprot_->getTransport()->readEnd();
       }
-      if (fname.compare("SetFileNumber") != 0) {
+      if (fname.compare("SetCompactionNumber") != 0) {
         iprot_->skip(::apache::thrift::protocol::T_STRUCT);
         iprot_->readMessageEnd();
         iprot_->getTransport()->readEnd();
@@ -3004,7 +3004,7 @@ void ThriftServiceConcurrentClient::recv_SetFileNumber(const int32_t seqid)
         using ::apache::thrift::protocol::TProtocolException;
         throw TProtocolException(TProtocolException::INVALID_DATA);
       }
-      ThriftService_SetFileNumber_presult result;
+      ThriftService_SetCompactionNumber_presult result;
       result.read(iprot_);
       iprot_->readMessageEnd();
       iprot_->getTransport()->readEnd();

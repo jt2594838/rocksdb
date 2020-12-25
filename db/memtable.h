@@ -427,9 +427,9 @@ class MemTable {
 
   void SetFlushCompleted(bool completed) { flush_completed_ = completed; }
 
-  uint64_t GetFileNumber() const { return file_number_; }
+  uint64_t GetFlushNumber() const { return flush_number_; }
 
-  void SetFileNumber(uint64_t file_num) { file_number_ = file_num; }
+  void SetFlushNumber(uint64_t file_num) { flush_number_ = file_num; }
 
   void SetFlushInProgress(bool in_progress) {
     flush_in_progress_ = in_progress;
@@ -473,7 +473,7 @@ class MemTable {
   // These are used to manage memtable flushes to storage
   bool flush_in_progress_; // started the flush
   bool flush_completed_;   // finished the flush
-  uint64_t file_number_;    // filled up after flush is complete
+  uint64_t flush_number_;    // filled up after flush is complete
 
   // The updates to be applied to the transaction log when this
   // memtable is flushed to storage.

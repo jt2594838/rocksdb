@@ -309,8 +309,8 @@ class VersionStorageInfo {
   };
 
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
-  FileLocation GetFileLocation(uint64_t file_number) const {
-    const auto it = file_locations_.find(file_number);
+  FileLocation GetFileLocation(std::string file_name) const {
+    const auto it = file_locations_.find(file_name);
 
     if (it == file_locations_.end()) {
       return FileLocation::Invalid();
@@ -319,15 +319,15 @@ class VersionStorageInfo {
     assert(it->second.GetLevel() < num_levels_);
     assert(it->second.GetPosition() < files_[it->second.GetLevel()].size());
     assert(files_[it->second.GetLevel()][it->second.GetPosition()]);
-    assert(files_[it->second.GetLevel()][it->second.GetPosition()]
-               ->fd.GetFlushNumber() == file_number);
+//    assert(files_[it->second.GetLevel()][it->second.GetPosition()]
+//               ->fd.GetFlushNumber() == file_name);
 
     return it->second;
   }
 
   // REQUIRES: This version has been saved (see VersionSet::SaveTo)
-  FileMetaData* GetFileMetaDataByNumber(uint64_t file_number) const {
-    auto location = GetFileLocation(file_number);
+  FileMetaData* GetFileMetaDataByName(std::string& file_name) const {
+    auto location = GetFileLocation(file_name);
 
     if (!location.IsValid()) {
       return nullptr;
@@ -516,7 +516,7 @@ class VersionStorageInfo {
 
   // Map of all table files in version. Maps file number to (level, position on
   // level).
-  using FileLocations = std::unordered_map<uint64_t, FileLocation>;
+  using FileLocations = std::unordered_map<std::string, FileLocation>;
   FileLocations file_locations_;
 
   // Map of blob files in version by number.
@@ -695,7 +695,7 @@ class Version {
 
   // Add all files listed in the current version to *live_table_files and
   // *live_blob_files.
-  void AddLiveFiles(std::vector<uint64_t>* live_table_files,
+  void AddLiveFiles(std::vector<std::string>* live_table_files,
                     std::vector<uint64_t>* live_blob_files) const;
 
   // Return a human readable string that describes this version's contents.
@@ -1042,11 +1042,18 @@ class VersionSet {
     return next_compaction_number_.fetch_add(n);
   }
 
-  void SetFileNumber(uint64_t n) { next_flush_number_ = n;
+  void SetFlushNumber(uint64_t n) { next_flush_number_ = n;
   }
 
-  uint64_t GetFileNumber() {
+  void SetCompactionNumber(uint64_t n) { next_compaction_number_ = n;
+  }
+
+  uint64_t GetFlushNumber() {
     return next_flush_number_;
+  }
+
+  uint64_t GetCompactionNumber() {
+    return next_compaction_number_;
   }
 
 // TSAN failure is suppressed in most sequence read/write functions when
@@ -1152,7 +1159,7 @@ class VersionSet {
 
   // Add all files listed in any live version to *live_table_files and
   // *live_blob_files. Note that these lists may contain duplicates.
-  void AddLiveFiles(std::vector<uint64_t>* live_table_files,
+  void AddLiveFiles(std::vector<std::string>* live_table_files,
                     std::vector<uint64_t>* live_blob_files) const;
 
   // Return the approximate size of data to be scanned for range [start, end)

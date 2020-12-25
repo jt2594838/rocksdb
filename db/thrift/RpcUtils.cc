@@ -76,7 +76,8 @@ FileMetaData RpcUtils::ToFileMetaData(const TFileMetadata& tmetadata) {
 
 FileDescriptor RpcUtils::ToFilDescriptor(const TFileDescriptor& tdesceiptor) {
   FileDescriptor descriptor;
-  descriptor.flush_number = tdesceiptor.packed_number_and_path_id;
+  descriptor.flush_number = tdesceiptor.flush_number;
+  descriptor.merge_number = tdesceiptor.merge_number;
   descriptor.file_size = tdesceiptor.file_size;
   descriptor.smallest_seqno = tdesceiptor.smallest_seqno;
   descriptor.largest_seqno = tdesceiptor.largest_seqno;
@@ -101,7 +102,8 @@ TFileMetadata RpcUtils::ToTFileMetaData(const FileMetaData& metaData) {
 
 TFileDescriptor RpcUtils::ToTFileDescriptor(const FileDescriptor& descriptor) {
   TFileDescriptor tdescriptor;
-  tdescriptor.packed_number_and_path_id = descriptor.flush_number;
+  tdescriptor.flush_number = descriptor.flush_number;
+  tdescriptor.merge_number = descriptor.merge_number;
   tdescriptor.largest_seqno = descriptor.largest_seqno;
   tdescriptor.smallest_seqno = descriptor.smallest_seqno;
   tdescriptor.file_size = descriptor.file_size;

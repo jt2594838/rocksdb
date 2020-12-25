@@ -364,7 +364,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   assert(state.manifest_file_number != 0);
 
   // Now, convert lists to unordered sets, WITHOUT mutex held; set is slow.
-  std::unordered_set<uint64_t> sst_live_set(state.sst_live.begin(),
+  std::unordered_set<std::string> sst_live_set(state.sst_live.begin(),
                                             state.sst_live.end());
   std::unordered_set<uint64_t> blob_live_set(state.blob_live.begin(),
                                              state.blob_live.end());
@@ -479,7 +479,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
       case kTableFile:
         // If the second condition is not there, this makes
         // DontDeletePendingOutputs fail
-        keep = (sst_live_set.find(number1) != sst_live_set.end()) ||
+        keep = (sst_live_set.find(to_delete) != sst_live_set.end()) ||
                number1 >= state.min_pending_output;
         if (!keep) {
           files_to_del.insert(number1);
@@ -501,7 +501,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
         //
         // TODO(yhchiang): carefully modify the third condition to safely
         //                 remove the temp options files.
-        keep = (sst_live_set.find(number1) != sst_live_set.end()) ||
+        keep = (sst_live_set.find(to_delete) != sst_live_set.end()) ||
                (blob_live_set.find(number1) != blob_live_set.end()) ||
                (number1 == state.pending_manifest_file_number) ||
                (to_delete.find(kOptionsFileNamePrefix) != std::string::npos);
