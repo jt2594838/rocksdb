@@ -759,8 +759,8 @@ all: $(LIBRARY) $(BENCHMARKS) tools tools_lib test_libs $(TESTS)
 
 all_but_some_tests: $(LIBRARY) $(BENCHMARKS) tools tools_lib test_libs $(SUBSET)
 
-backend_debug: static_lib
-	$(CXX) $(CXXFLAGS) executable/backend.cc -obackend_debug ./librocksdb_debug.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
+backend_debug: dbg_lib
+	$(CXX) $(CXXFLAGS) executable/backend.cc -obackend_debug ./librocksdb_debug.a -O0 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
 
 backend: static_lib
 	$(CXX) $(CXXFLAGS) executable/backend.cc -obackend ./librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
@@ -783,6 +783,8 @@ test_libs: $(TEST_LIBS)
 benchmarks: $(BENCHMARKS)
 
 dbg: $(LIBRARY) $(BENCHMARKS) tools $(TESTS)
+
+dbg_lib: $(LIBRARY)
 
 # creates library and programs
 release: clean

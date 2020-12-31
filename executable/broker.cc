@@ -20,12 +20,20 @@ using namespace ROCKSDB_NAMESPACE;
 void Broker::Put(std::string& key, std::string& value) {
   TStatus status;
   for (unsigned int i = 0; i < clients.size(); ++i) {
+    if (i == leader_pos) {
+      continue;
+    }
     clients[i]->Put(status, key, value);
     if (status.code != Status::Code::kOk) {
       std::cout << "An error occurred during put " << status.code << ":" << status.state << std::endl;
     }
   }
+  leader_client->Put(status, key, value);
+  if (status.code != Status::Code::kOk) {
+    std::cout << "An error occurred during put " << status.code << ":" << status.state << std::endl;
+  }
 }
+
 void Broker::Get(std::string& key, std::string& value) {
   GetResult result;
   clients[0]->Get(result, key);
@@ -38,10 +46,17 @@ void Broker::Get(std::string& key, std::string& value) {
 void Broker::Flush() {
   TStatus status;
   for (unsigned int i = 0; i < clients.size(); ++i) {
+    if (i == leader_pos) {
+      continue;
+    }
     clients[i]->Flush(status);
     if (status.code != Status::Code::kOk) {
       std::cout << "An error occurred during flush " << status.code << ":" << status.state << std::endl;
     }
+  }
+  leader_client->Flush(status);
+  if (status.code != Status::Code::kOk) {
+    std::cout << "An error occurred during flush " << status.code << ":" << status.state << std::endl;
   }
 }
 void Broker::Compact() {
@@ -84,7 +99,11 @@ void Broker::init(char* config_file_path) {
   ParseNodes(all_nodes_str, nodes);
 
   leader_client = RpcUtils::CreateClient(compaction_leader);
-  for (auto* node : nodes) {
+  for (uint32_t i = 0; i < nodes.size(); i++) {
+    auto* node = nodes[i];
+    if (*node == *compaction_leader) {
+      leader_pos = i;
+    }
     clients.push_back(RpcUtils::CreateClient(node));
   }
 }
@@ -114,6 +133,15 @@ int main(int argc, char** argv) {
   }
   std::string key;
   std::string value;
+
+  for (int i = 0; i < 9; ++i) {
+    key = std::to_string(i);
+    value = std::to_string(i);
+    broker->Put(key, value);
+  }
+  broker->Flush();
+  broker->Compact();
+
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       key = std::to_string(i * 3 + j);
@@ -122,13 +150,8 @@ int main(int argc, char** argv) {
     }
     broker->Flush();
   }
-  for (int i = 0; i < 9; ++i) {
-    key = std::to_string(i);
-    value = std::to_string(i);
-    broker->Put(key, value);
-  }
-  broker->Flush();
   broker->Compact();
+
 
   delete broker;
   return 0;

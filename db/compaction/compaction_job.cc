@@ -397,11 +397,6 @@ void CompactionJob::ReportStartedCompaction(Compaction* compaction) {
       (static_cast<uint64_t>(compact_->compaction->start_level()) << 32) +
           compact_->compaction->output_level());
 
-  // In the current design, a CompactionJob is always created
-  // for non-trivial compaction.
-  assert(compaction->IsTrivialMove() == false ||
-         compaction->is_manual_compaction() == true);
-
   ThreadStatusUtil::SetThreadOperationProperty(
       ThreadStatus::COMPACTION_PROP_FLAGS,
       compaction->is_manual_compaction() +
@@ -1398,8 +1393,7 @@ Status CompactionJob::FinishCompactionOutputFile(
   assert(sub_compact->current_output() != nullptr);
 
   uint64_t output_number =
-      sub_compact->current_output()->meta.fd.GetFlushNumber();
-  assert(output_number != 0);
+      sub_compact->current_output()->meta.fd.GetMergeNumber();
 
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
   const Comparator* ucmp = cfd->user_comparator();

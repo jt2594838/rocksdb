@@ -2762,8 +2762,10 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   bool is_prepicked = is_manual || c;
 
   // (manual_compaction->in_progress == false);
-  bool trivial_move_disallowed =
-      is_manual && manual_compaction->disallow_trivial_move;
+//  bool trivial_move_disallowed =
+//      is_manual && manual_compaction->disallow_trivial_move;
+  // disallow trivial move as it does not inform other nodes
+  bool trivial_move_disallowed = true;
 
   CompactionJobStats compaction_job_stats;
   Status status;

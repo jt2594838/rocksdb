@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "db/blob/blob_file_meta.h"
 #include "db/dbformat.h"
@@ -81,7 +82,7 @@ class VersionBuilder::Rep {
   };
 
   struct LevelState {
-    std::unordered_set<uint64_t> deleted_files;
+    std::unordered_set<std::string> deleted_files;
     // Map from file number to file meta data.
     std::unordered_map<std::string, FileMetaData*> added_files;
   };
@@ -499,6 +500,7 @@ class VersionBuilder::Rep {
     std::string file_name = MakeTableFileName(flush_num, compaction_number);
 
     const int current_level = GetCurrentLevelForTableFile(file_name);
+    // std::cout << "the level of " << file_name << " is " << current_level << std::endl;
 
     if (level != current_level) {
       if (level >= num_levels_) {
@@ -506,7 +508,7 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot delete table file #" << flush_num << " from level "
+      oss << "Cannot delete table file #" << flush_num << "-" << compaction_number << " from level "
           << level << " since it is ";
       if (current_level ==
           VersionStorageInfo::FileLocation::Invalid().GetLevel()) {
@@ -546,8 +548,8 @@ class VersionBuilder::Rep {
     }
 
     auto& del_files = level_state.deleted_files;
-    assert(del_files.find(flush_num) == del_files.end());
-    del_files.emplace(flush_num);
+    assert(del_files.find(file_name) == del_files.end());
+    del_files.emplace(file_name);
 
     table_file_levels_[file_name] =
         VersionStorageInfo::FileLocation::Invalid().GetLevel();
@@ -570,7 +572,7 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot add table file #" << flush_number << " to level " << level
+      oss << "Cannot add table file #" << flush_number << "-" << compaction_number << " to level " << level
           << " since it is already in the LSM tree on level " << current_level;
       return Status::Corruption("VersionBuilder", oss.str());
     }
@@ -585,7 +587,7 @@ class VersionBuilder::Rep {
     auto& level_state = levels_[level];
 
     auto& del_files = level_state.deleted_files;
-    auto del_it = del_files.find(flush_number);
+    auto del_it = del_files.find(file_name);
     if (del_it != del_files.end()) {
       del_files.erase(del_it);
     }
@@ -980,7 +982,7 @@ class VersionBuilder::Rep {
     const auto& level_state = levels_[level];
 
     const auto& del_files = level_state.deleted_files;
-    const auto del_it = del_files.find(flush_num);
+    const auto del_it = del_files.find(file_name);
 
     if (del_it != del_files.end()) {
       // f is to-be-deleted table file

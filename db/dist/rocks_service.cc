@@ -134,8 +134,7 @@ void RocksService::InstallCompaction(TStatus& _return,
       db->mutex(), db->directories_.GetDbDir());
   db->mutex()->Unlock();
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                 "Compaction installation"
-                 " completed");
+                 "Compaction installation completed: %s", s.ToString().c_str());
   _return = RpcUtils::ToTStatus(s);
 }
 RocksService::RocksService(DBImpl* _db) : db(_db) {}

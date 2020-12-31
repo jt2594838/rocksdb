@@ -158,7 +158,6 @@ uint64_t TableFileNameToFlushNumber(const std::string& name) {
 
 std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t flush_num,
                           uint64_t compaction_num, uint32_t path_id) {
-  assert(flush_num > 0);
   std::string path;
   if (path_id >= db_paths.size()) {
     path = db_paths.back().path;
@@ -171,7 +170,6 @@ std::string TableFileName(const std::vector<DbPath>& db_paths, uint64_t flush_nu
 std::string TableFileName(const std::vector<std::string>& db_paths,
                           uint64_t flush_num, uint64_t compaction_num,
                           uint32_t path_id) {
-  assert(flush_num >= 0);
   std::string path;
   if (path_id >= db_paths.size()) {
     path = db_paths.back();

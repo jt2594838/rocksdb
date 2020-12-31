@@ -14,6 +14,7 @@ int main() { fprintf(stderr, "Please install gflags to run tools\n"); }
 #include <memory>
 #include <sstream>
 #include <unordered_map>
+#include "unistd.h"
 
 #include "rocksdb/env.h"
 

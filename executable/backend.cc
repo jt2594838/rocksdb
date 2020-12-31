@@ -70,11 +70,13 @@ int main(int argc, char** argv) {
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.IncreaseParallelism(12);
   options.OptimizeLevelStyleCompaction(64 * 1024 * 1024);
+  options.level0_file_num_compaction_trigger = 5;
   if (argc > 1) {
     LoadConfig(argv[1], options);
   } else {
     DefaultConfig(options);
   }
+  options.max_subcompactions = options.nodes.size();
 
   std::cout << "Local node: " << options.this_node->ToString() << std::endl;
   std::cout << "All nodes:" << std::endl;

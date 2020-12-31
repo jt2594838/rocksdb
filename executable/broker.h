@@ -20,6 +20,7 @@ class Broker {
   std::vector<ThriftServiceClient*> clients;
   ClusterNode* compaction_leader = nullptr;
   ThriftServiceClient* leader_client = nullptr;
+  uint32_t leader_pos = 0;
 
   void init(char* config_file_path);
 
