@@ -102,6 +102,9 @@ class CompactionJob {
   // Add compaction input/output to the current version
   Status Install(const MutableCFOptions& mutable_cf_options);
 
+  void LogCompactionEnd(ColumnFamilyData* cfd, Status& status);
+  void CleanupCompaction();
+
   // Return the IO status
   IOStatus io_status() const { return io_status_; }
 
@@ -137,7 +140,7 @@ class CompactionJob {
   Status InstallCompactionResults(const MutableCFOptions& mutable_cf_options);
   void RecordCompactionIOStats();
   Status OpenCompactionOutputFile(SubcompactionState* sub_compact);
-  void CleanupCompaction();
+
   void UpdateCompactionJobStats(
       const InternalStats::CompactionStats& stats) const;
   void RecordDroppedKeys(const CompactionIterationStats& c_iter_stats,

@@ -41,8 +41,8 @@ std::ostream& operator<<(std::ostream& os, const BlobFileMetaData& meta) {
   os << (*shared_meta);
 
   os << " linked_ssts: {";
-  for (uint64_t file_number : meta.GetLinkedSsts()) {
-    os << ' ' << file_number;
+  for (const std::string& file_name : meta.GetLinkedSsts()) {
+    os << ' ' << file_name;
   }
   os << " }";
 

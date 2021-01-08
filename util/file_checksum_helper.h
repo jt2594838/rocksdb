@@ -70,22 +70,22 @@ class FileChecksumListImpl : public FileChecksumList {
   size_t size() const override;
 
   Status GetAllFileChecksums(
-      std::vector<uint64_t>* file_numbers, std::vector<std::string>* checksums,
+      std::vector<std::string>* file_numbers, std::vector<std::string>* checksums,
       std::vector<std::string>* checksum_func_names) override;
 
-  Status SearchOneFileChecksum(uint64_t file_number, std::string* checksum,
+  Status SearchOneFileChecksum(const std::string& file_name, std::string* checksum,
                                std::string* checksum_func_name) override;
 
-  Status InsertOneFileChecksum(uint64_t file_number,
+  Status InsertOneFileChecksum(const std::string& file_name,
                                const std::string& checksum,
                                const std::string& checksum_func_name) override;
 
-  Status RemoveOneFileChecksum(uint64_t file_number) override;
+  Status RemoveOneFileChecksum(const std::string& file_number) override;
 
  private:
   // Key is the file number, the first portion of the value is checksum, the
   // second portion of the value is checksum function name.
-  std::unordered_map<uint64_t, std::pair<std::string, std::string>>
+  std::unordered_map<std::string, std::pair<std::string, std::string>>
       checksum_map_;
 };
 

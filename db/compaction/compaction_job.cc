@@ -450,9 +450,11 @@ void CompactionJob::Prepare() {
       Slice* end = i == boundaries_.size() ? nullptr : &boundaries_[i];
       compact_->sub_compact_states.emplace_back(c, start, end, sizes_[i]);
       SubcompactionState& sub_comp = compact_->sub_compact_states.back();
-      assignSubJobNode(sub_comp);
-      sub_comp.start_file_num = start_file_nums[i];
-      sub_comp.max_output_file_num = max_file_per_sub_comp;
+      if (db_options_.enable_dist_compaction) {
+        assignSubJobNode(sub_comp);
+        sub_comp.start_file_num = start_file_nums[i];
+        sub_comp.max_output_file_num = max_file_per_sub_comp;
+      }
     }
     RecordInHistogram(stats_, NUM_SUBCOMPACTIONS_SCHEDULED,
                       compact_->sub_compact_states.size());
@@ -464,14 +466,14 @@ void CompactionJob::Prepare() {
       sub_comp.start_file_num = file_start_num;
       sub_comp.max_output_file_num = max_file_num;
     } else {
-      sub_comp.start_file_num = versions_->GetFlushNumber();
+      sub_comp.start_file_num = versions_->GetCompactionNumber();
       sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
     versions_->FetchAddCompactionNumber(is_remote ? max_file_num
                                              : max_file_per_sub_comp);
   }
 
-  if (!is_remote) {
+  if (!is_remote && db_options_.enable_dist_compaction) {
     AdvanceOtherFileNumbers(versions_->GetCompactionNumber());
   }
 }
@@ -492,6 +494,9 @@ void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_compaction_num) {
 }
 
 void CompactionJob::GenFileNumbers() {
+  if (!db_options_.enable_dist_compaction) {
+    return;
+  }
   uint64_t required_file_numbers = sizes_.size() * max_file_per_sub_comp;
   uint64_t start_file_num =
       versions_->FetchAddCompactionNumber(required_file_numbers);
@@ -615,6 +620,7 @@ void CompactionJob::GenSubcompactionBoundaries() {
           *(c->mutable_cf_options()), out_lvl,
           c->immutable_cf_options()->compaction_style, base_level,
           c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
+  max_output_files = 100;
   uint64_t subcompactions = std::min(
       {static_cast<uint64_t>(ranges.size()),
        static_cast<uint64_t>(c->max_subcompactions()), max_output_files});
@@ -821,6 +827,14 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
   if (!versions_->io_status().ok()) {
     io_status_ = versions_->io_status();
   }
+
+  LogCompactionEnd(cfd, status);
+
+  CleanupCompaction();
+  return status;
+}
+
+void CompactionJob::LogCompactionEnd(ColumnFamilyData* cfd, Status& status) {
   VersionStorageInfo::LevelSummaryStorage tmp;
   auto vstorage = cfd->current()->storage_info();
   const auto& stats = compaction_stats_;
@@ -851,7 +865,7 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
       "files in(%d, %d) out(%d) "
       "MB in(%.1f, %.1f) out(%.1f), read-write-amplify(%.1f) "
       "write-amplify(%.1f) %s, records in: %" PRIu64
-      ", records dropped: %" PRIu64 " output_compression: %s\n",
+          ", records dropped: %" PRIu64 " output_compression: %s\n",
       cfd->GetName().c_str(), vstorage->LevelSummary(&tmp), bytes_read_per_sec,
       bytes_written_per_sec, compact_->compaction->output_level(),
       stats.num_input_files_in_non_output_levels,
@@ -901,9 +915,6 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
     stream << vstorage->NumLevelFiles(level);
   }
   stream.EndArray();
-
-  CleanupCompaction();
-  return status;
 }
 
 void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
@@ -1194,7 +1205,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
   }
 
   // push compaction results to other nodes
-  if (status.ok()) {
+  if (status.ok() && db_options_.enable_dist_compaction) {
     auto node_itr = db_options_.nodes.begin();
     ClusterNode* this_node = db_options_.this_node;
     TCompactionResult result;
@@ -1240,7 +1251,12 @@ void CompactionJob::PushFilesToNode(TCompactionResult& result,
   auto* client = RpcUtils::CreateClient(node);
   if (client != nullptr) {
     ClusterNode* this_node = db_options_.this_node;
-    client->PushFiles(result, this_node->getIp(), this_node->getPort());
+    try {
+      client->PushFiles(result, this_node->getIp(), this_node->getPort());
+    } catch (std::exception& e) {
+      ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                      "Cannot push files to %s : %s", node->ToString().c_str(), e.what());
+    }
     delete client;
   } else {
     ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
@@ -1336,7 +1352,7 @@ void CompactionJob::ConstructCompactionOutPut(TFileMetadata& file_meta,
 }
 
 void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
-  if (sub_compact->node == db_options_.this_node || sub_compact->node == nullptr) {
+  if (sub_compact->node == nullptr || *sub_compact->node == *db_options_.this_node) {
     ProcessLocalKVCompaction(sub_compact);
   } else {
     ProcessRemoteKVCompaction(sub_compact);
@@ -1717,45 +1733,48 @@ Status CompactionJob::InstallCompactionResults(
     }
   }
 
-  TInstallCompactionRequest request;
-  for (auto& deleted_file : compact_->compaction->edit()->GetDeletedFiles()) {
-    TDeletedCompactionInput deleted_input;
-    deleted_input.level = deleted_file.first;
-    deleted_input.flush_num = deleted_file.second.first;
-    deleted_input.compaction_num = deleted_file.second.second;
-    request.deleted_inputs.emplace_back(std::move(deleted_input));
-  }
-  for (auto& new_file : compact_->compaction->edit()->GetNewFiles()) {
-    TInstalledCompactionOutput output;
-    output.level = new_file.first;
-    output.metadata = RpcUtils::ToTFileMetaData(new_file.second);
-    request.installed_outputs.emplace_back(std::move(output));
-  }
+  if (db_options_.enable_dist_compaction) {
+    TInstallCompactionRequest request;
+    for (auto& deleted_file : compact_->compaction->edit()->GetDeletedFiles()) {
+      TDeletedCompactionInput deleted_input;
+      deleted_input.level = deleted_file.first;
+      deleted_input.flush_num = deleted_file.second.first;
+      deleted_input.compaction_num = deleted_file.second.second;
+      request.deleted_inputs.emplace_back(std::move(deleted_input));
+    }
+    for (auto& new_file : compact_->compaction->edit()->GetNewFiles()) {
+      TInstalledCompactionOutput output;
+      output.level = new_file.first;
+      output.metadata = RpcUtils::ToTFileMetaData(new_file.second);
+      request.installed_outputs.emplace_back(std::move(output));
+    }
 
-  TStatus tStatus;
-  Status status;
-  for (auto* node : db_options_.nodes) {
-    if (*node != *db_options_.this_node) {
-      auto* client = RpcUtils::CreateClient(node);
-      if (client == nullptr) {
-        ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
-                        "Node %s is unreachable", node->ToString().c_str());
-        continue;
+    TStatus tStatus;
+    Status status;
+    for (auto* node : db_options_.nodes) {
+      if (*node != *db_options_.this_node) {
+        auto* client = RpcUtils::CreateClient(node);
+        if (client == nullptr) {
+          ROCKS_LOG_ERROR(compact_->compaction->immutable_cf_options()->info_log,
+                          "Node %s is unreachable", node->ToString().c_str());
+          continue;
+        }
+        ROCKS_LOG_INFO(db_options_.info_log,
+                       "Installing compaction result of "
+                       "%ld inputs and %ld outputs to %s",
+                       request.deleted_inputs.size(),
+                       request.installed_outputs.size(),
+                       node->ToString().c_str());
+        client->InstallCompaction(tStatus, request);
+        status = RpcUtils::ToStatus(tStatus);
+        ROCKS_LOG_INFO(db_options_.info_log,
+                       "Installed compaction result to %s, "
+                       "result: %s",
+                       node->ToString().c_str(), status.ToString().c_str());
       }
-      ROCKS_LOG_INFO(db_options_.info_log,
-                     "Installing compaction result of "
-                     "%ld inputs and %ld outputs to %s",
-                     request.deleted_inputs.size(),
-                     request.installed_outputs.size(),
-                     node->ToString().c_str());
-      client->InstallCompaction(tStatus, request);
-      status = RpcUtils::ToStatus(tStatus);
-      ROCKS_LOG_INFO(db_options_.info_log,
-                     "Installed compaction result to %s, "
-                     "result: %s",
-                     node->ToString().c_str(), status.ToString().c_str());
     }
   }
+
 
   return versions_->LogAndApply(compaction->column_family_data(),
                                 mutable_cf_options, compaction->edit(),
@@ -1913,7 +1932,7 @@ void CompactionJob::CleanupCompaction() {
       // If this file was inserted into the table cache then remove
       // them here because this compaction was not committed.
       if (!sub_status.ok()) {
-        TableCache::Evict(table_cache_.get(), out.meta.fd.GetFlushNumber());
+        TableCache::Evict(table_cache_.get(), out.meta.fd.GetFileName());
       }
     }
   }
@@ -2051,6 +2070,7 @@ void CompactionJob::LogCompaction() {
       stream.StartArray();
       for (auto f : *compaction->inputs(i)) {
         stream << f->fd.GetFlushNumber();
+        stream << f->fd.GetMergeNumber();
       }
       stream.EndArray();
     }

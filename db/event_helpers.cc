@@ -79,7 +79,7 @@ void EventHelpers::LogAndNotifyTableFileCreationFinished(
     AppendCurrentTime(&jwriter);
     jwriter << "cf_name" << cf_name << "job" << job_id << "event"
             << "table_file_creation"
-            << "file_number" << fd.GetFlushNumber() << "file_size"
+            << "file_number" << fd.GetFlushNumber() << "-" << fd.GetMergeNumber() << "file_size"
             << fd.GetFileSize() << "file_checksum" << file_checksum
             << "file_checksum_func_name" << file_checksum_func_name;
 

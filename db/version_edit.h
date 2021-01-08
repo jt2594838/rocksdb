@@ -18,6 +18,7 @@
 #include "db/blob/blob_file_garbage.h"
 #include "db/dbformat.h"
 #include "db/wal_edit.h"
+#include "file/filename.h"
 #include "memory/arena.h"
 #include "rocksdb/cache.h"
 #include "table/table_reader.h"
@@ -107,24 +108,26 @@ struct FileDescriptor {
   uint64_t file_size;             // File size in bytes
   SequenceNumber smallest_seqno;  // The smallest seqno in this file
   SequenceNumber largest_seqno;   // The largest seqno in this file
+  std::string file_name;
 
   FileDescriptor() : FileDescriptor(0, 0, 0, 0) {}
 
-  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number, uint32_t _path_id,
-                 uint64_t _file_size)
+  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number,
+                 uint32_t _path_id, uint64_t _file_size)
       : FileDescriptor(_flush_number, _merge_number, _path_id, _file_size,
                        kMaxSequenceNumber, 0) {}
 
-  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number, uint32_t _path_id,
-                 uint64_t _file_size, SequenceNumber _smallest_seqno,
-                 SequenceNumber _largest_seqno)
+  FileDescriptor(uint64_t _flush_number, uint64_t _merge_number,
+                 uint32_t _path_id, uint64_t _file_size,
+                 SequenceNumber _smallest_seqno, SequenceNumber _largest_seqno)
       : table_reader(nullptr),
         flush_number(_flush_number),
         merge_number(_merge_number),
         path_id(_path_id),
         file_size(_file_size),
         smallest_seqno(_smallest_seqno),
-        largest_seqno(_largest_seqno) {}
+        largest_seqno(_largest_seqno),
+        file_name(MakeTableFileName(flush_number, merge_number)) {}
 
   FileDescriptor(const FileDescriptor& fd) { *this = fd; }
 
@@ -136,6 +139,7 @@ struct FileDescriptor {
     file_size = fd.file_size;
     smallest_seqno = fd.smallest_seqno;
     largest_seqno = fd.largest_seqno;
+    file_name = fd.file_name;
     return *this;
   }
 
@@ -143,6 +147,7 @@ struct FileDescriptor {
   uint64_t GetMergeNumber() const { return merge_number; }
   uint32_t GetPathId() const { return path_id; }
   uint64_t GetFileSize() const { return file_size; }
+  const std::string& GetFileName() const { return file_name; }
 };
 
 struct FileSampledStats {
@@ -210,14 +215,16 @@ struct FileMetaData {
 
   FileMetaData() = default;
 
-  FileMetaData(uint64_t flush_num, uint64_t compaction_num, uint32_t file_path_id, uint64_t file_size,
+  FileMetaData(uint64_t flush_num, uint64_t compaction_num,
+               uint32_t file_path_id, uint64_t file_size,
                const InternalKey& smallest_key, const InternalKey& largest_key,
                const SequenceNumber& smallest_seq,
                const SequenceNumber& largest_seq, bool marked_for_compact,
                uint64_t oldest_blob_file, uint64_t _oldest_ancester_time,
                uint64_t _file_creation_time, const std::string& _file_checksum,
                const std::string& _file_checksum_func_name)
-      : fd(flush_num, compaction_num, file_path_id, file_size, smallest_seq, largest_seq),
+      : fd(flush_num, compaction_num, file_path_id, file_size, smallest_seq,
+           largest_seq),
         smallest(smallest_key),
         largest(largest_key),
         marked_for_compaction(marked_for_compact),
@@ -377,7 +384,8 @@ class VersionEdit {
 
   // Delete the specified table file from the specified level.
   void DeleteFile(int level, uint64_t flush_num, uint64_t compaction_num) {
-    deleted_files_.emplace(level, std::pair<uint64_t, uint64_t>(flush_num, compaction_num));
+    deleted_files_.emplace(
+        level, std::pair<uint64_t, uint64_t>(flush_num, compaction_num));
   }
 
   // Retrieve the table files deleted as well as their associated levels.
@@ -389,17 +397,18 @@ class VersionEdit {
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
   // REQUIRES: "oldest_blob_file_number" is the number of the oldest blob file
   // referred to by this file if any, kInvalidBlobFileNumber otherwise.
-  void AddFile(int level, uint64_t flush_num, uint64_t compaction_num, uint32_t file_path_id,
-               uint64_t file_size, const InternalKey& smallest,
-               const InternalKey& largest, const SequenceNumber& smallest_seqno,
+  void AddFile(int level, uint64_t flush_num, uint64_t compaction_num,
+               uint32_t file_path_id, uint64_t file_size,
+               const InternalKey& smallest, const InternalKey& largest,
+               const SequenceNumber& smallest_seqno,
                const SequenceNumber& largest_seqno, bool marked_for_compaction,
                uint64_t oldest_blob_file_number, uint64_t oldest_ancester_time,
                uint64_t file_creation_time, const std::string& file_checksum,
                const std::string& file_checksum_func_name) {
     assert(smallest_seqno <= largest_seqno);
     new_files_.emplace_back(
-        level, FileMetaData(flush_num, compaction_num, file_path_id, file_size, smallest, largest,
-                            smallest_seqno, largest_seqno,
+        level, FileMetaData(flush_num, compaction_num, file_path_id, file_size,
+                            smallest, largest, smallest_seqno, largest_seqno,
                             marked_for_compaction, oldest_blob_file_number,
                             oldest_ancester_time, file_creation_time,
                             file_checksum, file_checksum_func_name));

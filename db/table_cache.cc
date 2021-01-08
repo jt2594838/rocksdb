@@ -46,10 +46,10 @@ static void UnrefEntry(void* arg1, void* arg2) {
   cache->Release(h);
 }
 
-static Slice GetSliceForFileNumber(const uint64_t* file_number) {
-  return Slice(reinterpret_cast<const char*>(file_number),
-               sizeof(*file_number));
-}
+//static Slice GetSliceForFileNumber(const uint64_t* file_number) {
+//  return Slice(reinterpret_cast<const char*>(file_number),
+//               sizeof(*file_number));
+//}
 
 #ifndef ROCKSDB_LITE
 
@@ -147,8 +147,7 @@ Status TableCache::GetTableReader(
 
 void TableCache::EraseHandle(const FileDescriptor& fd, Cache::Handle* handle) {
   ReleaseHandle(handle);
-  uint64_t number = fd.GetFlushNumber();
-  Slice key = GetSliceForFileNumber(&number);
+  Slice key = Slice(fd.GetFileName());
   cache_->Erase(key);
 }
 
@@ -163,8 +162,7 @@ Status TableCache::FindTable(const ReadOptions& ro,
                              size_t max_file_size_for_l0_meta_pin) {
   PERF_TIMER_GUARD_WITH_ENV(find_table_nanos, ioptions_.env);
   Status s;
-  uint64_t number = fd.GetFlushNumber();
-  Slice key = GetSliceForFileNumber(&number);
+  Slice key = Slice(fd.GetFileName());
   *handle = cache_->Lookup(key);
   TEST_SYNC_POINT_CALLBACK("TableCache::FindTable:0",
                            const_cast<bool*>(&no_io));
@@ -258,7 +256,7 @@ InternalIterator* TableCache::NewIterator(
     }
   }
   if (s.ok() && range_del_agg != nullptr && !options.ignore_range_deletions) {
-    if (range_del_agg->AddFile(fd.GetFlushNumber())) {
+    if (range_del_agg->AddFile(fd.GetFileName())) {
       std::unique_ptr<FragmentedRangeTombstoneIterator> range_del_iter(
           static_cast<FragmentedRangeTombstoneIterator*>(
               table_reader->NewRangeTombstoneIterator(options)));
@@ -319,6 +317,7 @@ void TableCache::CreateRowCacheKeyPrefix(const ReadOptions& options,
                                          GetContext* get_context,
                                          IterKey& row_cache_key) {
   uint64_t fd_number = fd.GetFlushNumber();
+  uint64_t compaction_number = fd.GetMergeNumber();
   // We use the user key as cache key instead of the internal key,
   // otherwise the whole cache would be invalidated every time the
   // sequence key increases. However, to support caching snapshot
@@ -345,6 +344,7 @@ void TableCache::CreateRowCacheKeyPrefix(const ReadOptions& options,
   row_cache_key.TrimAppend(row_cache_key.Size(), row_cache_id_.data(),
                            row_cache_id_.size());
   AppendVarint64(&row_cache_key, fd_number);
+  AppendVarint64(&row_cache_key, compaction_number);
   AppendVarint64(&row_cache_key, seq_no);
 }
 
@@ -639,8 +639,8 @@ size_t TableCache::GetMemoryUsageByTableReader(
   return ret;
 }
 
-void TableCache::Evict(Cache* cache, uint64_t file_number) {
-  cache->Erase(GetSliceForFileNumber(&file_number));
+void TableCache::Evict(Cache* cache, const std::string& file_name) {
+  cache->Erase(file_name);
 }
 
 uint64_t TableCache::ApproximateOffsetOf(

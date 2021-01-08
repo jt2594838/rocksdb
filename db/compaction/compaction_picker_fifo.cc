@@ -13,6 +13,7 @@
 #include <cinttypes>
 #include <string>
 #include <vector>
+
 #include "db/column_family.h"
 #include "logging/log_buffer.h"
 #include "util/string_util.h"
@@ -103,9 +104,10 @@ Compaction* FIFOCompactionPicker::PickTTLCompaction(
       creation_time = f->fd.table_reader->GetTableProperties()->creation_time;
     }
     ROCKS_LOG_BUFFER(log_buffer,
-                     "[%s] FIFO compaction: picking file %" PRIu64
+                     "[%s] FIFO compaction: picking file %" PRIu64 "-%" PRIu64
                      " with creation time %" PRIu64 " for deletion",
-                     cf_name.c_str(), f->fd.GetFlushNumber(), creation_time);
+                     cf_name.c_str(), f->fd.GetFlushNumber(),
+                     f->fd.GetMergeNumber(), creation_time);
   }
 
   Compaction* c = new Compaction(
@@ -191,9 +193,10 @@ Compaction* FIFOCompactionPicker::PickSizeCompaction(
     char tmp_fsize[16];
     AppendHumanBytes(f->fd.GetFileSize(), tmp_fsize, sizeof(tmp_fsize));
     ROCKS_LOG_BUFFER(log_buffer,
-                     "[%s] FIFO compaction: picking file %" PRIu64
+                     "[%s] FIFO compaction: picking file %" PRIu64 "-%" PRIu64
                      " with size %s for deletion",
-                     cf_name.c_str(), f->fd.GetFlushNumber(), tmp_fsize);
+                     cf_name.c_str(), f->fd.GetFlushNumber(),
+                     f->fd.GetMergeNumber(), tmp_fsize);
     if (total_size <=
         mutable_cf_options.compaction_options_fifo.max_table_files_size) {
       break;

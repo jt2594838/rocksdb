@@ -1006,7 +1006,7 @@ class DBImpl : public DB {
 
   VersionSet* TEST_GetVersionSet() const { return versions_.get(); }
 
-  const std::unordered_set<uint64_t>& TEST_GetFilesGrabbedForPurge() const {
+  const std::unordered_set<std::string>& TEST_GetFilesGrabbedForPurge() const {
     return files_grabbed_for_purge_;
   }
 
@@ -1642,7 +1642,7 @@ class DBImpl : public DB {
   void SchedulePendingFlush(const FlushRequest& req, FlushReason flush_reason);
 
   void SchedulePendingCompaction(ColumnFamilyData* cfd);
-  void SchedulePendingPurge(std::string fname, std::string dir_to_sync,
+  void SchedulePendingPurge(std::string& fname, std::string dir_to_sync,
                             FileType type, uint64_t number, int job_id);
   static void BGWorkCompaction(void* arg);
   // Runs a pre-chosen universal compaction involving bottom level in a
@@ -1753,8 +1753,8 @@ class DBImpl : public DB {
       uint64_t* next_file_number);
 #endif  //! ROCKSDB_LITE
 
-  bool ShouldPurge(uint64_t file_number) const;
-  void MarkAsGrabbedForPurge(uint64_t file_number);
+  bool ShouldPurge(const std::string& file_name) const;
+  void MarkAsGrabbedForPurge(const std::string& file_name);
 
   size_t GetWalPreallocateBlockSize(uint64_t write_buffer_size) const;
   Env::WriteLifeTimeHint CalculateWALWriteHint() { return Env::WLTH_SHORT; }
@@ -2011,12 +2011,12 @@ class DBImpl : public DB {
   // ColumnFamilyData::pending_compaction_ == true)
   std::deque<ColumnFamilyData*> compaction_queue_;
 
-  // A map to store file numbers and filenames of the files to be purged
-  std::unordered_map<uint64_t, PurgeFileInfo> purge_files_;
+  // A map to store filenames of the files to be purged
+  std::unordered_map<std::string, PurgeFileInfo> purge_files_;
 
-  // A vector to store the file numbers that have been assigned to certain
+  // A vector to store the file names that have been assigned to certain
   // JobContext. Current implementation tracks table and blob files only.
-  std::unordered_set<uint64_t> files_grabbed_for_purge_;
+  std::unordered_set<std::string> files_grabbed_for_purge_;
 
   // A queue to store log writers to close
   std::deque<log::Writer*> logs_to_free_queue_;

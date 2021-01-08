@@ -146,11 +146,11 @@ void DBImpl::FindObsoleteFiles(JobContext* job_context, bool force,
   // calling FindObsoleteFiles with full_scan=true will not add these files to
   // candidate list for purge.
   for (const auto& sst_to_del : job_context->sst_delete_files) {
-    MarkAsGrabbedForPurge(sst_to_del.metadata->fd.GetFlushNumber());
+    MarkAsGrabbedForPurge(sst_to_del.metadata->fd.GetFileName());
   }
 
   for (const auto& blob_file : job_context->blob_delete_files) {
-    MarkAsGrabbedForPurge(blob_file.GetBlobFileNumber());
+    MarkAsGrabbedForPurge(BlobFileName(blob_file.GetBlobFileNumber()));
   }
 
   // store the current filenum, lognum, etc
@@ -202,7 +202,7 @@ void DBImpl::FindObsoleteFiles(JobContext* job_context, bool force,
         // file under race conditions. See
         // https://github.com/facebook/rocksdb/issues/3573
         if (!ParseFileName(file, &number, info_log_prefix.prefix, &type) ||
-            !ShouldPurge(number)) {
+            !ShouldPurge(file)) {
           continue;
         }
 
@@ -379,7 +379,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   // We may ignore the dbname when generating the file names.
   for (auto& file : state.sst_delete_files) {
     candidate_files.emplace_back(
-        MakeTableFileName(file.metadata->fd.GetFlushNumber(), file.metadata->fd.GetMergeNumber()), file.path);
+        file.metadata->fd.GetFileName(), file.path);
     if (file.metadata->table_reader_handle) {
       table_cache_->Release(file.metadata->table_reader_handle);
     }
@@ -452,7 +452,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   }
 
   bool own_files = OwnTablesAndLogs();
-  std::unordered_set<uint64_t> files_to_del;
+  std::unordered_set<std::string> files_to_del;
   for (const auto& candidate_file : candidate_files) {
     const std::string& to_delete = candidate_file.file_name;
     uint64_t number1;
@@ -482,14 +482,14 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
         keep = (sst_live_set.find(to_delete) != sst_live_set.end()) ||
                number1 >= state.min_pending_output;
         if (!keep) {
-          files_to_del.insert(number1);
+          files_to_del.insert(to_delete);
         }
         break;
       case kBlobFile:
         keep = number1 >= state.min_pending_output ||
                (blob_live_set.find(number1) != blob_live_set.end());
         if (!keep) {
-          files_to_del.insert(number1);
+          files_to_del.insert(to_delete);
         }
         break;
       case kTempFile:
@@ -537,7 +537,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
     std::string dir_to_sync;
     if (type == kTableFile) {
       // evict from cache
-      TableCache::Evict(table_cache_.get(), number1);
+      TableCache::Evict(table_cache_.get(), MakeTableFileName(number1, number2));
       fname = MakeTableFileName(candidate_file.file_path, number1, number2);
       dir_to_sync = candidate_file.file_path;
     } else if (type == kBlobFile) {
@@ -579,13 +579,13 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   {
     // After purging obsolete files, remove them from files_grabbed_for_purge_.
     InstrumentedMutexLock guard_lock(&mutex_);
-    autovector<uint64_t> to_be_removed;
-    for (auto fn : files_grabbed_for_purge_) {
+    autovector<std::string> to_be_removed;
+    for (auto& fn : files_grabbed_for_purge_) {
       if (files_to_del.count(fn) != 0) {
         to_be_removed.emplace_back(fn);
       }
     }
-    for (auto fn : to_be_removed) {
+    for (auto& fn : to_be_removed) {
       files_grabbed_for_purge_.erase(fn);
     }
   }

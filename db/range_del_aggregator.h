@@ -295,8 +295,8 @@ class RangeDelAggregator {
 
   virtual bool IsEmpty() const = 0;
 
-  bool AddFile(uint64_t file_number) {
-    return files_seen_.insert(file_number).second;
+  bool AddFile(const std::string& file_name) {
+    return files_seen_.insert(file_name).second;
   }
 
  protected:
@@ -348,7 +348,7 @@ class RangeDelAggregator {
   const InternalKeyComparator* icmp_;
 
  private:
-  std::set<uint64_t> files_seen_;
+  std::set<std::string> files_seen_;
 };
 
 class ReadRangeDelAggregator final : public RangeDelAggregator {

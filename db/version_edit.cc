@@ -709,6 +709,8 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append(" ");
     AppendNumberTo(&r, f.fd.GetFlushNumber());
     r.append(" ");
+    AppendNumberTo(&r, f.fd.GetMergeNumber());
+    r.append(" ");
     AppendNumberTo(&r, f.fd.GetFileSize());
     r.append(" ");
     r.append(f.smallest.DebugString(hex_key));
@@ -818,7 +820,8 @@ std::string VersionEdit::DebugJSON(int edit_num, bool hex_key) const {
       jw.StartArrayedObject();
       jw << "Level" << new_files_[i].first;
       const FileMetaData& f = new_files_[i].second;
-      jw << "FileNumber" << f.fd.GetFlushNumber();
+      jw << "FlushNumber" << f.fd.GetFlushNumber();
+      jw << "CompactionNumber" << f.fd.GetMergeNumber();
       jw << "FileSize" << f.fd.GetFileSize();
       jw << "SmallestIKey" << f.smallest.DebugString(hex_key);
       jw << "LargestIKey" << f.largest.DebugString(hex_key);

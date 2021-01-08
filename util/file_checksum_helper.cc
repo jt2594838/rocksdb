@@ -22,7 +22,7 @@ void FileChecksumListImpl::reset() { checksum_map_.clear(); }
 size_t FileChecksumListImpl::size() const { return checksum_map_.size(); }
 
 Status FileChecksumListImpl::GetAllFileChecksums(
-    std::vector<uint64_t>* file_numbers, std::vector<std::string>* checksums,
+    std::vector<std::string>* file_numbers, std::vector<std::string>* checksums,
     std::vector<std::string>* checksum_func_names) {
   if (file_numbers == nullptr || checksums == nullptr ||
       checksum_func_names == nullptr) {
@@ -38,13 +38,13 @@ Status FileChecksumListImpl::GetAllFileChecksums(
 }
 
 Status FileChecksumListImpl::SearchOneFileChecksum(
-    uint64_t file_number, std::string* checksum,
+    const std::string& file_name, std::string* checksum,
     std::string* checksum_func_name) {
   if (checksum == nullptr || checksum_func_name == nullptr) {
     return Status::InvalidArgument("Pointer has not been initiated");
   }
 
-  auto it = checksum_map_.find(file_number);
+  auto it = checksum_map_.find(file_name);
   if (it == checksum_map_.end()) {
     return Status::NotFound();
   } else {
@@ -55,12 +55,12 @@ Status FileChecksumListImpl::SearchOneFileChecksum(
 }
 
 Status FileChecksumListImpl::InsertOneFileChecksum(
-    uint64_t file_number, const std::string& checksum,
+    const std::string& file_name, const std::string& checksum,
     const std::string& checksum_func_name) {
-  auto it = checksum_map_.find(file_number);
+  auto it = checksum_map_.find(file_name);
   if (it == checksum_map_.end()) {
     checksum_map_.insert(std::make_pair(
-        file_number, std::make_pair(checksum, checksum_func_name)));
+        file_name, std::make_pair(checksum, checksum_func_name)));
   } else {
     it->second.first = checksum;
     it->second.second = checksum_func_name;
@@ -68,8 +68,8 @@ Status FileChecksumListImpl::InsertOneFileChecksum(
   return Status::OK();
 }
 
-Status FileChecksumListImpl::RemoveOneFileChecksum(uint64_t file_number) {
-  auto it = checksum_map_.find(file_number);
+Status FileChecksumListImpl::RemoveOneFileChecksum(const std::string& file_name) {
+  auto it = checksum_map_.find(file_name);
   if (it == checksum_map_.end()) {
     return Status::NotFound();
   } else {
@@ -135,13 +135,13 @@ Status GetFileChecksumsFromManifest(Env* src_env, const std::string& abs_path,
 
     // Remove the deleted files from the checksum_list
     for (const auto& deleted_file : edit.GetDeletedFiles()) {
-      checksum_list->RemoveOneFileChecksum(deleted_file.second.first << 32 | deleted_file.second.second);
+      checksum_list->RemoveOneFileChecksum(MakeTableFileName(deleted_file.second.first, deleted_file.second.second));
     }
 
     // Add the new files to the checksum_list
     for (const auto& new_file : edit.GetNewFiles()) {
       checksum_list->InsertOneFileChecksum(
-          new_file.second.fd.GetFlushNumber() << 32 | new_file.second.fd.GetMergeNumber(), new_file.second.file_checksum,
+          new_file.second.fd.GetFileName(), new_file.second.file_checksum,
           new_file.second.file_checksum_func_name);
     }
   }

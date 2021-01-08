@@ -443,8 +443,8 @@ class Repairer {
           0 /* file_creation_time */, "DB Repairer" /* db_id */,
           db_session_id_);
       ROCKS_LOG_INFO(db_options_.info_log,
-                     "Log #%" PRIu64 ": %d ops saved to Table #%" PRIu64 " %s",
-                     log, counter, meta.fd.GetFlushNumber(),
+                     "Log #%" PRIu64 ": %d ops saved to Table #%" PRIu64 "-%" PRIu64 " %s",
+                     log, counter, meta.fd.GetFlushNumber(), meta.fd.GetMergeNumber(),
                      status.ToString().c_str());
       if (status.ok()) {
         if (meta.fd.GetFileSize() > 0) {
@@ -467,7 +467,7 @@ class Repairer {
         std::string fname = TableFileName(
             db_options_.db_paths, t.meta.fd.GetFlushNumber(), t.meta.fd.GetMergeNumber(), t.meta.fd.GetPathId());
         char file_num_buf[kFormatFileNumberBufSize];
-        FormatFileNumber(t.meta.fd.GetFlushNumber(), t.meta.fd.GetPathId(),
+        FormatFileNumber(t.meta.fd.GetFlushNumber(), t.meta.fd.GetMergeNumber(), t.meta.fd.GetPathId(),
                          file_num_buf, sizeof(file_num_buf));
         ROCKS_LOG_WARN(db_options_.info_log, "Table #%s: ignoring %s",
                        file_num_buf, status.ToString().c_str());
@@ -497,10 +497,10 @@ class Repairer {
           TablePropertiesCollectorFactory::Context::kUnknownColumnFamily) {
         ROCKS_LOG_WARN(
             db_options_.info_log,
-            "Table #%" PRIu64
+            "Table #%" PRIu64 "-%" PRIu64
             ": column family unknown (probably due to legacy format); "
             "adding to default column family id 0.",
-            t->meta.fd.GetFlushNumber());
+            t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber());
         t->column_family_id = 0;
       }
 
@@ -517,10 +517,10 @@ class Repairer {
       if (cfd->GetName() != props->column_family_name) {
         ROCKS_LOG_ERROR(
             db_options_.info_log,
-            "Table #%" PRIu64
+            "Table #%" PRIu64 "-%" PRIu64
             ": inconsistent column family name '%s'; expected '%s' for column "
             "family id %" PRIu32 ".",
-            t->meta.fd.GetFlushNumber(), props->column_family_name.c_str(),
+            t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber(), props->column_family_name.c_str(),
             cfd->GetName().c_str(), t->column_family_id);
         status = Status::Corruption(dbname_, "inconsistent column family name");
       }
@@ -543,8 +543,8 @@ class Repairer {
         Slice key = iter->key();
         if (!ParseInternalKey(key, &parsed)) {
           ROCKS_LOG_ERROR(db_options_.info_log,
-                          "Table #%" PRIu64 ": unparsable key %s",
-              t->meta.fd.GetFlushNumber(), EscapeString(key).c_str());
+                          "Table #%" PRIu64 "-%" PRIu64 ": unparsable key %s",
+              t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber(), EscapeString(key).c_str());
           continue;
         }
 
@@ -558,8 +558,8 @@ class Repairer {
       }
       delete iter;
 
-      ROCKS_LOG_INFO(db_options_.info_log, "Table #%" PRIu64 ": %d entries %s",
-                     t->meta.fd.GetFlushNumber(), counter,
+      ROCKS_LOG_INFO(db_options_.info_log, "Table #%" PRIu64 "-%" PRIu64 ": %d entries %s",
+                     t->meta.fd.GetFlushNumber(), t->meta.fd.GetMergeNumber(), counter,
                      status.ToString().c_str());
     }
     return status;

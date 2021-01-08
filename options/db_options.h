@@ -94,6 +94,7 @@ struct ImmutableDBOptions {
 
   ClusterNode* this_node;
   std::vector<ClusterNode*> nodes;
+  bool enable_dist_compaction = true;
 };
 
 struct MutableDBOptions {

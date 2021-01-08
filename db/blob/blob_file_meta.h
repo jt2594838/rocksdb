@@ -91,7 +91,7 @@ std::ostream& operator<<(std::ostream& os,
 
 class BlobFileMetaData {
  public:
-  using LinkedSsts = std::unordered_set<uint64_t>;
+  using LinkedSsts = std::unordered_set<std::string>;
 
   static std::shared_ptr<BlobFileMetaData> Create(
       std::shared_ptr<SharedBlobFileMetaData> shared_meta,

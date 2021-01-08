@@ -29,8 +29,10 @@ class Broker {
   ~Broker();
   void Put(std::string& key, std::string& value);
   void Get(std::string& key, std::string& value);
+  void Get(std::string& key, std::string& value, uint32_t client_idx);
   void Flush();
   void Compact();
+  uint32_t ClientNum();
 };
 
 #endif  // ROCKSDB_BROKER_H

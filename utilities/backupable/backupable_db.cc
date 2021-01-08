@@ -1490,7 +1490,7 @@ Status BackupEngineImpl::RestoreDBFromBackup(const RestoreOptions& options,
     bool has_manifest_checksum = false;
     if (type == kTableFile) {
       Status file_checksum_status = checksum_list->SearchOneFileChecksum(
-          number, &src_checksum_str, &src_checksum_func_name);
+          file, &src_checksum_str, &src_checksum_func_name);
       if (file_checksum_status.ok() &&
           src_checksum_str != kUnknownFileChecksum &&
           src_checksum_func_name != kUnknownFileChecksumFuncName) {
@@ -1631,7 +1631,7 @@ Status BackupEngineImpl::VerifyBackup(BackupID backup_id,
 
         // Try to get checksum for the table file
         Status file_checksum_status = checksum_list->SearchOneFileChecksum(
-            number, &src_checksum_str, &src_checksum_func_name);
+            file, &src_checksum_str, &src_checksum_func_name);
         if (file_checksum_status.ok() &&
             src_checksum_str != kUnknownFileChecksum &&
             src_checksum_func_name != kUnknownFileChecksumFuncName) {

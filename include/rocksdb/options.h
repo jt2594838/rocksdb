@@ -1165,6 +1165,7 @@ struct DBOptions {
 
   ClusterNode* this_node;
   std::vector<ClusterNode*> nodes;
+  bool enable_dist_compaction = true;
 };
 
 // Options to control the behavior of a database (passed to DB::Open)

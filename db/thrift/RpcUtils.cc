@@ -4,9 +4,9 @@
 #include <db/version_edit.h>
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransport.h>
-#include <thrift/transport/TBufferTransports.h>
 
 #include <iostream>
 
@@ -17,10 +17,11 @@ ThriftServiceClient* RpcUtils::CreateClient(ClusterNode* node) {
   std::shared_ptr<apache::thrift::transport::TTransport> transport;
   transport.reset(
       new apache::thrift::transport::TSocket(node->getIp(), node->getPort()));
-  std::shared_ptr<apache::thrift::transport::TTransport> buffered_transport
-      (new apache::thrift::transport::TBufferedTransport(transport));
+  std::shared_ptr<apache::thrift::transport::TTransport> buffered_transport(
+      new apache::thrift::transport::TBufferedTransport(transport));
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> protocol;
-  protocol.reset(new ::apache::thrift::protocol::TBinaryProtocol(buffered_transport));
+  protocol.reset(
+      new ::apache::thrift::protocol::TBinaryProtocol(buffered_transport));
   auto* client = new ThriftServiceClient(protocol);
   try {
     transport->open();
@@ -37,8 +38,7 @@ uint64_t RpcUtils::DownloadFile(std::string& file_name, ClusterNode* node,
   const uint64_t block_length = 4 * 1024 * 1024;
   auto* client = CreateClient(node);
   if (client == nullptr) {
-    ROCKS_LOG_ERROR(logger,
-                    "Node %s is unreachable", node->ToString().c_str());
+    ROCKS_LOG_ERROR(logger, "Node %s is unreachable", node->ToString().c_str());
     return -1;
   }
 
@@ -75,12 +75,10 @@ FileMetaData RpcUtils::ToFileMetaData(const TFileMetadata& tmetadata) {
 }
 
 FileDescriptor RpcUtils::ToFilDescriptor(const TFileDescriptor& tdesceiptor) {
-  FileDescriptor descriptor;
-  descriptor.flush_number = tdesceiptor.flush_number;
-  descriptor.merge_number = tdesceiptor.merge_number;
-  descriptor.file_size = tdesceiptor.file_size;
-  descriptor.smallest_seqno = tdesceiptor.smallest_seqno;
-  descriptor.largest_seqno = tdesceiptor.largest_seqno;
+  FileDescriptor descriptor(tdesceiptor.flush_number, tdesceiptor.merge_number,
+                            tdesceiptor.path_id, tdesceiptor.file_size,
+                            tdesceiptor.smallest_seqno,
+                            tdesceiptor.largest_seqno);
   return descriptor;
 }
 
@@ -116,7 +114,8 @@ Status RpcUtils::ToStatus(TStatus& status) {
   s.subcode_ = static_cast<Status::SubCode>(status.sub_code);
   s.sev_ = static_cast<Status::Severity>(status.severity);
   int state_size = status.state.size();
-  s.state_ = strncpy(new char[state_size + 1], status.state.c_str(), state_size);
+  s.state_ =
+      strncpy(new char[state_size + 1], status.state.c_str(), state_size);
   return s;
 }
 

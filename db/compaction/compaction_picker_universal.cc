@@ -15,6 +15,7 @@
 #include <queue>
 #include <string>
 #include <utility>
+
 #include "db/column_family.h"
 #include "file/filename.h"
 #include "logging/log_buffer.h"
@@ -291,13 +292,15 @@ void UniversalCompactionBuilder::SortedRun::Dump(char* out_buf,
   if (level == 0) {
     assert(file != nullptr);
     if (file->fd.GetPathId() == 0 || !print_path) {
-      snprintf(out_buf, out_buf_size, "file %" PRIu64,
-               file->fd.GetFlushNumber());
+      snprintf(out_buf, out_buf_size, "file %" PRIu64 "-%" PRIu64,
+               file->fd.GetFlushNumber(), file->fd.GetMergeNumber());
     } else {
-      snprintf(out_buf, out_buf_size, "file %" PRIu64
-                                      "(path "
-                                      "%" PRIu32 ")",
-               file->fd.GetFlushNumber(), file->fd.GetPathId());
+      snprintf(out_buf, out_buf_size,
+               "file %" PRIu64 "-%" PRIu64
+               "(path "
+               "%" PRIu32 ")",
+               file->fd.GetFlushNumber(), file->fd.GetMergeNumber(),
+               file->fd.GetPathId());
     }
   } else {
     snprintf(out_buf, out_buf_size, "level %d", level);
@@ -309,10 +312,11 @@ void UniversalCompactionBuilder::SortedRun::DumpSizeInfo(
   if (level == 0) {
     assert(file != nullptr);
     snprintf(out_buf, out_buf_size,
-             "file %" PRIu64 "[%" ROCKSDB_PRIszt
+             "file %" PRIu64 "-%" PRIu64 "[%" ROCKSDB_PRIszt
              "] "
              "with size %" PRIu64 " (compensated size %" PRIu64 ")",
-             file->fd.GetFlushNumber(), sorted_run_count, file->fd.GetFileSize(),
+             file->fd.GetFlushNumber(), file->fd.GetMergeNumber(),
+             sorted_run_count, file->fd.GetFileSize(),
              file->compensated_file_size);
   } else {
     snprintf(out_buf, out_buf_size,

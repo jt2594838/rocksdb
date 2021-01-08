@@ -322,7 +322,7 @@ Status CheckpointImpl::CreateCustomCheckpoint(
       break;
     }
     std::string& src_fname = ltf.first;
-    uint64_t number = ltf.second;
+    // uint64_t number = ltf.second;
 
     // rules:
     // * for kTableFile, attempt hard link instead of copy.
@@ -344,7 +344,7 @@ Status CheckpointImpl::CreateCustomCheckpoint(
       if (get_live_table_checksum) {
         // find checksum info for table files
         Status search = checksum_list->SearchOneFileChecksum(
-            number, &checksum_value, &checksum_name);
+            src_fname, &checksum_value, &checksum_name);
 
         // could be a legacy file lacking checksum info. overall OK if
         // not found

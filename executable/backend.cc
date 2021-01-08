@@ -56,7 +56,7 @@ void LoadConfig(char* config_path, Options& options) {
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
   std::cout << "The node " << (is_compaction_leader ? "is" : "is not") << " a compaction leader" << std::endl;
-  options.disable_auto_compactions = !is_compaction_leader;
+  options.disable_auto_compactions = !is_compaction_leader && options.enable_dist_compaction;
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
   options.IncreaseParallelism(12);
   options.OptimizeLevelStyleCompaction(64 * 1024 * 1024);
   options.level0_file_num_compaction_trigger = 5;
+  options.enable_dist_compaction = false;
   if (argc > 1) {
     LoadConfig(argv[1], options);
   } else {

@@ -324,8 +324,8 @@ bool Compaction::IsTrivialMove() const {
   }
 
   if (!(start_level_ != output_level_ && num_input_levels() == 1 &&
-          input(0, 0)->fd.GetPathId() == output_path_id() &&
-          InputCompressionMatchesOutput())) {
+        input(0, 0)->fd.GetPathId() == output_path_id() &&
+        InputCompressionMatchesOutput())) {
     return false;
   }
 
@@ -360,8 +360,8 @@ bool Compaction::IsTrivialMove() const {
 void Compaction::AddInputDeletions(VersionEdit* out_edit) {
   for (size_t which = 0; which < num_input_levels(); which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
-      out_edit->DeleteFile(level(which),
-                           inputs_[which][i]->fd.GetFlushNumber(), inputs_[which][i]->fd.GetMergeNumber());
+      out_edit->DeleteFile(level(which), inputs_[which][i]->fd.GetFlushNumber(),
+                           inputs_[which][i]->fd.GetMergeNumber());
     }
   }
 }
@@ -468,8 +468,9 @@ int InputSummary(const std::vector<FileMetaData*>& files, char* output,
     int ret;
     char sztxt[16];
     AppendHumanBytes(files.at(i)->fd.GetFileSize(), sztxt, 16);
-    ret = snprintf(output + write, sz, "%" PRIu64 "(%s) ",
-                   files.at(i)->fd.GetFlushNumber(), sztxt);
+    ret = snprintf(output + write, sz, "%" PRIu64 "-%" PRIu64 "(%s) ",
+                   files.at(i)->fd.GetFlushNumber(),
+                   files.at(i)->fd.GetMergeNumber(), sztxt);
     if (ret < 0 || ret >= sz) break;
     write += ret;
   }

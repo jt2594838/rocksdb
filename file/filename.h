@@ -99,9 +99,9 @@ extern std::string TableFileName(const std::vector<std::string>& db_paths,
 
 
 // Sufficient buffer size for FormatFileNumber.
-const size_t kFormatFileNumberBufSize = 38;
+const size_t kFormatFileNumberBufSize = 46;
 
-extern void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,
+extern void FormatFileNumber(uint64_t flush_num, uint64_t compaction_num, uint32_t path_id, char* out_buf,
                              size_t out_buf_size);
 
 // Return the name of the descriptor file for the db named by

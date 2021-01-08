@@ -92,8 +92,9 @@ Status DBImpl::PromoteL0(ColumnFamilyHandle* column_family, int target_level) {
       auto f = l0_files[i];
       if (f->being_compacted) {
         ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                       "PromoteL0 FAILED. File %" PRIu64 " being compacted\n",
-                       f->fd.GetFlushNumber());
+                       "PromoteL0 FAILED. File %" PRIu64 "-%" PRIu64
+                       " being compacted\n",
+                       f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
         job_context.Clean();
         return Status::InvalidArgument("PromoteL0 called during L0 compaction");
       }
@@ -102,9 +103,10 @@ Status DBImpl::PromoteL0(ColumnFamilyHandle* column_family, int target_level) {
       auto prev_f = l0_files[i - 1];
       if (icmp->Compare(prev_f->largest, f->smallest) >= 0) {
         ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                       "PromoteL0 FAILED. Files %" PRIu64 " and %" PRIu64
-                       " have overlapping ranges\n",
-                       prev_f->fd.GetFlushNumber(), f->fd.GetFlushNumber());
+                       "PromoteL0 FAILED. Files %" PRIu64 "-%" PRIu64
+                       " and %" PRIu64 "-%" PRIu64 " have overlapping ranges\n",
+                       prev_f->fd.GetFlushNumber(), prev_f->fd.GetMergeNumber(),
+                       f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
         job_context.Clean();
         return Status::InvalidArgument("L0 has overlapping files");
       }
@@ -125,9 +127,9 @@ Status DBImpl::PromoteL0(ColumnFamilyHandle* column_family, int target_level) {
     edit.SetColumnFamily(cfd->GetID());
     for (const auto& f : l0_files) {
       edit.DeleteFile(0, f->fd.GetFlushNumber(), f->fd.GetMergeNumber());
-      edit.AddFile(target_level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(), f->fd.GetPathId(),
-                   f->fd.GetFileSize(), f->smallest, f->largest,
-                   f->fd.smallest_seqno, f->fd.largest_seqno,
+      edit.AddFile(target_level, f->fd.GetFlushNumber(), f->fd.GetMergeNumber(),
+                   f->fd.GetPathId(), f->fd.GetFileSize(), f->smallest,
+                   f->largest, f->fd.smallest_seqno, f->fd.largest_seqno,
                    f->marked_for_compaction, f->oldest_blob_file_number,
                    f->oldest_ancester_time, f->file_creation_time,
                    f->file_checksum, f->file_checksum_func_name);

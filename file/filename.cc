@@ -179,16 +179,16 @@ std::string TableFileName(const std::vector<std::string>& db_paths,
   return MakeTableFileName(path, flush_num, compaction_num);
 }
 
-void FormatFileNumber(uint64_t number, uint32_t path_id, char* out_buf,
+void FormatFileNumber(uint64_t flush_num, uint64_t compaction_num, uint32_t path_id, char* out_buf,
                       size_t out_buf_size) {
   if (path_id == 0) {
-    snprintf(out_buf, out_buf_size, "%" PRIu64, number);
+    snprintf(out_buf, out_buf_size, "%" PRIu64 "-%" PRIu64, flush_num, compaction_num);
   } else {
     snprintf(out_buf, out_buf_size,
-             "%" PRIu64
+             "%" PRIu64 "-%" PRIu64
              "(path "
              "%" PRIu32 ")",
-             number, path_id);
+             flush_num, compaction_num, path_id);
   }
 }
 

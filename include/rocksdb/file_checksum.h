@@ -95,22 +95,22 @@ class FileChecksumList {
   // File_number is the key, the first part of the value is checksum value,
   // and the second part of the value is checksum function name.
   virtual Status GetAllFileChecksums(
-      std::vector<uint64_t>* file_numbers, std::vector<std::string>* checksums,
+      std::vector<std::string>* file_numbers, std::vector<std::string>* checksums,
       std::vector<std::string>* checksum_func_names) = 0;
 
-  // Given the file_number, it searches if the file checksum information is
+  // Given the file_name, it searches if the file checksum information is
   // stored.
-  virtual Status SearchOneFileChecksum(uint64_t file_number,
+  virtual Status SearchOneFileChecksum(const std::string& file_name,
                                        std::string* checksum,
                                        std::string* checksum_func_name) = 0;
 
   // Insert the checksum information of one file to the FileChecksumList.
   virtual Status InsertOneFileChecksum(
-      uint64_t file_number, const std::string& checksum,
+      const std::string& file_name, const std::string& checksum,
       const std::string& checksum_func_name) = 0;
 
   // Remove the checksum information of one SST file.
-  virtual Status RemoveOneFileChecksum(uint64_t file_number) = 0;
+  virtual Status RemoveOneFileChecksum(const std::string& file_name) = 0;
 };
 
 // Create a new file checksum list.

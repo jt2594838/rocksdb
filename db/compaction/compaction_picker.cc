@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "db/column_family.h"
 #include "file/filename.h"
 #include "logging/log_buffer.h"
@@ -328,13 +329,12 @@ bool CompactionPicker::AreFilesInCompaction(
   return false;
 }
 
-Compaction* CompactionPicker::CompactExactly(const CompactionOptions& compact_options,
-                                             const std::vector<CompactionInputFiles>& input_files,
-                                             Slice* begin, Slice* end,
-                                             int output_level, VersionStorageInfo* vstorage,
-                                             const MutableCFOptions& mutable_cf_options,
-                                             const MutableDBOptions& mutable_db_options,
-                                             uint32_t output_path_id) {
+Compaction* CompactionPicker::CompactExactly(
+    const CompactionOptions& compact_options,
+    const std::vector<CompactionInputFiles>& input_files, Slice* begin,
+    Slice* end, int output_level, VersionStorageInfo* vstorage,
+    const MutableCFOptions& mutable_cf_options,
+    const MutableDBOptions& mutable_db_options, uint32_t output_path_id) {
   assert(input_files.size());
   // do not check overlap because several remote compactions may work on the
   // same files
@@ -347,9 +347,8 @@ Compaction* CompactionPicker::CompactExactly(const CompactionOptions& compact_op
     } else {
       base_level = 1;
     }
-    compression_type =
-        GetCompressionType(ioptions_, vstorage, mutable_cf_options,
-                           output_level, base_level);
+    compression_type = GetCompressionType(
+        ioptions_, vstorage, mutable_cf_options, output_level, base_level);
   } else {
     // TODO(ajkr): `CompactionOptions` offers configurable `CompressionType`
     // without configurable `CompressionOptions`, which is inconsistent.
@@ -388,9 +387,8 @@ Compaction* CompactionPicker::CompactFiles(
     } else {
       base_level = 1;
     }
-    compression_type =
-        GetCompressionType(ioptions_, vstorage, mutable_cf_options,
-                           output_level, base_level);
+    compression_type = GetCompressionType(
+        ioptions_, vstorage, mutable_cf_options, output_level, base_level);
   } else {
     // TODO(ajkr): `CompactionOptions` offers configurable `CompressionType`
     // without configurable `CompressionOptions`, which is inconsistent.
@@ -409,7 +407,8 @@ Compaction* CompactionPicker::CompactFiles(
 
 Status CompactionPicker::GetCompactionInputsFromFileNumbers(
     std::vector<CompactionInputFiles>* input_files,
-    std::unordered_set<std::string>* input_set, const VersionStorageInfo* vstorage,
+    std::unordered_set<std::string>* input_set,
+    const VersionStorageInfo* vstorage,
     const CompactionOptions& /*compact_options*/) const {
   if (input_set->size() == 0U) {
     return Status::InvalidArgument(
@@ -425,7 +424,8 @@ Status CompactionPicker::GetCompactionInputsFromFileNumbers(
   //                 file_number to FileMetaData in Version.
   for (int level = 0; level < vstorage->num_levels(); ++level) {
     for (auto file : vstorage->LevelFiles(level)) {
-      auto iter = input_set->find(MakeTableFileName(file->fd.GetFlushNumber(), file->fd.GetMergeNumber()));
+      auto iter = input_set->find(MakeTableFileName(file->fd.GetFlushNumber(),
+                                                    file->fd.GetMergeNumber()));
       if (iter != input_set->end()) {
         matched_input_files[level].files.push_back(file);
         input_set->erase(iter);
@@ -738,7 +738,8 @@ Compaction* CompactionPicker::CompactRange(
     std::vector<FileMetaData*> inputs_shrunk;
     size_t skip_input_index = inputs.size();
     for (size_t i = 0; i < inputs.size(); ++i) {
-      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore) {
+      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore &&
+          inputs[i]->fd.GetMergeNumber() < max_file_num_to_ignore) {
         inputs_shrunk.push_back(inputs[i]);
       } else if (!inputs_shrunk.empty()) {
         // inputs[i] was created during the current manual compaction and
@@ -756,7 +757,8 @@ Compaction* CompactionPicker::CompactRange(
     // set covering_the_whole_range to false if there is any file that need to
     // be compacted in the range of inputs[skip_input_index+1, inputs.size())
     for (size_t i = skip_input_index + 1; i < inputs.size(); ++i) {
-      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore) {
+      if (inputs[i]->fd.GetFlushNumber() < max_file_num_to_ignore &&
+          inputs[i]->fd.GetMergeNumber() < max_file_num_to_ignore) {
         covering_the_whole_range = false;
       }
     }
@@ -904,8 +906,7 @@ Status CompactionPicker::SanitizeCompactionInputFilesForAllLevels(
     // identify the first and the last compaction input files
     // in the current level.
     for (size_t f = 0; f < current_files.size(); ++f) {
-      if (input_files->find(current_files[f].name) !=
-          input_files->end()) {
+      if (input_files->find(current_files[f].name) != input_files->end()) {
         first_included = std::min(first_included, static_cast<int>(f));
         last_included = std::max(last_included, static_cast<int>(f));
         if (is_first == false) {
@@ -1052,8 +1053,7 @@ Status CompactionPicker::SanitizeCompactionInputFiles(
         if (file_name == file_meta.name) {
           if (file_meta.being_compacted) {
             return Status::Aborted("Specified compaction input file " +
-                                   file_name +
-                                   " is already being compacted.");
+                                   file_name + " is already being compacted.");
           }
           found = true;
           break;

@@ -13,6 +13,7 @@
 #include <atomic>
 #include <cinttypes>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -22,7 +23,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "db/blob/blob_file_meta.h"
 #include "db/dbformat.h"
@@ -43,7 +43,8 @@ bool NewestFirstBySeqNo(FileMetaData* a, FileMetaData* b) {
     return a->fd.smallest_seqno > b->fd.smallest_seqno;
   }
   // Break ties by file number
-  return a->fd.GetFlushNumber() > b->fd.GetFlushNumber();
+  return a->fd.GetFlushNumber() > b->fd.GetFlushNumber() ||
+         a->fd.GetMergeNumber() > b->fd.GetMergeNumber();
 }
 
 namespace {
@@ -54,7 +55,8 @@ bool BySmallestKey(FileMetaData* a, FileMetaData* b,
     return (r < 0);
   }
   // Break ties by file number
-  return (a->fd.GetFlushNumber() < b->fd.GetFlushNumber());
+  return (a->fd.GetFlushNumber() < b->fd.GetFlushNumber() ||
+          a->fd.GetMergeNumber() < b->fd.GetMergeNumber());
 }
 }  // namespace
 
@@ -64,7 +66,10 @@ class VersionBuilder::Rep {
   // kLevel0 -- NewestFirstBySeqNo
   // kLevelNon0 -- BySmallestKey
   struct FileComparator {
-    enum SortMethod { kLevel0 = 0, kLevelNon0 = 1, } sort_method;
+    enum SortMethod {
+      kLevel0 = 0,
+      kLevelNon0 = 1,
+    } sort_method;
     const InternalKeyComparator* internal_comparator;
 
     FileComparator() : internal_comparator(nullptr) {}
@@ -107,11 +112,11 @@ class VersionBuilder::Rep {
       return additional_garbage_bytes_;
     }
 
-    const std::unordered_set<uint64_t>& GetNewlyLinkedSsts() const {
+    const std::unordered_set<std::string>& GetNewlyLinkedSsts() const {
       return newly_linked_ssts_;
     }
 
-    const std::unordered_set<uint64_t>& GetNewlyUnlinkedSsts() const {
+    const std::unordered_set<std::string>& GetNewlyUnlinkedSsts() const {
       return newly_unlinked_ssts_;
     }
 
@@ -127,35 +132,35 @@ class VersionBuilder::Rep {
       additional_garbage_bytes_ += bytes;
     }
 
-    void LinkSst(uint64_t sst_file_number) {
-      assert(newly_linked_ssts_.find(sst_file_number) ==
+    void LinkSst(const std::string& sst_file_name) {
+      assert(newly_linked_ssts_.find(sst_file_name) ==
              newly_linked_ssts_.end());
 
       // Reconcile with newly unlinked SSTs on the fly. (Note: an SST can be
       // linked to and unlinked from the same blob file in the case of a trivial
       // move.)
-      auto it = newly_unlinked_ssts_.find(sst_file_number);
+      auto it = newly_unlinked_ssts_.find(sst_file_name);
 
       if (it != newly_unlinked_ssts_.end()) {
         newly_unlinked_ssts_.erase(it);
       } else {
-        newly_linked_ssts_.emplace(sst_file_number);
+        newly_linked_ssts_.emplace(sst_file_name);
       }
     }
 
-    void UnlinkSst(uint64_t sst_file_number) {
-      assert(newly_unlinked_ssts_.find(sst_file_number) ==
+    void UnlinkSst(const std::string& sst_file_name) {
+      assert(newly_unlinked_ssts_.find(sst_file_name) ==
              newly_unlinked_ssts_.end());
 
       // Reconcile with newly linked SSTs on the fly. (Note: an SST can be
       // linked to and unlinked from the same blob file in the case of a trivial
       // move.)
-      auto it = newly_linked_ssts_.find(sst_file_number);
+      auto it = newly_linked_ssts_.find(sst_file_name);
 
       if (it != newly_linked_ssts_.end()) {
         newly_linked_ssts_.erase(it);
       } else {
-        newly_unlinked_ssts_.emplace(sst_file_number);
+        newly_unlinked_ssts_.emplace(sst_file_name);
       }
     }
 
@@ -163,8 +168,8 @@ class VersionBuilder::Rep {
     std::shared_ptr<SharedBlobFileMetaData> shared_meta_;
     uint64_t additional_garbage_count_ = 0;
     uint64_t additional_garbage_bytes_ = 0;
-    std::unordered_set<uint64_t> newly_linked_ssts_;
-    std::unordered_set<uint64_t> newly_unlinked_ssts_;
+    std::unordered_set<std::string> newly_linked_ssts_;
+    std::unordered_set<std::string> newly_unlinked_ssts_;
   };
 
   const FileOptions& file_options_;
@@ -260,7 +265,7 @@ class VersionBuilder::Rep {
       std::unordered_map<uint64_t, BlobFileMetaData::LinkedSsts>;
 
   static void UpdateExpectedLinkedSsts(
-      uint64_t table_file_number, uint64_t blob_file_number,
+      const std::string& file_name, uint64_t blob_file_number,
       ExpectedLinkedSsts* expected_linked_ssts) {
     assert(expected_linked_ssts);
 
@@ -268,7 +273,7 @@ class VersionBuilder::Rep {
       return;
     }
 
-    (*expected_linked_ssts)[blob_file_number].emplace(table_file_number);
+    (*expected_linked_ssts)[blob_file_number].emplace(file_name);
   }
 
   Status CheckConsistency(VersionStorageInfo* vstorage) {
@@ -294,12 +299,12 @@ class VersionBuilder::Rep {
       }
 
       assert(level_files[0]);
-      UpdateExpectedLinkedSsts(level_files[0]->fd.GetFlushNumber(),
+      UpdateExpectedLinkedSsts(level_files[0]->fd.GetFileName(),
                                level_files[0]->oldest_blob_file_number,
                                &expected_linked_ssts);
       for (size_t i = 1; i < level_files.size(); i++) {
         assert(level_files[i]);
-        UpdateExpectedLinkedSsts(level_files[i]->fd.GetFlushNumber(),
+        UpdateExpectedLinkedSsts(level_files[i]->fd.GetFileName(),
                                  level_files[i]->oldest_blob_file_number,
                                  &expected_linked_ssts);
 
@@ -324,17 +329,21 @@ class VersionBuilder::Rep {
                   NumberToString(f1->fd.smallest_seqno) + " " +
                   NumberToString(f1->fd.largest_seqno) +
                   " vs. file with global_seqno" +
-                  NumberToString(external_file_seqno) + " with fileNumber " +
-                  NumberToString(f1->fd.GetFlushNumber()));
+                  NumberToString(external_file_seqno) + " with flushNumber " +
+                  NumberToString(f1->fd.GetFlushNumber()) +
+                  " with compactionNumber " +
+                  NumberToString(f1->fd.GetMergeNumber()));
             }
           } else if (f1->fd.smallest_seqno <= f2->fd.smallest_seqno) {
             return Status::Corruption(
                 "L0 files seqno " + NumberToString(f1->fd.smallest_seqno) +
                 " " + NumberToString(f1->fd.largest_seqno) + " " +
-                NumberToString(f1->fd.GetFlushNumber()) + " vs. " +
+                NumberToString(f1->fd.GetFlushNumber()) + " " +
+                NumberToString(f1->fd.GetMergeNumber()) + " vs. " +
                 NumberToString(f2->fd.smallest_seqno) + " " +
                 NumberToString(f2->fd.largest_seqno) + " " +
-                NumberToString(f2->fd.GetFlushNumber()));
+                NumberToString(f2->fd.GetFlushNumber()) + " " +
+                NumberToString(f2->fd.GetMergeNumber()));
           }
         } else {
 #ifndef NDEBUG
@@ -463,7 +472,7 @@ class VersionBuilder::Rep {
     return Status::OK();
   }
 
-  int GetCurrentLevelForTableFile(std::string& file_name) const {
+  int GetCurrentLevelForTableFile(const std::string& file_name) const {
     auto it = table_file_levels_.find(file_name);
     if (it != table_file_levels_.end()) {
       return it->second;
@@ -495,12 +504,12 @@ class VersionBuilder::Rep {
     return meta->oldest_blob_file_number;
   }
 
-  Status ApplyFileDeletion(int level, uint64_t flush_num, uint64_t compaction_number) {
+  Status ApplyFileDeletion(int level, uint64_t flush_num,
+                           uint64_t compaction_number) {
     assert(level != VersionStorageInfo::FileLocation::Invalid().GetLevel());
     std::string file_name = MakeTableFileName(flush_num, compaction_number);
 
     const int current_level = GetCurrentLevelForTableFile(file_name);
-    // std::cout << "the level of " << file_name << " is " << current_level << std::endl;
 
     if (level != current_level) {
       if (level >= num_levels_) {
@@ -508,8 +517,8 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot delete table file #" << flush_num << "-" << compaction_number << " from level "
-          << level << " since it is ";
+      oss << "Cannot delete table file #" << flush_num << "-"
+          << compaction_number << " from level " << level << " since it is ";
       if (current_level ==
           VersionStorageInfo::FileLocation::Invalid().GetLevel()) {
         oss << "not in the LSM tree";
@@ -535,7 +544,7 @@ class VersionBuilder::Rep {
 
     if (blob_file_number != kInvalidBlobFileNumber &&
         IsBlobFileInVersion(blob_file_number)) {
-      blob_file_meta_deltas_[blob_file_number].UnlinkSst(flush_num);
+      blob_file_meta_deltas_[blob_file_number].UnlinkSst(file_name);
     }
 
     auto& level_state = levels_[level];
@@ -561,7 +570,7 @@ class VersionBuilder::Rep {
     assert(level != VersionStorageInfo::FileLocation::Invalid().GetLevel());
     const uint64_t compaction_number = meta.fd.GetMergeNumber();
     const uint64_t flush_number = meta.fd.GetFlushNumber();
-    std::string file_name = MakeTableFileName(flush_number, compaction_number);
+    const std::string& file_name = meta.fd.GetFileName();
 
     const int current_level = GetCurrentLevelForTableFile(file_name);
 
@@ -572,7 +581,8 @@ class VersionBuilder::Rep {
       }
 
       std::ostringstream oss;
-      oss << "Cannot add table file #" << flush_number << "-" << compaction_number << " to level " << level
+      oss << "Cannot add table file #" << flush_number << "-"
+          << compaction_number << " to level " << level
           << " since it is already in the LSM tree on level " << current_level;
       return Status::Corruption("VersionBuilder", oss.str());
     }
@@ -603,7 +613,7 @@ class VersionBuilder::Rep {
 
     if (blob_file_number != kInvalidBlobFileNumber &&
         IsBlobFileInVersion(blob_file_number)) {
-      blob_file_meta_deltas_[blob_file_number].LinkSst(flush_number);
+      blob_file_meta_deltas_[blob_file_number].LinkSst(file_name);
     }
 
     table_file_levels_[file_name] = level;
@@ -646,7 +656,8 @@ class VersionBuilder::Rep {
       const uint64_t flush_number = deleted_file.second.first;
       const uint64_t compaction_number = deleted_file.second.second;
 
-      const Status s = ApplyFileDeletion(level, flush_number, compaction_number);
+      const Status s =
+          ApplyFileDeletion(level, flush_number, compaction_number);
       if (!s.ok()) {
         return s;
       }
@@ -668,20 +679,20 @@ class VersionBuilder::Rep {
 
   static BlobFileMetaData::LinkedSsts ApplyLinkedSstChanges(
       const BlobFileMetaData::LinkedSsts& base,
-      const std::unordered_set<uint64_t>& newly_linked,
-      const std::unordered_set<uint64_t>& newly_unlinked) {
+      const std::unordered_set<std::string>& newly_linked,
+      const std::unordered_set<std::string>& newly_unlinked) {
     BlobFileMetaData::LinkedSsts result(base);
 
-    for (uint64_t sst_file_number : newly_unlinked) {
-      assert(result.find(sst_file_number) != result.end());
+    for (const std::string& sst_file_name : newly_unlinked) {
+      assert(result.find(sst_file_name) != result.end());
 
-      result.erase(sst_file_number);
+      result.erase(sst_file_name);
     }
 
-    for (uint64_t sst_file_number : newly_linked) {
-      assert(result.find(sst_file_number) == result.end());
+    for (const std::string& sst_file_name : newly_linked) {
+      assert(result.find(sst_file_name) == result.end());
 
-      result.emplace(sst_file_number);
+      result.emplace(sst_file_name);
     }
 
     return result;
@@ -861,7 +872,7 @@ class VersionBuilder::Rep {
       auto added_end = added_files.end();
       while (added_iter != added_end || base_iter != base_end) {
         if (base_iter == base_end ||
-                (added_iter != added_end && cmp(*added_iter, *base_iter))) {
+            (added_iter != added_end && cmp(*added_iter, *base_iter))) {
           MaybeAddFile(vstorage, level, *added_iter++);
         } else {
           MaybeAddFile(vstorage, level, *base_iter++);
@@ -975,9 +986,7 @@ class VersionBuilder::Rep {
   }
 
   void MaybeAddFile(VersionStorageInfo* vstorage, int level, FileMetaData* f) {
-    const uint64_t flush_num = f->fd.GetFlushNumber();
-    const uint64_t compaction_num = f->fd.GetMergeNumber();
-    std::string file_name = MakeTableFileName(flush_num, compaction_num);
+    std::string file_name = f->fd.GetFileName();
 
     const auto& level_state = levels_[level];
 

@@ -122,7 +122,7 @@ class TableCache {
                   bool skip_filters = false, int level = -1);
 
   // Evict any entry for the specified file number
-  static void Evict(Cache* cache, uint64_t file_number);
+  static void Evict(Cache* cache, const std::string& file_name);
 
   // Clean table handle and erase it from the table cache
   // Used in DB close, or the file is not live anymore.

@@ -477,7 +477,8 @@ ImmutableDBOptions::ImmutableDBOptions(const DBOptions& options)
       max_bgerror_resume_count(options.max_bgerror_resume_count),
       bgerror_resume_retry_interval(options.bgerror_resume_retry_interval),
       this_node(options.this_node),
-      nodes(options.nodes){
+      nodes(options.nodes),
+      enable_dist_compaction(options.enable_dist_compaction) {
 }
 
 void ImmutableDBOptions::Dump(Logger* log) const {

@@ -19,9 +19,7 @@ void RocksService::CompactFiles(TCompactionResult& _return,
   for (uint32_t i = 0; i < request.flush_nums.size(); ++i) {
     uint64_t flush_num = request.flush_nums[i];
     uint64_t compaction_num = request.compaction_nums[i];
-    uint32_t path_id = request.path_ids[i];
-    file_names.emplace_back(
-        TableFileName(db->GetDBOptions().db_paths, flush_num, compaction_num, path_id));
+    file_names.emplace_back(MakeTableFileName(flush_num, compaction_num));
   }
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Received a compaction "
@@ -43,7 +41,7 @@ void RocksService::CompactFiles(TCompactionResult& _return,
   }
   _return.status.code = status.code();
   _return.status.sub_code = status.subcode();
-  _return.status.state = std::string(status.state_);
+  _return.status.state = std::string(status.state_ == nullptr ? "" : status.state_);
   _return.status.severity = status.severity();
   _return.total_bytes = jobInfo.stats.total_output_bytes;
   _return.num_output_records = jobInfo.stats.num_output_records;
@@ -194,9 +192,12 @@ void RocksService::Put(TStatus& _return, const std::string& key,
 }
 void RocksService::Get(GetResult& _return, const std::string& key) {
   Slice _key(key);
-  PinnableSlice _value(&_return.value);
+  PinnableSlice _value;
   Status status =
       db->Get(readOptions, db->DefaultColumnFamily(), _key, &_value);
+  if (status.ok()) {
+    _return.value = _value.ToString();
+  }
   _return.status = RpcUtils::ToTStatus(status);
 }
 
