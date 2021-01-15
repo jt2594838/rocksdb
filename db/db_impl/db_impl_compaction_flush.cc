@@ -920,14 +920,14 @@ Status DBImpl::CompactExactly(CompactionOptions& compact_options,
   }
 
   // Find and delete obsolete files
-  {
+  if (!s.ok()) {
     InstrumentedMutexLock l(&mutex_);
     // If !s.ok(), this means that Compaction failed. In that case, we want
     // to delete all obsolete files we might have created and we force
     // FindObsoleteFiles(). This is because job_context does not
     // catch all created files if compaction failed.
     FindObsoleteFiles(&job_context, !s.ok());
-  }  // release the mutex
+  }
 
   // delete unnecessary files if any, this is done outside the mutex
   if (job_context.HaveSomethingToClean() ||

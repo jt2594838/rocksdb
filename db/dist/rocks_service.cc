@@ -9,7 +9,7 @@
 #include "db/version_edit.h"
 #include "file/filename.h"
 
-int CORE_NUM = 8;
+int CORE_NUM = 20;
 
 namespace ROCKSDB_NAMESPACE {
 void RocksService::CompactFiles(TCompactionResult& _return,
@@ -21,11 +21,12 @@ void RocksService::CompactFiles(TCompactionResult& _return,
     uint64_t compaction_num = request.compaction_nums[i];
     file_names.emplace_back(MakeTableFileName(flush_num, compaction_num));
   }
-  ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                 "Received a compaction "
-                 "request of %ld files, range: [%s, %s]",
-                 file_names.size(), request.comp_start.c_str(),
-                 request.comp_end.c_str());
+  ROCKS_LOG_INFO(
+      db->immutable_db_options_.info_log,
+      "Received a compaction "
+      "request of %ld files, range: [%s, %s], assigned file nums: [%ld, %ld)",
+      file_names.size(), request.comp_start.c_str(), request.comp_end.c_str(),
+      request.start_file_num, request.max_file_num + request.start_file_num);
   Slice begin(request.comp_start);
   Slice end(request.comp_end);
   Slice* _begin = request.comp_start.empty() ? nullptr : &begin;
@@ -41,15 +42,23 @@ void RocksService::CompactFiles(TCompactionResult& _return,
   }
   _return.status.code = status.code();
   _return.status.sub_code = status.subcode();
-  _return.status.state = std::string(status.state_ == nullptr ? "" : status.state_);
+  _return.status.state =
+      std::string(status.state_ == nullptr ? "" : status.state_);
   _return.status.severity = status.severity();
   _return.total_bytes = jobInfo.stats.total_output_bytes;
   _return.num_output_records = jobInfo.stats.num_output_records;
+
+  std::string output_files_str = "[";
+  for (auto& file : _return.output_files) {
+    output_files_str.append(std::to_string(file.fd.merge_number)).append(" ");
+  }
+  output_files_str.append("]");
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Compaction request "
                  "executed with result: "
-                 "%s, and %ld files",
-                 status.ToString().c_str(), _return.output_files.size());
+                 "%s, and %ld files: %s",
+                 status.ToString().c_str(), _return.output_files.size(),
+                 output_files_str.c_str());
 }
 
 void RocksService::DownLoadFile(std::string& _return,
@@ -93,7 +102,8 @@ void RocksService::PushFiles(const TCompactionResult& result,
 
 void RocksService::SetCompactionNumber(const int64_t new_compaction_num) {
   db->mutex()->Lock();
-  if (db->versions_->GetCompactionNumber() < static_cast<uint64_t>(new_compaction_num)) {
+  if (db->versions_->GetCompactionNumber() <
+      static_cast<uint64_t>(new_compaction_num)) {
     db->versions_->SetCompactionNumber(new_compaction_num);
     ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                    "New compaction number is "
@@ -118,12 +128,33 @@ void RocksService::InstallCompaction(TStatus& _return,
     FileMetaData&& metaData = RpcUtils::ToFileMetaData(installed_file.metadata);
     edit.AddFile(level, metaData);
   }
+
+  if (request.deleted_inputs.size() == 1 &&
+      request.installed_outputs.size() == 1) {
+    int break_point = 1;
+    break_point++;
+  }
+
+  std::string input_files_str = "[";
+  for (auto& file : request.deleted_inputs) {
+    input_files_str.append(std::to_string(file.flush_num))
+        .append("-")
+        .append(std::to_string(file.compaction_num))
+        .append(" ");
+  }
+  input_files_str.append("]");
+  std::string output_files_str = "[";
+  for (auto& file : request.installed_outputs) {
+    output_files_str.append(std::to_string(file.metadata.fd.merge_number))
+        .append(" ");
+  }
+  output_files_str.append("]");
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                 "Received an "
+                 "Received a "
                  "compaction installation "
-                 "request of %ld inputs, %ld outputs",
-                 request.deleted_inputs.size(),
-                 request.installed_outputs.size());
+                 "request of %ld inputs: %s, %ld outputs: %s",
+                 request.deleted_inputs.size(), input_files_str.c_str(),
+                 request.installed_outputs.size(), output_files_str.c_str());
   edit.SetColumnFamily(db->DefaultColumnFamily()->GetID());
   db->mutex()->Lock();
   Status s = db->versions_->LogAndApply(
@@ -153,7 +184,7 @@ void RocksService::Start() {
 
   std::shared_ptr<apache::thrift::concurrency::ThreadManager> threadManager(
       apache::thrift::concurrency::ThreadManager::newSimpleThreadManager(
-          CORE_NUM));
+          CORE_NUM, 100));
   std::shared_ptr<apache::thrift::concurrency::ThreadFactory> threadFactory(
       new apache::thrift::concurrency::ThreadFactory(false));
   threadManager->threadFactory(threadFactory);

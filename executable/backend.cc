@@ -69,9 +69,9 @@ int main(int argc, char** argv) {
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.IncreaseParallelism(12);
-  options.OptimizeLevelStyleCompaction(64 * 1024 * 1024);
+  options.OptimizeLevelStyleCompaction(1 * 1024 * 1024);
   options.level0_file_num_compaction_trigger = 5;
-  options.enable_dist_compaction = false;
+  options.enable_dist_compaction = true;
   if (argc > 1) {
     LoadConfig(argv[1], options);
   } else {

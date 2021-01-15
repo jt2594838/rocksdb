@@ -568,11 +568,12 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
     if (!own_files) {
       continue;
     }
+    uint64_t purge_file_num = number1 > 0 ? number1 : number2;
     if (schedule_only) {
       InstrumentedMutexLock guard_lock(&mutex_);
-      SchedulePendingPurge(fname, dir_to_sync, type, number1, state.job_id);
+      SchedulePendingPurge(fname, dir_to_sync, type, purge_file_num, state.job_id);
     } else {
-      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, number1);
+      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, purge_file_num);
     }
   }
 

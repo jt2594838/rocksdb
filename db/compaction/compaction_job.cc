@@ -125,7 +125,7 @@ struct CompactionJob::SubcompactionState {
   // The return IO Status of this subcompaction
   IOStatus io_status;
 
-  ClusterNode* node;
+  ClusterNode* node = nullptr;
   int64_t start_file_num = -1;
   int64_t max_output_file_num = -1;
 
@@ -175,6 +175,8 @@ struct CompactionJob::SubcompactionState {
         start(_start),
         end(_end),
         node(_node),
+        start_file_num(-1),
+        max_output_file_num(-1),
         outfile(nullptr),
         builder(nullptr),
         current_output_file_size(0),
@@ -193,6 +195,8 @@ struct CompactionJob::SubcompactionState {
     compaction = std::move(o.compaction);
     start = std::move(o.start);
     end = std::move(o.end);
+    start_file_num = o.start_file_num;
+    max_output_file_num = o.max_output_file_num;
     node = o.node;
     status = std::move(o.status);
     io_status = std::move(o.io_status);
@@ -466,11 +470,9 @@ void CompactionJob::Prepare() {
       sub_comp.start_file_num = file_start_num;
       sub_comp.max_output_file_num = max_file_num;
     } else {
-      sub_comp.start_file_num = versions_->GetCompactionNumber();
+      sub_comp.start_file_num = versions_->FetchAddCompactionNumber(max_file_per_sub_comp);
       sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
-    versions_->FetchAddCompactionNumber(is_remote ? max_file_num
-                                             : max_file_per_sub_comp);
   }
 
   if (!is_remote && db_options_.enable_dist_compaction) {
@@ -1105,7 +1107,8 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
            (sub_compact->compaction->output_level() != 0 &&
             sub_compact->ShouldStopBefore(
                 c_iter->key(), sub_compact->current_output_file_size))) &&
-          sub_compact->builder != nullptr) {
+          sub_compact->builder != nullptr &&
+          sub_compact->max_output_file_num > 0) {
         // (2) this key belongs to the next file. For historical reasons, the
         // iterator status after advancing will be given to
         // FinishCompactionOutputFile().
@@ -1316,7 +1319,13 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
                  sub_compact->node->ToString().c_str());
 
   TCompactionResult result;
-  client->CompactFiles(result, request);
+  for (int i = 0; i < 5; ++i) {
+    client->CompactFiles(result, request);
+    if (result.status.code != Status::Code::kInvalidArgument) {
+      break;
+    }
+    sleep(1);
+  }
 
   // when the client ends compaction, the result files should have been
   // pushed to this node
@@ -1765,12 +1774,19 @@ Status CompactionJob::InstallCompactionResults(
                        request.deleted_inputs.size(),
                        request.installed_outputs.size(),
                        node->ToString().c_str());
-        client->InstallCompaction(tStatus, request);
+        for (int i = 0; i < 5; ++i) {
+          client->InstallCompaction(tStatus, request);
+          if (tStatus.code != Status::Code::kInvalidArgument) {
+            break;
+          }
+          sleep(1);
+        }
         status = RpcUtils::ToStatus(tStatus);
         ROCKS_LOG_INFO(db_options_.info_log,
                        "Installed compaction result to %s, "
                        "result: %s",
                        node->ToString().c_str(), status.ToString().c_str());
+        delete client;
       }
     }
   }

@@ -124,13 +124,14 @@ Broker::~Broker() {
     leader_client = nullptr;
   }
   for (auto* client : clients) {
+    client->getInputProtocol()->getTransport()->close();
     delete client;
   }
   clients.clear();
 }
 uint32_t Broker::ClientNum() { return nodes.size(); }
 
-int main(int argc, char** argv) {
+void simple_test(int argc, char** argv) {
   std::cout << "Broker started" << std::endl;
 
   Broker* broker;
@@ -138,7 +139,7 @@ int main(int argc, char** argv) {
     broker = new Broker(argv[1]);
   } else {
     std::cerr << "Please provide the configuration path" << std::endl;
-    return -1;
+    return;
   }
   std::string key;
   std::string value;
@@ -186,6 +187,15 @@ int main(int argc, char** argv) {
     }
   }
 
+  delete broker;
+}
+
+void write_stress(int argc, char** argv) {
+  if (argc <= 1) {
+    std::cerr << "Please provide the configuration path" << std::endl;
+    return;
+  }
+
   std::atomic_int i(0);
 
   std::vector<std::thread> threads;
@@ -217,7 +227,11 @@ int main(int argc, char** argv) {
   for (auto& th : threads) {
     th.join();
   }
+}
 
-  delete broker;
+int main(int argc, char** argv) {
+//   simple_test(argc, argv);
+
+  write_stress(argc, argv);
   return 0;
 }

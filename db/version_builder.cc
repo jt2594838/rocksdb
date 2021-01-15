@@ -650,6 +650,26 @@ class VersionBuilder::Rep {
       }
     }
 
+    std::string deleted_files_str = "[";
+    for (auto& file : edit->GetDeletedFiles()) {
+      deleted_files_str.append(std::to_string(file.second.first))
+          .append("-")
+          .append(std::to_string(file.second.second))
+          .append(" ");
+    }
+    deleted_files_str.append("]");
+    std::string added_files_str = "[";
+    for (auto& file : edit->GetNewFiles()) {
+      added_files_str.append(std::to_string(file.second.fd.flush_number))
+          .append("-")
+          .append(std::to_string(file.second.fd.merge_number))
+          .append(" ");
+    }
+    added_files_str.append("]");
+    ROCKS_LOG_INFO(this->ioptions_->info_log,
+                   "Applying edit: adding %s, removing %s",
+                   added_files_str.c_str(), deleted_files_str.c_str());
+
     // Delete table files
     for (const auto& deleted_file : edit->GetDeletedFiles()) {
       const int level = deleted_file.first;

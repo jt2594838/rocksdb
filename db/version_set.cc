@@ -14,13 +14,13 @@
 #include <algorithm>
 #include <array>
 #include <cinttypes>
+#include <iostream>
 #include <list>
 #include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include "compaction/compaction.h"
 #include "db/internal_stats.h"
@@ -3725,7 +3725,6 @@ Status VersionSet::ProcessManifestWrites(
   } else {
     auto it = manifest_writers_.cbegin();
     size_t group_start = std::numeric_limits<size_t>::max();
-    std::cout << "start to process ManifestWriters" << std::endl;
     while (it != manifest_writers_.cend()) {
       if ((*it)->edit_list.front()->IsColumnFamilyManipulation()) {
         // no group commits for column family add or drop
@@ -3814,7 +3813,6 @@ Status VersionSet::ProcessManifestWrites(
         batch_edits.push_back(e);
       }
     }
-    std::cout << "ManifestWriters are processed" << std::endl;
     for (int i = 0; i < static_cast<int>(versions.size()); ++i) {
       assert(!builder_guards.empty() &&
              builder_guards.size() == versions.size());
@@ -3828,7 +3826,6 @@ Status VersionSet::ProcessManifestWrites(
         return s;
       }
     }
-    std::cout << "Versions are saved" << std::endl;
   }
 
 #ifndef NDEBUG
@@ -4044,7 +4041,6 @@ Status VersionSet::ProcessManifestWrites(
         DescriptorFileName("", manifest_file_number_));
   }
 
-  std::cout << "Start to install versions" << std::endl;
   // Install the new versions
   if (s.ok()) {
     if (first_writer.edit_list.front()->is_column_family_add_) {
@@ -4119,11 +4115,9 @@ Status VersionSet::ProcessManifestWrites(
           DescriptorFileName(dbname_, pending_manifest_file_number_));
     }
   }
-  std::cout << "Versions are installed" << std::endl;
 
   pending_manifest_file_number_ = 0;
 
-  std::cout << "Start to notify new writers" << std::endl;
   // wake up all the waiting writers
   while (true) {
     ManifestWriter* ready = manifest_writers_.front();
@@ -4147,7 +4141,6 @@ Status VersionSet::ProcessManifestWrites(
   if (!manifest_writers_.empty()) {
     manifest_writers_.front()->cv.Signal();
   }
-  std::cout << "New writers are notified" << std::endl;
   return s;
 }
 
@@ -5852,8 +5845,11 @@ void VersionSet::GetObsoleteFiles(std::vector<ObsoleteFileInfo>* files,
 
   std::vector<ObsoleteFileInfo> pending_files;
   for (auto& f : obsolete_files_) {
-    if (f.metadata->fd.GetFlushNumber() > 0 &&
-        f.metadata->fd.GetFlushNumber() < min_pending_output) {
+    if ((f.metadata->fd.GetFlushNumber() > 0 &&
+         f.metadata->fd.GetFlushNumber() < min_pending_output) ||
+        (f.metadata->fd.GetMergeNumber() > 0 &&
+         f.metadata->fd.GetMergeNumber() < min_pending_output) ||
+        f.metadata->fd.GetMergeNumber() == f.metadata->fd.GetFlushNumber()) {
       files->emplace_back(std::move(f));
     } else {
       pending_files.emplace_back(std::move(f));

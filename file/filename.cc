@@ -401,17 +401,29 @@ bool ParseFileName(const std::string& fname, uint64_t* number1, uint64_t* number
     if (!ConsumeDecimalNumber(&rest, &num)) {
       return false;
     }
-    if (rest.size() <= 1 || rest[0] != '.' || rest[0] != '-') {
+    if (rest.size() <= 1 || (rest[0] != '.' && rest[0] != '-')) {
       return false;
     }
-    rest.remove_prefix(1);
-    uint64_t num2;
-    if (ConsumeDecimalNumber(&rest, &num2) && rest == Slice(kRocksDbTFileExt)) {
-      *type = kTableFile;
-      *number1 = num;
-      *number2 = num2;
-      return true;
+
+    if (rest[0] == '-') {
+      // data file like 000000-000000.sst
+      // remove "-"
+      rest.remove_prefix(1);
+      uint64_t num2;
+      if (ConsumeDecimalNumber(&rest, &num2)) {
+        // remove "."
+        rest.remove_prefix(1);
+        if (rest == Slice(kRocksDbTFileExt)) {
+          *type = kTableFile;
+          *number1 = num;
+          *number2 = num2;
+          return true;
+        }
+      }
+      return false;
     }
+
+    rest.remove_prefix(1);
 
     Slice suffix = rest;
     if (suffix == Slice("log")) {

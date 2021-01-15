@@ -158,7 +158,7 @@ class CompactionJob {
   void AdvanceOtherFileNumbers(uint64_t new_compaction_num);
 
   int job_id_;
-  int curr_node_index;
+  int curr_node_index = 0;
 
   // CompactionJob state
   struct CompactionState;
