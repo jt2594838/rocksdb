@@ -200,9 +200,11 @@ void write_stress(int argc, char** argv) {
 
   std::vector<std::thread> threads;
   clock_t t_start = clock();
+
   for (int k = 0; k < 9; ++k) {
     threads.emplace_back([&i, &argv, &t_start] {
       Broker* b = new Broker(argv[1]);
+      int rand_max = 1000000;
 
       std::string key_;
       std::string value_;
@@ -210,8 +212,9 @@ void write_stress(int argc, char** argv) {
       clock_t t;
       for (;;) {
         uint32_t j = ++i;
-        key_ = std::to_string(j);
-        value_ = std::to_string(j);
+        uint32_t k_v = rand() % rand_max;
+        key_ = std::to_string(k_v);
+        value_ = std::to_string(k_v);
         b->Put(key_, value_);
         if (j % 10000 == 0) {
           t = clock();

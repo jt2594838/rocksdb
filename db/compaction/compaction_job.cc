@@ -511,9 +511,9 @@ void CompactionJob::GenFileNumbers() {
 }
 
 void CompactionJob::assignSubJobNode(SubcompactionState& subcompactionState) {
-  ClusterNode* node = db_options_.nodes[curr_node_index];
+  ClusterNode* node = db_options_.nodes[curr_node_index + 1];
   subcompactionState.node = node;
-  curr_node_index = (curr_node_index + 1) % db_options_.nodes.size();
+  curr_node_index = (curr_node_index + 1) % (db_options_.nodes.size() - 1);
 }
 
 struct RangeWithSize {

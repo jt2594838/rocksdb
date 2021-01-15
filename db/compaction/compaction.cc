@@ -217,7 +217,7 @@ Compaction::Compaction(VersionStorageInfo* vstorage,
                        std::vector<FileMetaData*> _grandparents,
                        bool _manual_compaction, double _score,
                        bool _deletion_compaction,
-                       CompactionReason _compaction_reason)
+                       CompactionReason _compaction_reason, bool _mark_files)
     : input_vstorage_(vstorage),
       start_level_(_inputs[0].level),
       output_level_(_output_level),
@@ -240,8 +240,12 @@ Compaction::Compaction(VersionStorageInfo* vstorage,
       is_full_compaction_(IsFullCompaction(vstorage, inputs_)),
       is_manual_compaction_(_manual_compaction),
       is_trivial_move_(false),
-      compaction_reason_(_compaction_reason) {
-  MarkFilesBeingCompacted(true);
+      compaction_reason_(_compaction_reason),
+      mark_files(_mark_files) {
+  if (mark_files) {
+    MarkFilesBeingCompacted(true);
+  }
+
   if (is_manual_compaction_) {
     compaction_reason_ = CompactionReason::kManualCompaction;
   }
@@ -449,7 +453,9 @@ uint64_t Compaction::CalculateTotalInputSize() const {
 }
 
 void Compaction::ReleaseCompactionFiles(Status status) {
-  MarkFilesBeingCompacted(false);
+  if (mark_files) {
+    MarkFilesBeingCompacted(false);
+  }
   cfd_->compaction_picker()->ReleaseCompactionFiles(this, status);
 }
 
@@ -563,8 +569,7 @@ bool Compaction::ShouldFormSubcompactions() const {
     return false;
   }
   if (cfd_->ioptions()->compaction_style == kCompactionStyleLevel) {
-    return (start_level_ == 0 || is_manual_compaction_) && output_level_ > 0 &&
-           !IsOutputLevelEmpty();
+    return output_level_ > 0;
   } else if (cfd_->ioptions()->compaction_style == kCompactionStyleUniversal) {
     return number_levels_ > 1 && output_level_ > 0;
   } else {
