@@ -30,6 +30,11 @@ class ThriftServiceHandler : virtual public ThriftServiceIf {
     printf("DownLoadFile\n");
   }
 
+  void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num) {
+    // Your implementation goes here
+    printf("UpLoadTableFile\n");
+  }
+
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port) {
     // Your implementation goes here
     printf("PushFiles\n");

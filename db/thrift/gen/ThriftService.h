@@ -24,6 +24,7 @@ class ThriftServiceIf {
   virtual ~ThriftServiceIf() {}
   virtual void CompactFiles(TCompactionResult& _return, const TCompactFilesRequest& request) = 0;
   virtual void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size) = 0;
+  virtual void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num) = 0;
   virtual void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port) = 0;
   virtual void SetCompactionNumber(const int64_t new_compaction_num) = 0;
   virtual void InstallCompaction(TStatus& _return, const TInstallCompactionRequest& request) = 0;
@@ -64,6 +65,9 @@ class ThriftServiceNull : virtual public ThriftServiceIf {
     return;
   }
   void DownLoadFile(std::string& /* _return */, const std::string& /* file_name */, const int64_t /* offset */, const int32_t /* size */) {
+    return;
+  }
+  void UpLoadTableFile(const std::string& /* file_name */, const std::string& /* data */, const bool /* is_last */, const int32_t /* path_num */) {
     return;
   }
   void PushFiles(const TCompactionResult& /* output_files */, const std::string& /* source_ip */, const int32_t /* source_port */) {
@@ -306,6 +310,113 @@ class ThriftService_DownLoadFile_presult {
   std::string* success;
 
   _ThriftService_DownLoadFile_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+typedef struct _ThriftService_UpLoadTableFile_args__isset {
+  _ThriftService_UpLoadTableFile_args__isset() : file_name(false), data(false), is_last(false), path_num(false) {}
+  bool file_name :1;
+  bool data :1;
+  bool is_last :1;
+  bool path_num :1;
+} _ThriftService_UpLoadTableFile_args__isset;
+
+class ThriftService_UpLoadTableFile_args {
+ public:
+
+  ThriftService_UpLoadTableFile_args(const ThriftService_UpLoadTableFile_args&);
+  ThriftService_UpLoadTableFile_args& operator=(const ThriftService_UpLoadTableFile_args&);
+  ThriftService_UpLoadTableFile_args() : file_name(), data(), is_last(0), path_num(0) {
+  }
+
+  virtual ~ThriftService_UpLoadTableFile_args() noexcept;
+  std::string file_name;
+  std::string data;
+  bool is_last;
+  int32_t path_num;
+
+  _ThriftService_UpLoadTableFile_args__isset __isset;
+
+  void __set_file_name(const std::string& val);
+
+  void __set_data(const std::string& val);
+
+  void __set_is_last(const bool val);
+
+  void __set_path_num(const int32_t val);
+
+  bool operator == (const ThriftService_UpLoadTableFile_args & rhs) const
+  {
+    if (!(file_name == rhs.file_name))
+      return false;
+    if (!(data == rhs.data))
+      return false;
+    if (!(is_last == rhs.is_last))
+      return false;
+    if (!(path_num == rhs.path_num))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_UpLoadTableFile_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_UpLoadTableFile_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_UpLoadTableFile_pargs {
+ public:
+
+
+  virtual ~ThriftService_UpLoadTableFile_pargs() noexcept;
+  const std::string* file_name;
+  const std::string* data;
+  const bool* is_last;
+  const int32_t* path_num;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_UpLoadTableFile_result {
+ public:
+
+  ThriftService_UpLoadTableFile_result(const ThriftService_UpLoadTableFile_result&);
+  ThriftService_UpLoadTableFile_result& operator=(const ThriftService_UpLoadTableFile_result&);
+  ThriftService_UpLoadTableFile_result() {
+  }
+
+  virtual ~ThriftService_UpLoadTableFile_result() noexcept;
+
+  bool operator == (const ThriftService_UpLoadTableFile_result & /* rhs */) const
+  {
+    return true;
+  }
+  bool operator != (const ThriftService_UpLoadTableFile_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_UpLoadTableFile_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_UpLoadTableFile_presult {
+ public:
+
+
+  virtual ~ThriftService_UpLoadTableFile_presult() noexcept;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
 
@@ -1031,6 +1142,9 @@ class ThriftServiceClient : virtual public ThriftServiceIf {
   void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size);
   void send_DownLoadFile(const std::string& file_name, const int64_t offset, const int32_t size);
   void recv_DownLoadFile(std::string& _return);
+  void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num);
+  void send_UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num);
+  void recv_UpLoadTableFile();
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void send_PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void recv_PushFiles();
@@ -1069,6 +1183,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   ProcessMap processMap_;
   void process_CompactFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_DownLoadFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_UpLoadTableFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_PushFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_SetCompactionNumber(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_InstallCompaction(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
@@ -1081,6 +1196,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
     iface_(iface) {
     processMap_["CompactFiles"] = &ThriftServiceProcessor::process_CompactFiles;
     processMap_["DownLoadFile"] = &ThriftServiceProcessor::process_DownLoadFile;
+    processMap_["UpLoadTableFile"] = &ThriftServiceProcessor::process_UpLoadTableFile;
     processMap_["PushFiles"] = &ThriftServiceProcessor::process_PushFiles;
     processMap_["SetCompactionNumber"] = &ThriftServiceProcessor::process_SetCompactionNumber;
     processMap_["InstallCompaction"] = &ThriftServiceProcessor::process_InstallCompaction;
@@ -1134,6 +1250,15 @@ class ThriftServiceMultiface : virtual public ThriftServiceIf {
     }
     ifaces_[i]->DownLoadFile(_return, file_name, offset, size);
     return;
+  }
+
+  void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->UpLoadTableFile(file_name, data, is_last, path_num);
+    }
+    ifaces_[i]->UpLoadTableFile(file_name, data, is_last, path_num);
   }
 
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port) {
@@ -1242,6 +1367,9 @@ class ThriftServiceConcurrentClient : virtual public ThriftServiceIf {
   void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size);
   int32_t send_DownLoadFile(const std::string& file_name, const int64_t offset, const int32_t size);
   void recv_DownLoadFile(std::string& _return, const int32_t seqid);
+  void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num);
+  int32_t send_UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num);
+  void recv_UpLoadTableFile(const int32_t seqid);
   void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   int32_t send_PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port);
   void recv_PushFiles(const int32_t seqid);

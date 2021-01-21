@@ -122,15 +122,15 @@ class CompactionJob {
 
   // update the thread status for starting a compaction.
   void ReportStartedCompaction(Compaction* compaction);
-  void AllocateCompactionOutputFileNumbers();
+
   // Call compaction filter. Then iterate through input and compact the
   // kv-pairs
   void ProcessKeyValueCompaction(SubcompactionState* sub_compact);
   void ProcessLocalKVCompaction(SubcompactionState* sub_compact);
   void ProcessRemoteKVCompaction(SubcompactionState* sub_compact);
   void GenFileNumbers();
-  void PushFilesToNode(TCompactionResult& result, ClusterNode*
-                                                                  node) const;
+  void PushResultToNode(TCompactionResult& result, ClusterNode* node) const;
+  void PushCompactionOutputToNodes(FileDescriptor& output);
 
   Status FinishCompactionOutputFile(
       const Status& input_status, SubcompactionState* sub_compact,
@@ -154,11 +154,12 @@ class CompactionJob {
 
   void assignSubJobNode(SubcompactionState& subcompactionState);
   static void ConstructCompactionOutPut(TFileMetadata& file_meta,
-                            SubcompactionState* sub_comp);
+                                        SubcompactionState* sub_comp);
   void AdvanceOtherFileNumbers(uint64_t new_compaction_num);
+  void LogSubcompactions();
 
   int job_id_;
-  int curr_node_index = 0;
+  uint32_t curr_node_index = 0;
 
   // CompactionJob state
   struct CompactionState;

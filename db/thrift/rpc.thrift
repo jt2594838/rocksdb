@@ -74,6 +74,7 @@ struct GetResult {
 service ThriftService {
     TCompactionResult CompactFiles(1: TCompactFilesRequest request)
     binary DownLoadFile(1: string file_name, 2: i64 offset, 3: i32 size)
+    void UpLoadTableFile(1: string file_name, 2: binary data, 3: bool is_last, 4: i32 path_num)
     void PushFiles(1: TCompactionResult output_files, 2: string source_ip, 3: i32 source_port)
     void SetCompactionNumber(1: i64 new_compaction_num)
     TStatus InstallCompaction(1: TInstallCompactionRequest request);

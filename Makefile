@@ -16,13 +16,13 @@ export PYTHON
 
 CLEAN_FILES = # deliberately empty, so we can append below.
 CFLAGS += ${EXTRA_CFLAGS}
-CXXFLAGS += ${EXTRA_CXXFLAGS}
+CXXFLAGS += ${EXTRA_CXXFLAGS} -DSNAPPY
 LDFLAGS += $(EXTRA_LDFLAGS)
-CXXFLAGS += -I/usr/local/include -I.
+CXXFLAGS += -I/usr/local/include
 MACHINE ?= $(shell uname -m)
 ARFLAGS = ${EXTRA_ARFLAGS} rs
 STRIPFLAGS = -S -x
-LDFLAGS += -L/usr/local/lib -lthrift -lthriftnb
+LDFLAGS += -L/usr/local/lib -lthrift -lthriftnb -lsnappy
 
 # Transform parallel LOG output into something more readable.
 perl_command = perl -n \

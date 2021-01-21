@@ -9,7 +9,7 @@
 #include "db/version_edit.h"
 #include "file/filename.h"
 
-int CORE_NUM = 20;
+int CORE_NUM = 30;
 
 namespace ROCKSDB_NAMESPACE {
 void RocksService::CompactFiles(TCompactionResult& _return,
@@ -65,7 +65,6 @@ void RocksService::DownLoadFile(std::string& _return,
                                 const std::string& file_name,
                                 const int64_t offset, const int32_t size) {
   std::unique_ptr<RandomAccessFile> raf;
-  EnvOptions envOptions;
   Status s = db->env_->NewRandomAccessFile(file_name, &raf, envOptions);
   if (s.ok()) {
     Slice result;
@@ -84,19 +83,23 @@ void RocksService::PushFiles(const TCompactionResult& result,
     uint64_t flush_num = file_metadata.fd.GetFlushNumber();
     uint64_t compaction_num = file_metadata.fd.GetMergeNumber();
     uint64_t path_num = file_metadata.fd.GetPathId();
-    const std::string& cf_path =
+    const std::string& local_cf_path =
         db->default_cf_handle_->cfd()->ioptions()->cf_paths[path_num].path;
-    std::string source_file_path =
-        TableFileName(result.db_paths, flush_num, compaction_num, path_num);
-    ROCKS_LOG_INFO(db->immutable_db_options_.info_log, "Downloading file %s",
-                   source_file_path.c_str());
     const std::string& target_file_name =
-        Env::TransFormToLocalFile(source_file_path, cf_path);
-    RpcUtils::DownloadFile(source_file_path, &source_node, target_file_name,
-                           db->immutable_db_options_.info_log);
-    ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                   "File %s is downloaded at %s", source_file_path.c_str(),
-                   target_file_name.c_str());
+        local_cf_path + "/" + MakeTableFileName(flush_num, compaction_num);
+    if (!db->env_->FileExists(target_file_name).ok()) {
+      const std::string& remote_path =
+          result.db_paths[path_num];
+      std::string source_file_path =
+          remote_path + "/" + MakeTableFileName(flush_num, compaction_num);
+      ROCKS_LOG_INFO(db->immutable_db_options_.info_log, "Downloading file %s",
+                     source_file_path.c_str());
+      RpcUtils::DownloadFile(source_file_path, &source_node, target_file_name,
+                             db->immutable_db_options_.info_log);
+      ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
+                     "File %s is downloaded at %s", source_file_path.c_str(),
+                     target_file_name.c_str());
+    }
   }
 }
 
@@ -127,12 +130,6 @@ void RocksService::InstallCompaction(TStatus& _return,
     int level = installed_file.level;
     FileMetaData&& metaData = RpcUtils::ToFileMetaData(installed_file.metadata);
     edit.AddFile(level, metaData);
-  }
-
-  if (request.deleted_inputs.size() == 1 &&
-      request.installed_outputs.size() == 1) {
-    int break_point = 1;
-    break_point++;
   }
 
   std::string input_files_str = "[";
@@ -249,5 +246,40 @@ void RocksService::FullCompaction(TStatus& _return) {
 }
 void RocksService::Flush(TStatus& _return) {
   _return = RpcUtils::ToTStatus(db->Flush(flushOptions));
+}
+void RocksService::UpLoadTableFile(const std::string& file_name,
+                                   const std::string& data,
+                                   const bool is_last, int32_t path_num) {
+  const std::string& local_file_name =
+      db->immutable_db_options_.db_paths[path_num].path + "/" + file_name;
+  std::unique_ptr<WritableFile>* writer = GetFileWriter(local_file_name);
+  (*writer)->Append(Slice(data));
+  if (is_last) {
+    (*writer)->Close();
+    ReleaseFileWriter(local_file_name);
+    uint64_t file_size;
+    db->env_->GetFileSize(local_file_name, &file_size);
+    ROCKS_LOG_INFO(db->immutable_db_options_.info_log, "File %s[%ld] is uploaded to this node", local_file_name.c_str(), file_size);
+  }
+}
+std::unique_ptr<WritableFile>* RocksService::GetFileWriter(
+    const std::string& file_name) {
+  std::unique_ptr<WritableFile>* writableFile;
+  mutex.Lock();
+  auto iter = file_writer_cache.find(file_name);
+  if (iter == file_writer_cache.end()) {
+    writableFile = new std::unique_ptr<WritableFile>;
+    db->env_->NewWritableFile(file_name, writableFile, envOptions);
+    file_writer_cache.emplace(file_name, writableFile);
+  } else {
+    writableFile = (*iter).second;
+  }
+  mutex.Unlock();
+  return writableFile;
+}
+void RocksService::ReleaseFileWriter(const std::string& file_name) {
+  mutex.Lock();
+  file_writer_cache.erase(file_name);
+  mutex.Unlock();
 }
 }  // namespace ROCKSDB_NAMESPACE

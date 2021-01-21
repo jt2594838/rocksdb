@@ -13,21 +13,30 @@
 #include "rocksdb/rocksdb_namespace.h"
 
 namespace ROCKSDB_NAMESPACE {
-ThriftServiceClient* RpcUtils::CreateClient(ClusterNode* node) {
-  std::shared_ptr<apache::thrift::transport::TTransport> transport;
-  transport.reset(
-      new apache::thrift::transport::TSocket(node->getIp(), node->getPort()));
-  std::shared_ptr<apache::thrift::transport::TTransport> buffered_transport(
-      new apache::thrift::transport::TBufferedTransport(transport));
-  std::shared_ptr< ::apache::thrift::protocol::TProtocol> protocol;
-  protocol.reset(
-      new ::apache::thrift::protocol::TBinaryProtocol(buffered_transport));
-  auto* client = new ThriftServiceClient(protocol);
-  try {
-    transport->open();
+
+port::Mutex RpcUtils::mutex;
+std::map<ClusterNode*, std::vector<ThriftServiceClient*>*> RpcUtils::client_cache;
+
+ThriftServiceClient* RpcUtils::GetClient(ClusterNode* node) {
+  mutex.Lock();
+  auto iter = client_cache.find(node);
+  if (iter == client_cache.end()) {
+    ThriftServiceClient* client = NewClient(node);
+    auto* client_queue = new std::vector<ThriftServiceClient*>;
+    client_cache.emplace(node, client_queue);
+    mutex.Unlock();
     return client;
-  } catch (apache::thrift::transport::TTransportException& e) {
-    return nullptr;
+  } else {
+    auto client_queue = (*iter).second;
+    if (client_queue->empty()) {
+      mutex.Unlock();
+      return NewClient(node);
+    } else {
+      auto* client = client_queue->back();
+      client_queue->pop_back();
+      mutex.Unlock();
+      return client;
+    }
   }
 }
 
@@ -36,7 +45,7 @@ uint64_t RpcUtils::DownloadFile(std::string& file_name, ClusterNode* node,
                                 const std::shared_ptr<Logger>& logger) {
   uint64_t file_length = 0;
   const uint64_t block_length = 4 * 1024 * 1024;
-  auto* client = CreateClient(node);
+  auto* client = GetClient(node);
   if (client == nullptr) {
     ROCKS_LOG_ERROR(logger, "Node %s is unreachable", node->ToString().c_str());
     return -1;
@@ -54,7 +63,7 @@ uint64_t RpcUtils::DownloadFile(std::string& file_name, ClusterNode* node,
     output_stream << buffer;
   }
   output_stream.close();
-  delete client;
+  ReleaseClient(node, client);
   return file_length;
 }
 
@@ -126,5 +135,36 @@ TStatus RpcUtils::ToTStatus(const Status& status) {
   s.severity = status.severity();
   s.state = std::string(status.state_ ? status.state_ : "");
   return s;
+}
+ThriftServiceClient* RpcUtils::NewClient(rocksdb::ClusterNode* node) {
+  std::shared_ptr<apache::thrift::transport::TTransport> transport;
+  transport.reset(
+      new apache::thrift::transport::TSocket(node->getIp(), node->getPort()));
+  std::shared_ptr<apache::thrift::transport::TTransport> buffered_transport(
+      new apache::thrift::transport::TBufferedTransport(transport));
+  std::shared_ptr< ::apache::thrift::protocol::TProtocol> protocol;
+  protocol.reset(
+      new ::apache::thrift::protocol::TBinaryProtocol(buffered_transport));
+  auto* client = new ThriftServiceClient(protocol);
+  try {
+    transport->open();
+    return client;
+  } catch (apache::thrift::transport::TTransportException& e) {
+    return nullptr;
+  }
+}
+void RpcUtils::ReleaseClient(ClusterNode* node, ThriftServiceClient* client) {
+  mutex.Lock();
+  auto iter = client_cache.find(node);
+  if (iter == client_cache.end()) {
+    auto* client_queue = new std::vector<ThriftServiceClient*>;
+    client_cache.emplace(node, client_queue);
+    client_queue->emplace_back(client);
+    mutex.Unlock();
+  } else {
+    auto client_queue = (*iter).second;
+    client_queue->emplace_back(client);
+    mutex.Unlock();
+  }
 }
 }  // namespace ROCKSDB_NAMESPACE

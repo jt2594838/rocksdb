@@ -21,6 +21,7 @@ class Broker {
   ClusterNode* compaction_leader = nullptr;
   ThriftServiceClient* leader_client = nullptr;
   uint32_t leader_pos = 0;
+  uint64_t* client_ticks;
 
   void init(char* config_file_path);
 
@@ -33,6 +34,8 @@ class Broker {
   void Flush();
   void Compact();
   uint32_t ClientNum();
+  std::string GetTicks();
+  void ClearTicks();
 };
 
 #endif  // ROCKSDB_BROKER_H

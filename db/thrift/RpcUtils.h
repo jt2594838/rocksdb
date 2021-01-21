@@ -10,9 +10,13 @@
 
 namespace ROCKSDB_NAMESPACE {
 class RpcUtils {
+  static port::Mutex mutex;
+  static std::map<ClusterNode*, std::vector<ThriftServiceClient*>*> client_cache;
+
  public:
-  static ThriftServiceClient* CreateClient(
-      ROCKSDB_NAMESPACE::ClusterNode* node);
+  static ThriftServiceClient* GetClient(ClusterNode* node);
+  static void ReleaseClient(ClusterNode* node, ThriftServiceClient* client);
+  static ThriftServiceClient* NewClient(ClusterNode* node);
   static uint64_t DownloadFile(std::string& file_name, ClusterNode* node,
                                const std::string& output_name,
                                const std::shared_ptr<Logger>& ptr);

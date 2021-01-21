@@ -69,15 +69,20 @@ int main(int argc, char** argv) {
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.IncreaseParallelism(12);
-  options.OptimizeLevelStyleCompaction(1 * 1024 * 1024);
-  options.level0_file_num_compaction_trigger = 5;
+  options.OptimizeLevelStyleCompaction(32 * 1024 * 1024);
+  options.level0_file_num_compaction_trigger = 6;
   options.enable_dist_compaction = true;
+  options.compression = kSnappyCompression;
+  options.bottommost_compression = kSnappyCompression;
+  for (auto & i : options.compression_per_level) {
+    i = kSnappyCompression;
+  }
   if (argc > 1) {
     LoadConfig(argv[1], options);
   } else {
     DefaultConfig(options);
   }
-  options.max_subcompactions = options.nodes.size();
+  options.max_subcompactions = options.nodes.size() * 4;
 
   std::cout << "Local node: " << options.this_node->ToString() << std::endl;
   std::cout << "All nodes:" << std::endl;

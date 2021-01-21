@@ -15,6 +15,8 @@ class RocksService : ThriftServiceIf {
                     const TCompactFilesRequest& request) override;
   void DownLoadFile(std::string& _return, const std::string& file_name,
                     int64_t offset, int32_t size) override;
+  void UpLoadTableFile(const std::string& file_name, const std::string& data,
+                       const bool is_last, int32_t path_num) override;
   void PushFiles(const TCompactionResult& result,
                  const std::string& source_ip,
                  int32_t source_port) override;
@@ -29,12 +31,18 @@ class RocksService : ThriftServiceIf {
   void Flush(TStatus& _return) override;
 
   DBImpl* db;
+  EnvOptions envOptions;
   WriteOptions writeOptions;
   ReadOptions readOptions;
   std::unique_ptr<apache::thrift::server::TThreadPoolServer> server = nullptr;
   std::shared_ptr<apache::thrift::server::TServerTransport> serverTransport;
   FlushOptions flushOptions;
   CompactRangeOptions compactOptions;
+  port::Mutex mutex;
+  std::map<std::string, std::unique_ptr<WritableFile>*> file_writer_cache;
+
+  std::unique_ptr<WritableFile>* GetFileWriter(const std::string& file_name);
+  void ReleaseFileWriter(const std::string& file_name);
 
  public:
   explicit RocksService(DBImpl* db);
