@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
   options.IncreaseParallelism(12);
   options.OptimizeLevelStyleCompaction(32 * 1024 * 1024);
   options.level0_file_num_compaction_trigger = 6;
-  options.enable_dist_compaction = true;
+  options.enable_dist_compaction = false;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
   for (auto & i : options.compression_per_level) {

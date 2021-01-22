@@ -55,6 +55,11 @@ class ThriftServiceHandler : virtual public ThriftServiceIf {
     printf("Put\n");
   }
 
+  void PutBatch(TStatus& _return, const std::vector<std::string> & key, const std::vector<std::string> & value) {
+    // Your implementation goes here
+    printf("PutBatch\n");
+  }
+
   void Get(GetResult& _return, const std::string& key) {
     // Your implementation goes here
     printf("Get\n");

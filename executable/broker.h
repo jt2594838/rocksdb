@@ -29,6 +29,7 @@ class Broker {
   explicit Broker(char* config_file_path);
   ~Broker();
   void Put(std::string& key, std::string& value);
+  void Put(std::vector<std::string>& keys, std::vector<std::string>& values);
   void Get(std::string& key, std::string& value);
   void Get(std::string& key, std::string& value, uint32_t client_idx);
   void Flush();

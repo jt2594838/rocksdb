@@ -25,6 +25,8 @@ class RocksService : ThriftServiceIf {
                          const TInstallCompactionRequest& request) override;
   void Put(TStatus& _return, const std::string& key,
            const std::string& value) override;
+  void PutBatch(TStatus& _return, const std::vector<std::string>& key,
+                  const std::vector<std::string>& value) override;
   void Get(GetResult& _return, const std::string& key) override;
 
   void FullCompaction(TStatus& _return) override;

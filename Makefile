@@ -99,6 +99,11 @@ ifeq ($(MAKECMDGOALS),broker)
 	LIB_MODE=static
 endif
 
+ifeq ($(MAKECMDGOALS),broker_debug)
+	DEBUG_LEVEL=2
+	LIB_MODE=static
+endif
+
 ifeq ($(MAKECMDGOALS),install-static)
 	DEBUG_LEVEL=0
 	LIB_MODE=static
@@ -767,6 +772,9 @@ backend: static_lib
 
 broker: static_lib
 	$(CXX) $(CXXFLAGS) executable/broker.cc -obroker ./librocksdb.a -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
+
+broker_debug: static_lib
+	$(CXX) $(CXXFLAGS) executable/broker.cc -obroker_debug ./librocksdb_debug.a -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) -L/usr/local/lib -lthrift -lthriftnb -lboost_system -lboost_filesystem --static
 
 static_lib: $(STATIC_LIBRARY)
 

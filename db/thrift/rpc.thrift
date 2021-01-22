@@ -79,6 +79,7 @@ service ThriftService {
     void SetCompactionNumber(1: i64 new_compaction_num)
     TStatus InstallCompaction(1: TInstallCompactionRequest request);
     TStatus Put(1: string key, 2: string value)
+    TStatus PutBatch(1: list<string> key, 2: list<string> value)
     GetResult Get(1: string key)
     TStatus FullCompaction()
     TStatus Flush()

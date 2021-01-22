@@ -455,10 +455,12 @@ void CompactionJob::Prepare() {
       compact_->sub_compact_states.emplace_back(c, start, end, sizes_[i]);
       SubcompactionState& sub_comp = compact_->sub_compact_states.back();
       if (db_options_.enable_dist_compaction) {
-        assignSubJobNode(sub_comp);
         sub_comp.start_file_num = start_file_nums[i];
         sub_comp.max_output_file_num = max_file_per_sub_comp;
       }
+    }
+    if (db_options_.enable_dist_compaction) {
+      assignSubJobNode();
     }
     RecordInHistogram(stats_, NUM_SUBCOMPACTIONS_SCHEDULED,
                       compact_->sub_compact_states.size());
@@ -512,10 +514,24 @@ void CompactionJob::GenFileNumbers() {
   new_file_start_num = start_file_num;
 }
 
-void CompactionJob::assignSubJobNode(SubcompactionState& subcompactionState) {
-  ClusterNode* node = db_options_.nodes[curr_node_index];
-  subcompactionState.node = node;
-  curr_node_index = (curr_node_index + 1) % (db_options_.nodes.size());
+void CompactionJob::assignSubJobNode() {
+  for (auto* node : db_options_.nodes) {
+    node->setTempLoad(0);
+  }
+  for (SubcompactionState& subcompactionState : compact_->sub_compact_states) {
+    ClusterNode* chosen = nullptr;
+    uint64_t chosen_load = UINT64_MAX;
+    for (auto* node : db_options_.nodes) {
+      uint64_t node_new_load = node->getCompactedBytes() + node->getTempLoad() +
+                               subcompactionState.approx_size;
+      if (chosen == nullptr || chosen_load > node_new_load) {
+        chosen = node;
+        chosen_load = node_new_load;
+      }
+    }
+    chosen->setTempLoad(chosen->getTempLoad() + subcompactionState.approx_size);
+    subcompactionState.node = chosen;
+  }
 }
 
 struct RangeWithSize {
@@ -1243,8 +1259,14 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState* sub_compact) {
                                       : sub_compact->start->ToString().c_str(),
         sub_compact->end == nullptr ? "NULL"
                                     : sub_compact->end->ToString().c_str(),
-        result.num_output_records, result.total_bytes,
+        sub_compact->num_output_records, sub_compact->total_bytes,
         sub_compact->compaction_job_stats.cpu_micros / 1000);
+
+    if (sub_compact->node != nullptr) {
+      uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
+      sub_compact->node->setCompactedBytes(compacted_bytes +
+                                           sub_compact->total_bytes);
+    }
   }
 
   sub_compact->c_iter.reset();
@@ -1364,6 +1386,8 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState* sub_compact) {
   sub_compact->total_bytes = result.total_bytes;
   sub_compact->compaction_job_stats.cpu_micros =
       env_->NowCPUNanos() / 1000 - prev_cpu_micros;
+  sub_compact->node->setCompactedBytes(sub_compact->node->getCompactedBytes() +
+                                       sub_compact->total_bytes);
 
   RpcUtils::ReleaseClient(sub_compact->node, client);
 }
@@ -1798,7 +1822,7 @@ Status CompactionJob::InstallCompactionResults(
                        node->ToString().c_str());
         for (int i = 0; i < 5; ++i) {
           client->InstallCompaction(tStatus, request);
-          if (tStatus.code != Status::Code::kInvalidArgument) {
+          if (tStatus.code == Status::Code::kOk) {
             break;
           }
           sleep(1);
@@ -2165,7 +2189,7 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor& output) {
 void CompactionJob::LogSubcompactions() {
   std::string report;
   for (auto& subcomp : compact_->sub_compact_states) {
-    report.append(subcomp.node->ToString())
+    report.append(subcomp.node == nullptr ? "NULL" : subcomp.node->ToString())
         .append(":[")
         .append(subcomp.start == nullptr ? "NULL" : subcomp.start->ToString())
         .append(",")

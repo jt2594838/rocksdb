@@ -8,10 +8,14 @@
 #include "db/thrift/RpcUtils.h"
 #include "db/version_edit.h"
 #include "file/filename.h"
+#include "rocksdb/write_batch.h"
 
 int CORE_NUM = 30;
 
 namespace ROCKSDB_NAMESPACE {
+
+class WriteBatch;
+
 void RocksService::CompactFiles(TCompactionResult& _return,
                                 const TCompactFilesRequest& request) {
   CompactionOptions compactionOptions;
@@ -281,5 +285,15 @@ void RocksService::ReleaseFileWriter(const std::string& file_name) {
   mutex.Lock();
   file_writer_cache.erase(file_name);
   mutex.Unlock();
+}
+void RocksService::PutBatch(TStatus& _return,
+                              const std::vector<std::string>& key,
+                              const std::vector<std::string>& value) {
+  WriteBatch batch;
+  for (uint32_t i = 0; i < key.size(); ++i) {
+    batch.Put(key[i], value[i]);
+  }
+  Status s = db->Write(writeOptions, &batch);
+  _return = RpcUtils::ToTStatus(s);
 }
 }  // namespace ROCKSDB_NAMESPACE

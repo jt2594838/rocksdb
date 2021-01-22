@@ -18,6 +18,32 @@
 
 using namespace ROCKSDB_NAMESPACE;
 
+void Broker::Put(std::vector<std::string>& keys, std::vector<std::string>& values) {
+  TStatus status;
+  for (unsigned int i = 0; i < clients.size(); ++i) {
+    if (i == leader_pos) {
+      continue;
+    }
+    uint64_t t_start = clock();
+    clients[i]->PutBatch(status, keys, values);
+    uint64_t t_consumed = clock() - t_start;
+    client_ticks[i] += t_consumed;
+    if (status.code != Status::Code::kOk) {
+      std::cout << "An error occurred during put " << status.code << ":"
+                << status.state << std::endl;
+    }
+  }
+
+  uint64_t t_start = clock();
+  leader_client->PutBatch(status, keys, values);
+  uint64_t t_consumed = clock() - t_start;
+  client_ticks[leader_pos] += t_consumed;
+  if (status.code != Status::Code::kOk) {
+    std::cout << "An error occurred during put " << status.code << ":"
+              << status.state << std::endl;
+  }
+}
+
 void Broker::Put(std::string& key, std::string& value) {
   TStatus status;
   for (unsigned int i = 0; i < clients.size(); ++i) {
@@ -226,24 +252,33 @@ void write_stress(int argc, char** argv) {
   for (int k = 0; k < 9; ++k) {
     threads.emplace_back([&i, &argv, &t_start] {
       Broker* b = new Broker(argv[1]);
-      int rand_max = 1000000;
+      uint32_t rand_max = 1000000;
+      uint32_t batch_size = 100;
 
       std::string key_;
       std::string value_;
+      std::vector<std::string> keys_;
+      std::vector<std::string> values_;
+      keys_.reserve(batch_size);
+      values_.reserve(batch_size);
       char buf[256];
       clock_t t;
       for (;;) {
+        for (uint32_t l = 0; l < batch_size; l++) {
+          uint32_t k_v = rand() % rand_max;
+          keys_.emplace_back(std::to_string(k_v));
+          values_.emplace_back(std::to_string(k_v));
+        }
         uint32_t j = ++i;
-        uint32_t k_v = rand() % rand_max;
-        key_ = std::to_string(k_v);
-        value_ = std::to_string(k_v);
-        b->Put(key_, value_);
+        b->Put(keys_, values_);
+        keys_.clear();
+        values_.clear();
         if (j % 10000 == 0) {
           t = clock();
-          double avg = (double) j / (t - t_start) * CLOCKS_PER_SEC;
+          double avg = (double) j / (t - t_start) * CLOCKS_PER_SEC * batch_size;
           t /= CLOCKS_PER_SEC;
           strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&t));
-          std::cout << buf << " " << j << " " << avg << "|" << b->GetTicks() << std::endl;
+          std::cout << buf << " " << j * batch_size << " " << avg << "|" << b->GetTicks() << std::endl;
           // b->ClearTicks();
         }
       }

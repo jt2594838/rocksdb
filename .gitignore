@@ -59,6 +59,7 @@ block_cache_trace_analyzer
 backend
 backend_debug
 broker
+broker_debug
 
 java/out
 java/target
