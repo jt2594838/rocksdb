@@ -167,7 +167,9 @@ void RocksService::InstallCompaction(TStatus& _return,
                  "Compaction installation completed: %s", s.ToString().c_str());
   _return = RpcUtils::ToTStatus(s);
 }
-RocksService::RocksService(DBImpl* _db) : db(_db) {}
+RocksService::RocksService(DBImpl* _db) : db(_db) {
+  writeOptions.disableWAL = true;
+}
 
 void RocksService::Start() {
   // create a new RocksService to avoid deleting this one when server stops

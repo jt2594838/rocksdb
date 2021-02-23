@@ -82,12 +82,10 @@ static std::string MakeFileName(const std::string& name, uint64_t number1, uint6
 }
 
 std::string LogFileName(const std::string& name, uint64_t number) {
-  assert(number > 0);
   return MakeFileName(name, number, "log");
 }
 
 std::string LogFileName(uint64_t number) {
-  assert(number > 0);
   return MakeFileName(number, "log");
 }
 

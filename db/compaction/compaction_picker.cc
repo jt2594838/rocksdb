@@ -356,11 +356,15 @@ Compaction* CompactionPicker::CompactExactly(
   }
   auto c = new Compaction(
       vstorage, ioptions_, mutable_cf_options, mutable_db_options, input_files,
-      output_level, compact_options.output_file_size_limit,
+      output_level,
+      MaxFileSizeForLevel(mutable_cf_options, output_level,
+                          ioptions_.compaction_style, vstorage->base_level(),
+                          ioptions_.level_compaction_dynamic_level_bytes),
       mutable_cf_options.max_compaction_bytes, output_path_id, compression_type,
       GetCompressionOptions(mutable_cf_options, vstorage, output_level),
       compact_options.max_subcompactions,
-      /* grandparents */ {}, true, -1, false, CompactionReason::kUnknown, false);
+      /* grandparents */ {}, true, -1, false, CompactionReason::kUnknown,
+      false);
   c->setBegin(begin);
   c->setAnEnd(end);
   // still register to avoid local compaction overlaps with them
@@ -1080,7 +1084,8 @@ void CompactionPicker::RegisterCompaction(Compaction* c) {
   }
   assert(ioptions_.compaction_style != kCompactionStyleLevel ||
          c->output_level() == 0 ||
-         !(c->mark_files && FilesRangeOverlapWithCompaction(*c->inputs(), c->output_level())));
+         !(c->mark_files &&
+           FilesRangeOverlapWithCompaction(*c->inputs(), c->output_level())));
   if (c->start_level() == 0 ||
       ioptions_.compaction_style == kCompactionStyleUniversal) {
     level0_compactions_in_progress_.insert(c);

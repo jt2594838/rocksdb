@@ -3878,7 +3878,7 @@ Status VersionSet::ProcessManifestWrites(
   // SwitchMemtable().
   std::unordered_map<uint32_t, MutableCFState> curr_state;
   if (new_descriptor_log) {
-    pending_manifest_file_number_ = NewFlushNumber();
+    pending_manifest_file_number_ = NewLogFileNumber();
     batch_edits.back()->SetNextFlush(next_flush_number_.load());
     batch_edits.back()->SetNextCompaction(next_compaction_number_.load());
 

@@ -1676,7 +1676,7 @@ Status DBImpl::SwitchMemtable(ColumnFamilyData* cfd, WriteContext* context) {
     recycle_log_number = log_recycle_files_.front();
   }
   uint64_t new_log_number =
-      creating_new_log ? versions_->NewFlushNumber() : logfile_number_;
+      creating_new_log ? versions_->NewLogFileNumber() : logfile_number_;
   const MutableCFOptions mutable_cf_options = *cfd->GetLatestMutableCFOptions();
 
   // Set memtable_info for memtable sealed callback

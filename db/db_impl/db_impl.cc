@@ -658,8 +658,8 @@ Status DBImpl::CloseHelper() {
 }
 
 void DBImpl::StartRPCService() {
-    rpc_service = new RocksService(this);
-    rpc_service->Start();
+  rpc_service = new RocksService(this);
+  rpc_service->Start();
 }
 
 Status DBImpl::CloseImpl() { return CloseHelper(); }
@@ -906,6 +906,10 @@ void DBImpl::DumpStats() {
   ROCKS_LOG_INFO(immutable_db_options_.info_log,
                  "------- DUMPING STATS -------");
   ROCKS_LOG_INFO(immutable_db_options_.info_log, "%s", stats.c_str());
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "Total compaction time: %s\nLocal compaction time: %s",
+                 stats_->getHistogramString(COMPACTION_TIME).c_str(),
+                 stats_->getHistogramString(COMPACTION_LOCAL_TIME).c_str());
   if (immutable_db_options_.dump_malloc_stats) {
     stats.clear();
     DumpMallocStats(&stats);
@@ -1121,7 +1125,7 @@ Status DBImpl::SetDBOptions(
       file_options_for_compaction_ = fs_->OptimizeForCompactionTableWrite(
           file_options_for_compaction_, immutable_db_options_);
       versions_->ChangeFileOptions(mutable_db_options_);
-      //TODO(xiez): clarify why apply optimize for read to write options
+      // TODO(xiez): clarify why apply optimize for read to write options
       file_options_for_compaction_ = fs_->OptimizeForCompactionTableRead(
           file_options_for_compaction_, immutable_db_options_);
       file_options_for_compaction_.compaction_readahead_size =
@@ -1530,7 +1534,7 @@ InternalIterator* DBImpl::NewInternalIterator(const ReadOptions& read_options,
     IterState* cleanup =
         new IterState(this, &mutex_, super_version,
                       read_options.background_purge_on_iterator_cleanup ||
-                      immutable_db_options_.avoid_unnecessary_blocking_io);
+                          immutable_db_options_.avoid_unnecessary_blocking_io);
     internal_iter->RegisterCleanup(CleanupIteratorState, cleanup, nullptr);
 
     return internal_iter;
@@ -1853,8 +1857,8 @@ std::vector<Status> DBImpl::MultiGet(
     std::string* timestamp = timestamps ? &(*timestamps)[keys_read] : nullptr;
 
     LookupKey lkey(keys[keys_read], consistent_seqnum, read_options.timestamp);
-    auto cfh =
-        static_cast_with_check<ColumnFamilyHandleImpl>(column_family[keys_read]);
+    auto cfh = static_cast_with_check<ColumnFamilyHandleImpl>(
+        column_family[keys_read]);
     SequenceNumber max_covering_tombstone_seq = 0;
     auto mgd_iter = multiget_cf_data.find(cfh->cfd()->GetID());
     assert(mgd_iter != multiget_cf_data.end());
@@ -1909,7 +1913,7 @@ std::vector<Status> DBImpl::MultiGet(
     // The only reason to break out of the loop is when the deadline is
     // exceeded
     assert(env_->NowMicros() >
-        static_cast<uint64_t>(read_options.deadline.count()));
+           static_cast<uint64_t>(read_options.deadline.count()));
     for (++keys_read; keys_read < num_keys; ++keys_read) {
       stat_list[keys_read] = Status::TimedOut();
     }
@@ -3231,8 +3235,7 @@ SuperVersion* DBImpl::GetAndRefSuperVersion(uint32_t column_family_id) {
 void DBImpl::CleanupSuperVersion(SuperVersion* sv) {
   // Release SuperVersion
   if (sv->Unref()) {
-    bool defer_purge =
-            immutable_db_options().avoid_unnecessary_blocking_io;
+    bool defer_purge = immutable_db_options().avoid_unnecessary_blocking_io;
     {
       InstrumentedMutexLock l(&mutex_);
       sv->Cleanup();
@@ -3417,7 +3420,8 @@ Status DBImpl::DeleteFile(std::string name) {
   JobContext job_context(next_job_id_.fetch_add(1), true);
   {
     InstrumentedMutexLock l(&mutex_);
-    status = versions_->GetMetadataForFile(number1, number2, &level, &metadata, &cfd);
+    status = versions_->GetMetadataForFile(number1, number2, &level, &metadata,
+                                           &cfd);
     if (!status.ok()) {
       ROCKS_LOG_WARN(immutable_db_options_.info_log,
                      "DeleteFile %s failed. File not found\n", name.c_str());
@@ -3535,7 +3539,8 @@ Status DBImpl::DeleteFilesInRanges(ColumnFamilyHandle* column_family,
             continue;
           }
           edit.SetColumnFamily(cfd->GetID());
-          edit.DeleteFile(i, level_file->fd.GetFlushNumber(), level_file->fd.GetMergeNumber());
+          edit.DeleteFile(i, level_file->fd.GetFlushNumber(),
+                          level_file->fd.GetMergeNumber());
           deleted_files.insert(level_file);
           level_file->being_compacted = true;
         }
@@ -4688,8 +4693,9 @@ Status DBImpl::VerifyChecksum(const ReadOptions& read_options) {
       for (size_t j = 0; j < vstorage->LevelFilesBrief(i).num_files && s.ok();
            j++) {
         const auto& fd = vstorage->LevelFilesBrief(i).files[j].fd;
-        std::string fname = TableFileName(cfd->ioptions()->cf_paths,
-                                          fd.GetFlushNumber(), fd.GetMergeNumber(), fd.GetPathId());
+        std::string fname =
+            TableFileName(cfd->ioptions()->cf_paths, fd.GetFlushNumber(),
+                          fd.GetMergeNumber(), fd.GetPathId());
         s = ROCKSDB_NAMESPACE::VerifySstFileChecksum(opts, file_options_,
                                                      read_options, fname);
       }
@@ -4698,8 +4704,7 @@ Status DBImpl::VerifyChecksum(const ReadOptions& read_options) {
       break;
     }
   }
-  bool defer_purge =
-          immutable_db_options().avoid_unnecessary_blocking_io;
+  bool defer_purge = immutable_db_options().avoid_unnecessary_blocking_io;
   {
     InstrumentedMutexLock l(&mutex_);
     for (auto sv : sv_list) {

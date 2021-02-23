@@ -10,15 +10,19 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <iostream>
+#include <random>
 #include <sstream>
+#include <thread>
 
 #include "db/thrift/gen/rpc_types.h"
 #include "rocksdb/db.h"
 #include "rocksdb/status.h"
+#include "rocksdb/env.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
-void Broker::Put(std::vector<std::string>& keys, std::vector<std::string>& values) {
+void Broker::Put(std::vector<std::string>& keys,
+                 std::vector<std::string>& values) {
   TStatus status;
   for (unsigned int i = 0; i < clients.size(); ++i) {
     if (i == leader_pos) {
@@ -178,9 +182,26 @@ void Broker::ClearTicks() {
     client_ticks[i] = 0;
   }
 }
+void Broker::CompactEach() {
+  std::vector<std::thread> threads;
+  for (unsigned int i = 0; i < clients.size(); ++i) {
+    Broker* b = this;
+    threads.emplace_back([i, &b] {
+      TStatus status;
+      b->clients[i]->FullCompaction(status);
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
 
 void simple_test(int argc, char** argv) {
   std::cout << "Broker started" << std::endl;
+
+  uint32_t file_num = 3;
+  uint32_t pt_per_file = 8000000;
+  bool compact_each = true;
 
   Broker* broker;
   if (argc > 1) {
@@ -189,51 +210,80 @@ void simple_test(int argc, char** argv) {
     std::cerr << "Please provide the configuration path" << std::endl;
     return;
   }
-  std::string key;
-  std::string value;
 
-  for (int i = 0; i < 9; ++i) {
-    key = std::to_string(i);
-    value = std::to_string(i);
-    broker->Put(key, value);
+  std::string key_;
+  std::string value_;
+  std::vector<std::string> keys_;
+  std::vector<std::string> values_;
+  uint32_t batch_size = 5000;
+  keys_.reserve(batch_size);
+  values_.reserve(batch_size);
+
+  for (uint32_t i = 0; i < file_num * pt_per_file; ++i) {
+    key_ = std::to_string(i);
+    value_ = std::to_string(i);
+
+    keys_.emplace_back(key_);
+    values_.emplace_back(value_);
+
+    if ((i + 1) % batch_size == 0) {
+      broker->Put(keys_, values_);
+      keys_.clear();
+      values_.clear();
+    }
+    if ((i + 1) % (pt_per_file / 20) == 0) {
+      std::cout << (i + 1) << "/" << file_num * pt_per_file << std::endl;
+    }
   }
   broker->Flush();
   broker->Compact();
 
   std::cout << "Before overwriting" << std::endl;
-  for (int i = 0; i < 9; ++i) {
-    key = std::to_string(i);
-    broker->Get(key, value);
-    std::cout << key << " " << value << std::endl;
-  }
+  //  for (int i = 0; i < 9; ++i) {
+  //    key = std::to_string(i);
+  //    broker->Get(key, value);
+  //    std::cout << key << " " << value << std::endl;
+  //  }
 
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      key = std::to_string(i * 3 + j);
-      value = std::to_string(i * 3 + j + 100);
-      broker->Put(key, value);
+  for (uint32_t i = 0; i < file_num; ++i) {
+    for (uint32_t j = 0; j < pt_per_file; ++j) {
+      key_ = std::to_string(i * pt_per_file + j);
+      value_ = std::to_string(i * pt_per_file + j + 100);
+
+      keys_.emplace_back(key_);
+      values_.emplace_back(value_);
+
+      if ((i * pt_per_file + j + 1) % batch_size == 0) {
+        broker->Put(keys_, values_);
+        keys_.clear();
+        values_.clear();
+      }
     }
     broker->Flush();
   }
 
   std::cout << "Before compaction" << std::endl;
-  for (int i = 0; i < 9; ++i) {
-    key = std::to_string(i);
-    broker->Get(key, value);
-    std::cout << key << " " << value << std::endl;
-  }
+  //  for (int i = 0; i < 9; ++i) {
+  //    key = std::to_string(i);
+  //    broker->Get(key, value);
+  //    std::cout << key << " " << value << std::endl;
+  //  }
 
-  broker->Compact();
+  if (compact_each) {
+    broker->CompactEach();
+  } else {
+    broker->Compact();
+  }
 
   std::cout << "After compaction" << std::endl;
-  for (uint32_t k = 0; k < broker->ClientNum(); ++k) {
-    std::cout << "client " << k << std::endl;
-    for (int i = 0; i < 9; ++i) {
-      key = std::to_string(i);
-      broker->Get(key, value, k);
-      std::cout << key << " " << value << std::endl;
-    }
-  }
+  //  for (uint32_t k = 0; k < broker->ClientNum(); ++k) {
+  //    std::cout << "client " << k << std::endl;
+  //    for (int i = 0; i < 9; ++i) {
+  //      key = std::to_string(i);
+  //      broker->Get(key, value, k);
+  //      std::cout << key << " " << value << std::endl;
+  //    }
+  //  }
 
   delete broker;
 }
@@ -244,16 +294,25 @@ void write_stress(int argc, char** argv) {
     return;
   }
 
+  Env* env = Env::Default();
+
+  bool compactEach = true;
+  uint32_t batch_size = 1000;
+  uint32_t batch_num = 100000;
+  uint32_t batch_report_interval = 1000;
+  uint64_t seed = 21516347;
   std::atomic_int i(0);
 
   std::vector<std::thread> threads;
-  clock_t t_start = clock();
+  uint64_t t_start = env->NowMicros();
+  uint64_t t_last = t_start;
 
   for (int k = 0; k < 9; ++k) {
-    threads.emplace_back([&i, &argv, &t_start] {
-      Broker* b = new Broker(argv[1]);
-      uint32_t rand_max = 1000000;
-      uint32_t batch_size = 100;
+    threads.emplace_back([&env, &i, &argv, t_start, &t_last, batch_size, batch_num,
+                          batch_report_interval, seed] {
+      Broker b(argv[1]);
+      std::default_random_engine e(seed);
+      std::uniform_int_distribution<uint32_t> distribution;
 
       std::string key_;
       std::string value_;
@@ -261,25 +320,31 @@ void write_stress(int argc, char** argv) {
       std::vector<std::string> values_;
       keys_.reserve(batch_size);
       values_.reserve(batch_size);
-      char buf[256];
-      clock_t t;
+      uint64_t t;
       for (;;) {
         for (uint32_t l = 0; l < batch_size; l++) {
-          uint32_t k_v = rand() % rand_max;
+          uint32_t k_v = distribution(e);
           keys_.emplace_back(std::to_string(k_v));
           values_.emplace_back(std::to_string(k_v));
         }
         uint32_t j = ++i;
-        b->Put(keys_, values_);
+        b.Put(keys_, values_);
         keys_.clear();
         values_.clear();
-        if (j % 10000 == 0) {
-          t = clock();
-          double avg = (double) j / (t - t_start) * CLOCKS_PER_SEC * batch_size;
-          t /= CLOCKS_PER_SEC;
-          strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&t));
-          std::cout << buf << " " << j * batch_size << " " << avg << "|" << b->GetTicks() << std::endl;
+        if (j % batch_report_interval == 0) {
+          t = env->NowMicros();
+          double temp_avg = (double)batch_report_interval / (t - t_last) *
+                            CLOCKS_PER_SEC * batch_size;
+          t_last = t;
+          double total_avg =
+              (double)j / (t - t_start) * CLOCKS_PER_SEC * batch_size;
+          double total_consumed_time = (double)(t - t_start) / CLOCKS_PER_SEC;
+          std::cout << total_consumed_time << " " << j * batch_size << " "
+                    << total_avg << " " << temp_avg << "|" << b.GetTicks() << std::endl;
           // b->ClearTicks();
+        }
+        if (j >= batch_num) {
+          break;
         }
       }
     });
@@ -288,10 +353,21 @@ void write_stress(int argc, char** argv) {
   for (auto& th : threads) {
     th.join();
   }
+  Broker b(argv[1]);
+  b.Flush();
+  if (compactEach) {
+    b.CompactEach();
+  } else {
+    b.Compact();
+  }
+
+  uint64_t t = env->NowMicros();
+  double consumed_time = (double)(t - t_start) / CLOCKS_PER_SEC;
+  std::cout << consumed_time << std::endl;
 }
 
 int main(int argc, char** argv) {
-//   simple_test(argc, argv);
+  //   simple_test(argc, argv);
 
   write_stress(argc, argv);
   return 0;

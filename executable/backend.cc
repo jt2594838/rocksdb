@@ -3,17 +3,21 @@
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 
-#include <string>
-#include "iostream"
-
-#include "rocksdb/db.h"
-#include "rocksdb/slice.h"
-#include "rocksdb/options.h"
+#include <monitoring/statistics.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <string>
+#include <atomic>
+
+#include "iostream"
+#include "rocksdb/db.h"
+#include "rocksdb/options.h"
+#include "rocksdb/slice.h"
+#include "rocksdb/sst_partitioner.h"
+#include "rocksdb/compaction_filter.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -63,17 +67,50 @@ void LoadConfig(char* config_path, Options& options) {
   ParseNodes(all_nodes, options.nodes);
 }
 
+class MyCompactionFilter : public CompactionFilter {
+  static std::atomic<uint64_t> entry_cnt;
+  uint64_t stall_interval;
+
+  void stall() const {
+    clock_t t_start = clock();
+    while (clock() - t_start < 1000) {
+      // stall 1ms
+    }
+  }
+
+ public:
+  MyCompactionFilter(uint64_t stallInterval) : stall_interval(stallInterval) {}
+  const char* Name() const override { return "MyCompactionFilter"; }
+
+  bool Filter(int i, const Slice& slice, const Slice& slice1,
+              std::string* string, bool* pBoolean) const override {
+    if ((entry_cnt.fetch_add(1) + 1) % stall_interval == 0) {
+      stall();
+    }
+    if (i > 0 && slice.empty() && slice1.empty() && string && pBoolean) {
+      // remove unused warning
+    }
+    return false;
+  }
+};
+
+std::atomic<uint64_t> MyCompactionFilter::entry_cnt;
+
 int main(int argc, char** argv) {
   std::cout << "Main started" << std::endl;
 
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
+  options.statistics = CreateDBStatistics();
   options.IncreaseParallelism(12);
-  options.OptimizeLevelStyleCompaction(32 * 1024 * 1024);
-  options.level0_file_num_compaction_trigger = 6;
+  options.OptimizeLevelStyleCompaction(16 * 1024 * 1024);
+  options.level0_file_num_compaction_trigger = 3;
   options.enable_dist_compaction = false;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
+  options.stats_dump_period_sec = 60;
+  options.target_file_size_base = 16 * 1024 * 1024;
+  // options.compaction_filter = new MyCompactionFilter(100);
   for (auto & i : options.compression_per_level) {
     i = kSnappyCompression;
   }

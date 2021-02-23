@@ -761,8 +761,10 @@ Status DBImpl::FinishBestEffortsRecovery() {
 
   uint64_t next_flush_number = versions_->current_next_flush_number();
   uint64_t next_compaction_number = versions_->current_next_compaction_number();
+  uint64_t next_log_file_number = versions_->current_next_log_file_number();
   uint64_t largest_flush_number = next_flush_number;
   uint64_t largest_compaction_number = next_compaction_number;
+  uint64_t largest_log_file_number = next_log_file_number;
   std::set<std::string> files_to_delete;
   for (const auto& path : paths) {
     std::vector<std::string> files;
@@ -781,6 +783,8 @@ Status DBImpl::FinishBestEffortsRecovery() {
       if (type == kTableFile && number1 >= next_flush_number &&
           files_to_delete.find(normalized_fpath) == files_to_delete.end()) {
         files_to_delete.insert(normalized_fpath);
+      } else if (type == kLogFile && number1 > largest_log_file_number) {
+        largest_log_file_number = number1;
       }
     }
   }
@@ -788,7 +792,10 @@ Status DBImpl::FinishBestEffortsRecovery() {
     versions_->next_flush_number_.store(largest_flush_number + 1);
   }
   if (largest_compaction_number > next_flush_number) {
-    versions_->next_compaction_number_.store(next_compaction_number + 1);
+    versions_->next_compaction_number_.store(largest_compaction_number + 1);
+  }
+  if (largest_log_file_number > next_log_file_number) {
+    versions_->next_log_file_number_.store(largest_log_file_number + 1);
   }
 
   VersionEdit edit;

@@ -34,6 +34,7 @@ class Broker {
   void Get(std::string& key, std::string& value, uint32_t client_idx);
   void Flush();
   void Compact();
+  void CompactEach();
   uint32_t ClientNum();
   std::string GetTicks();
   void ClearTicks();

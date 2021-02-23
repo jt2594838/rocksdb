@@ -217,7 +217,7 @@ class CompactionJob {
   Env::WriteLifeTimeHint write_hint_;
   Env::Priority thread_pri_;
   IOStatus io_status_;
-  int max_file_per_sub_comp = 10;
+  int max_file_per_sub_comp = 100;
   int new_file_start_num;
 
   uint64_t file_start_num;

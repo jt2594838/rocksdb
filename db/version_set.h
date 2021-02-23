@@ -1022,12 +1022,16 @@ class VersionSet {
 
   uint64_t current_next_compaction_number() const { return next_compaction_number_.load(); }
 
+  uint64_t current_next_log_file_number() const {return next_log_file_number_.load(); }
+
   uint64_t min_log_number_to_keep_2pc() const {
     return min_log_number_to_keep_2pc_.load();
   }
 
   // Allocate and return a new flush number
   uint64_t NewFlushNumber() { return next_flush_number_.fetch_add(1); }
+
+  uint64_t NewLogFileNumber() { return next_log_file_number_.fetch_add(1);}
 
   // Fetch And Add n new flush number
   uint64_t FetchAddFlushNumber(uint64_t n) {
@@ -1308,6 +1312,7 @@ class VersionSet {
   const ImmutableDBOptions* const db_options_;
   std::atomic<uint64_t> next_flush_number_;
   std::atomic<uint64_t> next_compaction_number_;
+  std::atomic<uint64_t> next_log_file_number_;
   // Any log number equal or lower than this should be ignored during recovery,
   // and is qualified for being deleted in 2PC mode. In non-2PC mode, this
   // number is ignored.
