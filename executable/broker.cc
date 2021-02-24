@@ -289,19 +289,37 @@ void simple_test(int argc, char** argv) {
   delete broker;
 }
 
+bool compact_each = false;
+uint32_t batch_size = 1000;
+uint32_t batch_num = 100000;
+uint32_t batch_report_interval = 1000;
+uint32_t read_num_per_batch = 10;
+
+void read_config(char* config_file_path) {
+  if (!boost::filesystem::exists(config_file_path)) {
+    std::cout << config_file_path << " not exists." << std::endl;
+    exit(-1);
+  }
+
+  boost::property_tree::ptree root_node;
+  boost::property_tree::ini_parser::read_ini(config_file_path, root_node);
+
+  batch_size = root_node.get<uint32_t>("batch_size");
+  batch_num = root_node.get<uint32_t>("batch_num");
+  batch_report_interval = root_node.get<uint32_t>("batch_report_interval");
+  read_num_per_batch = root_node.get<uint32_t>("read_num_per_batch");
+  compact_each = root_node.get<bool>("compact_each");
+}
+
 void write_stress(int argc, char** argv) {
-  if (argc <= 1) {
+  if (argc <= 2) {
     std::cerr << "Please provide the configuration path" << std::endl;
     return;
   }
 
   Env* env = Env::Default();
+  read_config(argv[1]);
 
-  bool compactEach = false;
-  uint32_t batch_size = 1000;
-  uint32_t batch_num = 100000;
-  uint32_t batch_report_interval = 1000;
-  uint32_t read_num_per_batch = 10;
   uint64_t seed = 21516347;
   std::atomic_int i(0);
 
@@ -365,7 +383,7 @@ void write_stress(int argc, char** argv) {
   }
   Broker b(argv[1]);
   b.Flush();
-  if (compactEach) {
+  if (compact_each) {
     b.CompactEach();
   } else {
     b.Compact();
