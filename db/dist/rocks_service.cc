@@ -206,8 +206,8 @@ namespace ROCKSDB_NAMESPACE {
                 processor, internal_server_transport, transportFactory, protocolFactory,
                 internal_thread_manager));
         external_server.reset(new apache::thrift::server::TThreadPoolServer(
-                processor, internal_server_transport, transportFactory, protocolFactory,
-                internal_thread_manager));
+                processor, external_server_transport, transportFactory, protocolFactory,
+                external_thread_manager));
         db->env_->Schedule(RocksService::RunServer, internal_server.get());
         db->env_->Schedule(RocksService::RunServer, external_server.get());
         ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
