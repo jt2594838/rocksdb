@@ -36,8 +36,10 @@ class RocksService : ThriftServiceIf {
   EnvOptions envOptions;
   WriteOptions writeOptions;
   ReadOptions readOptions;
-  std::unique_ptr<apache::thrift::server::TThreadPoolServer> server = nullptr;
-  std::shared_ptr<apache::thrift::server::TServerTransport> serverTransport;
+  std::unique_ptr<apache::thrift::server::TThreadPoolServer> internal_server = nullptr;
+  std::shared_ptr<apache::thrift::server::TServerTransport> internal_server_transport;
+  std::unique_ptr<apache::thrift::server::TThreadPoolServer> external_server = nullptr;
+  std::shared_ptr<apache::thrift::server::TServerTransport> external_server_transport;
   FlushOptions flushOptions;
   CompactRangeOptions compactOptions;
   port::Mutex mutex;

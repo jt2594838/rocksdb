@@ -2175,11 +2175,11 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor& output) {
     read_size = slice.size();
     uploaded_size += read_size;
     file_end = read_size < buf_size;
+    std::string data(buf, read_size);
     for (auto* node : db_options_.nodes) {
       if (*node != *db_options_.this_node) {
         auto* client = RpcUtils::GetClient(node);
-        client->UpLoadTableFile(output.GetFileName(),
-                                std::string(buf, read_size), file_end,
+        client->UpLoadTableFile(output.GetFileName(), data, file_end,
                                 output.GetPathId());
         RpcUtils::ReleaseClient(node, client);
       }
