@@ -294,6 +294,7 @@ uint32_t batch_size = 1000;
 uint32_t batch_num = 100000;
 uint32_t batch_report_interval = 1000;
 uint32_t read_num_per_batch = 10;
+uint64_t seed = 21516347;
 
 void read_config(char* config_file_path) {
   if (!boost::filesystem::exists(config_file_path)) {
@@ -320,7 +321,7 @@ void write_stress(int argc, char** argv) {
   Env* env = Env::Default();
   read_config(argv[1]);
 
-  uint64_t seed = 21516347;
+
   std::atomic_int i(0);
 
   std::vector<std::thread> threads;
@@ -328,9 +329,7 @@ void write_stress(int argc, char** argv) {
   uint64_t t_last = t_start;
 
   for (int k = 0; k < 9; ++k) {
-    threads.emplace_back([&env, &i, &argv, t_start, &t_last, batch_size,
-                          batch_num, batch_report_interval, seed,
-                          read_num_per_batch] {
+    threads.emplace_back([&env, &i, &argv, t_start, &t_last] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
       std::uniform_int_distribution<uint32_t> distribution;
