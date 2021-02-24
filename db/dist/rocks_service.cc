@@ -168,7 +168,7 @@ void RocksService::InstallCompaction(TStatus& _return,
   _return = RpcUtils::ToTStatus(s);
 }
 RocksService::RocksService(DBImpl* _db) : db(_db) {
-  writeOptions.disableWAL = true;
+  // writeOptions.disableWAL = true;
 }
 
 void RocksService::Start() {
