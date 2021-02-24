@@ -102,8 +102,7 @@ Status TableCache::GetTableReader(
     const SliceTransform* prefix_extractor, bool skip_filters, int level,
     bool prefetch_index_and_filter_in_cache,
     size_t max_file_size_for_l0_meta_pin) {
-  std::string fname =
-      TableFileName(ioptions_.cf_paths, fd.GetFlushNumber(), fd.GetMergeNumber(), fd.GetPathId());
+  std::string fname = fd.file_name;
   std::unique_ptr<FSRandomAccessFile> file;
   FileOptions fopts = file_options;
   Status s = PrepareIOFromReadOptions(ro, ioptions_.env, fopts.io_options);
@@ -112,6 +111,7 @@ Status TableCache::GetTableReader(
   }
   RecordTick(ioptions_.statistics, NO_FILE_OPENS);
   if (s.IsPathNotFound()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "SSTable %s is not found", fname.c_str());
     fname = Rocks2LevelTableFileName(fname);
     s = PrepareIOFromReadOptions(ro, ioptions_.env, fopts.io_options);
     if (s.ok()) {
