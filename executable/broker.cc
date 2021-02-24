@@ -16,8 +16,8 @@
 
 #include "db/thrift/gen/rpc_types.h"
 #include "rocksdb/db.h"
-#include "rocksdb/status.h"
 #include "rocksdb/env.h"
+#include "rocksdb/status.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -79,11 +79,12 @@ void Broker::Get(std::string& key, std::string& value) { Get(key, value, 0); }
 void Broker::Get(std::string& key, std::string& value, uint32_t client_idx) {
   GetResult result;
   clients[client_idx]->Get(result, key);
-  if (result.status.code != Status::Code::kOk) {
+  if (result.status.code != Status::Code::kOk &&
+      result.status.code != Status::Code::kNotFound) {
     std::cout << "An error occurred during get " << result.status.code << ":"
               << result.status.state << std::endl;
   } else {
-    value = result.value;
+    value = result.status.code == Status::Code::kOk ? result.value : "NULL";
   }
 }
 
@@ -296,10 +297,11 @@ void write_stress(int argc, char** argv) {
 
   Env* env = Env::Default();
 
-  bool compactEach = true;
+  bool compactEach = false;
   uint32_t batch_size = 1000;
   uint32_t batch_num = 100000;
   uint32_t batch_report_interval = 1000;
+  uint32_t read_num_per_batch = 10;
   uint64_t seed = 21516347;
   std::atomic_int i(0);
 
@@ -308,14 +310,13 @@ void write_stress(int argc, char** argv) {
   uint64_t t_last = t_start;
 
   for (int k = 0; k < 9; ++k) {
-    threads.emplace_back([&env, &i, &argv, t_start, &t_last, batch_size, batch_num,
-                          batch_report_interval, seed] {
+    threads.emplace_back([&env, &i, &argv, t_start, &t_last, batch_size,
+                          batch_num, batch_report_interval, seed,
+                          read_num_per_batch] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
       std::uniform_int_distribution<uint32_t> distribution;
 
-      std::string key_;
-      std::string value_;
       std::vector<std::string> keys_;
       std::vector<std::string> values_;
       keys_.reserve(batch_size);
@@ -331,6 +332,14 @@ void write_stress(int argc, char** argv) {
         b.Put(keys_, values_);
         keys_.clear();
         values_.clear();
+
+        for (uint32_t r = 0; r < read_num_per_batch; r++) {
+          uint32_t key = distribution(e);
+          std::string key_string = std::to_string(key);
+          std::string value;
+          b.Get(key_string, value, r % b.ClientNum());
+        }
+
         if (j % batch_report_interval == 0) {
           t = env->NowMicros();
           double temp_avg = (double)batch_report_interval / (t - t_last) *
@@ -340,7 +349,8 @@ void write_stress(int argc, char** argv) {
               (double)j / (t - t_start) * CLOCKS_PER_SEC * batch_size;
           double total_consumed_time = (double)(t - t_start) / CLOCKS_PER_SEC;
           std::cout << total_consumed_time << " " << j * batch_size << " "
-                    << total_avg << " " << temp_avg << "|" << b.GetTicks() << std::endl;
+                    << total_avg << " " << temp_avg << "|" << b.GetTicks()
+                    << std::endl;
           // b->ClearTicks();
         }
         if (j >= batch_num) {
