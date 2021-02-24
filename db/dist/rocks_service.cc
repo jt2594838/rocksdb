@@ -287,7 +287,7 @@ namespace ROCKSDB_NAMESPACE {
             uint64_t file_size;
             db->env_->GetFileSize(local_file_name, &file_size);
             ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                           "File %s[%lld] is uploaded to this node, last data size: %ld",
+                           "File %s[%ld] is uploaded to this node, last data size: %ld",
                            local_file_name.c_str(), file_size, data.size());
         }
     }
