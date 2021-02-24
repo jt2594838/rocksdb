@@ -57,11 +57,11 @@ void LoadConfig(char* config_path, Options& options) {
   boost::property_tree::ini_parser::read_ini(config_path, root_node);
   std::string local_node = root_node.get<std::string>("local_node");
   std::string all_nodes = root_node.get<std::string>("all_nodes");
+  options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
   std::cout << "The node " << (is_compaction_leader ? "is" : "is not") << " a compaction leader" << std::endl;
   options.disable_auto_compactions = !is_compaction_leader && options.enable_dist_compaction;
-  options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
