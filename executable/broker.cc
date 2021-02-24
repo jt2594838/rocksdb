@@ -313,7 +313,7 @@ void read_config(char* config_file_path) {
 }
 
 void write_stress(int argc, char** argv) {
-  if (argc <= 2) {
+  if (argc <= 1) {
     std::cerr << "Please provide the configuration path" << std::endl;
     return;
   }
