@@ -124,7 +124,7 @@ Status RpcUtils::ToStatus(TStatus& status) {
   s.sev_ = static_cast<Status::Severity>(status.severity);
   int state_size = status.state.size();
   s.state_ =
-      strncpy(new char[state_size + 1], status.state.c_str(), state_size);
+      strncpy(new char[state_size + 1], status.state.c_str(), state_size + 1);
   return s;
 }
 
