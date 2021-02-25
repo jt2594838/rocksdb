@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
   options.level0_file_num_compaction_trigger = 3;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
-  options.stats_dump_period_sec = 60;
+  options.stats_dump_period_sec = 600;
   options.target_file_size_base = 16 * 1024 * 1024;
   // options.compaction_filter = new MyCompactionFilter(100);
   for (auto & i : options.compression_per_level) {

@@ -268,6 +268,7 @@ namespace ROCKSDB_NAMESPACE {
     void RocksService::FullCompaction(TStatus &_return) {
         _return =
                 RpcUtils::ToTStatus(db->CompactRange(compactOptions, nullptr, nullptr));
+      db->DumpStats();
     }
 
     void RocksService::Flush(TStatus &_return) {
