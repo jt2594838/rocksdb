@@ -149,7 +149,7 @@ namespace ROCKSDB_NAMESPACE {
             uint64_t flush_num = deleted_file.flush_num;
             uint64_t compaction_num = deleted_file.compaction_num;
             std::string file_name = TableFileName(db->immutable_db_options_.db_paths, flush_num, compaction_num, 0);
-            while (db->env_->FileExists(file_name).IsPathNotFound()) {
+            while (db->env_->FileExists(file_name).IsNotFound()) {
               usleep(100 * 1000);
             }
             edit.DeleteFile(level, flush_num, compaction_num);
