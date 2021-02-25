@@ -927,22 +927,22 @@ Status DBImpl::CompactExactly(CompactionOptions& compact_options,
     // FindObsoleteFiles(). This is because job_context does not
     // catch all created files if compaction failed.
     FindObsoleteFiles(&job_context, !s.ok());
-  }
 
-  // delete unnecessary files if any, this is done outside the mutex
-  if (job_context.HaveSomethingToClean() ||
-      job_context.HaveSomethingToDelete() || !log_buffer.IsEmpty()) {
-    // Have to flush the info logs before bg_compaction_scheduled_--
-    // because if bg_flush_scheduled_ becomes 0 and the lock is
-    // released, the deconstructor of DB can kick in and destroy all the
-    // states of DB so info_log might not be available after that point.
-    // It also applies to access other states that DB owns.
-    log_buffer.FlushBufferToLog();
-    if (job_context.HaveSomethingToDelete()) {
-      // no mutex is locked here.  No need to Unlock() and Lock() here.
-      PurgeObsoleteFiles(job_context);
+    // delete unnecessary files if any, this is done outside the mutex
+    if (job_context.HaveSomethingToClean() ||
+        job_context.HaveSomethingToDelete() || !log_buffer.IsEmpty()) {
+      // Have to flush the info logs before bg_compaction_scheduled_--
+      // because if bg_flush_scheduled_ becomes 0 and the lock is
+      // released, the deconstructor of DB can kick in and destroy all the
+      // states of DB so info_log might not be available after that point.
+      // It also applies to access other states that DB owns.
+      log_buffer.FlushBufferToLog();
+      if (job_context.HaveSomethingToDelete()) {
+        // no mutex is locked here.  No need to Unlock() and Lock() here.
+        PurgeObsoleteFiles(job_context);
+      }
+      job_context.Clean();
     }
-    job_context.Clean();
   }
 
   return s;
