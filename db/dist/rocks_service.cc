@@ -122,11 +122,36 @@ namespace ROCKSDB_NAMESPACE {
 
     void RocksService::InstallCompaction(TStatus &_return,
                                          const TInstallCompactionRequest &request) {
+      std::string input_files_str = "[";
+      for (auto &file : request.deleted_inputs) {
+        input_files_str.append(std::to_string(file.flush_num))
+            .append("-")
+            .append(std::to_string(file.compaction_num))
+            .append(" ");
+      }
+      input_files_str.append("]");
+      std::string output_files_str = "[";
+      for (auto &file : request.installed_outputs) {
+        output_files_str.append(std::to_string(file.metadata.fd.merge_number))
+            .append(" ");
+      }
+      output_files_str.append("]");
+      ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
+                     "Received a "
+                     "compaction installation "
+                     "request of %ld inputs: %s, %ld outputs: %s",
+                     request.deleted_inputs.size(), input_files_str.c_str(),
+                     request.installed_outputs.size(), output_files_str.c_str());
+
         VersionEdit edit;
         for (auto &deleted_file : request.deleted_inputs) {
             int level = deleted_file.level;
             uint64_t flush_num = deleted_file.flush_num;
             uint64_t compaction_num = deleted_file.compaction_num;
+            std::string file_name = TableFileName(db->immutable_db_options_.db_paths, flush_num, compaction_num, 0);
+            while (db->env_->FileExists(file_name).IsPathNotFound()) {
+              usleep(100 * 1000);
+            }
             edit.DeleteFile(level, flush_num, compaction_num);
         }
 
@@ -136,26 +161,6 @@ namespace ROCKSDB_NAMESPACE {
             edit.AddFile(level, metaData);
         }
 
-        std::string input_files_str = "[";
-        for (auto &file : request.deleted_inputs) {
-            input_files_str.append(std::to_string(file.flush_num))
-                    .append("-")
-                    .append(std::to_string(file.compaction_num))
-                    .append(" ");
-        }
-        input_files_str.append("]");
-        std::string output_files_str = "[";
-        for (auto &file : request.installed_outputs) {
-            output_files_str.append(std::to_string(file.metadata.fd.merge_number))
-                    .append(" ");
-        }
-        output_files_str.append("]");
-        ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                       "Received a "
-                       "compaction installation "
-                       "request of %ld inputs: %s, %ld outputs: %s",
-                       request.deleted_inputs.size(), input_files_str.c_str(),
-                       request.installed_outputs.size(), output_files_str.c_str());
         edit.SetColumnFamily(db->DefaultColumnFamily()->GetID());
         db->mutex()->Lock();
         Status s = db->versions_->LogAndApply(
