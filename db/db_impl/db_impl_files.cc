@@ -360,9 +360,6 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   // we'd better have sth to delete
   assert(state.HaveSomethingToDelete());
 
-  // FindObsoleteFiles() should've populated this so nonzero
-  assert(state.manifest_file_number != 0);
-
   // Now, convert lists to unordered sets, WITHOUT mutex held; set is slow.
   std::unordered_set<std::string> sst_live_set(state.sst_live.begin(),
                                             state.sst_live.end());

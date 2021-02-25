@@ -411,6 +411,7 @@ Status MemTableList::TryInstallMemtableFlushResults(
   // if some other thread is already committing, then return
   Status s;
   if (commit_in_progress_) {
+    ROCKS_LOG_BUFFER(log_buffer, "Skip inprogress committing");
     TEST_SYNC_POINT("MemTableList::TryInstallMemtableFlushResults:InProgress");
     return s;
   }

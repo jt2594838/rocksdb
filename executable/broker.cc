@@ -320,7 +320,7 @@ void read_config(char *config_file_path) {
     mode = root_node.get<uint32_t>("mode");
 }
 
-void write_stress(int argc, char **argv) {
+void write_stress(char **argv) {
 
     Env *env = Env::Default();
 
@@ -396,7 +396,7 @@ void write_stress(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-    if (argc <= 2) {
+    if (argc <= 1) {
         std::cerr << "Please provide the configuration path" << std::endl;
         return -1;
     }
@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
     if (mode == 0) {
         simple_test(argc, argv);
     } else {
-        write_stress(argc, argv);
+        write_stress(argv);
     }
     return 0;
 }

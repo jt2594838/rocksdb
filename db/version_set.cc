@@ -4253,7 +4253,7 @@ Status VersionSet::LogAndApplyHelper(ColumnFamilyData* cfd,
 
   if (edit->has_log_number_) {
     assert(edit->log_number_ >= cfd->GetLogNumber());
-    assert(edit->log_number_ < next_flush_number_.load());
+    assert(edit->log_number_ < next_log_file_number_.load());
   }
 
   if (!edit->has_prev_log_number_) {

@@ -422,7 +422,7 @@ Status FlushJob::WriteLevel0Table() {
       s = output_file_directory_->Fsync(IOOptions(), nullptr);
     }
     TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table", &mems_);
-    ROCKS_LOG_INFO(db_options_.info_log, "Flush completed, getting lock");
+    ROCKS_LOG_INFO(db_options_.info_log, "Flush completed, getting lock, %s", s.ToString().c_str());
     db_mutex_->Lock();
     ROCKS_LOG_INFO(db_options_.info_log, "Flush completed, got lock");
   }
