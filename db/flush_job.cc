@@ -239,6 +239,7 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
   if (!s.ok()) {
     cfd_->imm()->RollbackMemtableFlush(mems_, meta_.fd.GetFlushNumber());
   } else if (write_manifest_) {
+    ROCKS_LOG_INFO(db_options_.info_log, "Installing flush result");
     TEST_SYNC_POINT("FlushJob::InstallResults");
     // Replace immutable memtable with the generated Table
     IOStatus tmp_io_s;
@@ -431,6 +432,7 @@ Status FlushJob::WriteLevel0Table() {
   // Note that if file_size is zero, the file has been deleted and
   // should not be added to the manifest.
   if (s.ok() && meta_.fd.GetFileSize() > 0) {
+    ROCKS_LOG_INFO(db_options_.info_log, "Adding flushed file to edit");
     // if we have more than 1 background thread, then we cannot
     // insert files directly into higher levels because some other
     // threads could be concurrently producing compacted files for
