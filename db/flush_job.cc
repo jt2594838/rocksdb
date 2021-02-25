@@ -247,6 +247,7 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
         cfd_, mutable_cf_options_, mems_, prep_tracker, versions_, db_mutex_,
         meta_.fd.GetFlushNumber(), &job_context_->memtables_to_free, db_directory_,
         log_buffer_, &committed_flush_jobs_info_, &tmp_io_s);
+    ROCKS_LOG_INFO(db_options_.info_log, "Installed flush result");
     if (!tmp_io_s.ok()) {
       io_status_ = tmp_io_s;
     }
