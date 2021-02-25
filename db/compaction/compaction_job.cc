@@ -480,9 +480,9 @@ namespace ROCKSDB_NAMESPACE {
             }
         }
 
-        if (!is_remote && db_options_.enable_dist_compaction) {
-            AdvanceOtherFileNumbers(versions_->GetCompactionNumber());
-        }
+//        if (!is_remote && db_options_.enable_dist_compaction) {
+//            AdvanceOtherFileNumbers(versions_->GetCompactionNumber());
+//        }
     }
 
     void CompactionJob::AdvanceOtherFileNumbers(uint64_t new_compaction_num) {
