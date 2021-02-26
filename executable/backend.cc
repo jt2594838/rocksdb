@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.statistics = CreateDBStatistics();
-  options.IncreaseParallelism(8);
+  options.IncreaseParallelism(16);
 
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
   } else {
     DefaultConfig(options);
   }
-  options.max_subcompactions = options.nodes.size() * 12;
+  options.max_subcompactions = options.nodes.size() * 16;
 
   std::cout << "Local node: " << options.this_node->ToString() << std::endl;
   std::cout << "All nodes:" << std::endl;
