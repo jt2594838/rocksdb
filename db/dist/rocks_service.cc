@@ -24,9 +24,14 @@ void RocksService::CompactFiles(TCompactionResult &_return,
     uint64_t flush_num = request.flush_nums[i];
     uint64_t compaction_num = request.compaction_nums[i];
     file_names.emplace_back(MakeTableFileName(flush_num, compaction_num));
-    std::string file_name = TableFileName(db->immutable_db_options_.db_paths,
-                                          flush_num, compaction_num, 0);
-    while (db->env_->FileExists(file_name).IsNotFound()) {
+
+    int file_level;
+    FileMetaData *fileMetaData;
+    ColumnFamilyData *cfd;
+    while (db->versions_
+               ->GetMetadataForFile(flush_num, compaction_num, &file_level,
+                                    &fileMetaData, &cfd)
+               .IsNotFound()) {
       usleep(100 * 1000);
     }
   }
@@ -152,9 +157,14 @@ void RocksService::InstallCompaction(TStatus &_return,
     int level = deleted_file.level;
     uint64_t flush_num = deleted_file.flush_num;
     uint64_t compaction_num = deleted_file.compaction_num;
-    std::string file_name = TableFileName(db->immutable_db_options_.db_paths,
-                                          flush_num, compaction_num, 0);
-    while (db->env_->FileExists(file_name).IsNotFound()) {
+
+    int file_level;
+    FileMetaData *fileMetaData;
+    ColumnFamilyData *cfd;
+    while (db->versions_
+        ->GetMetadataForFile(flush_num, compaction_num, &file_level,
+                             &fileMetaData, &cfd)
+        .IsNotFound()) {
       usleep(100 * 1000);
     }
     edit.DeleteFile(level, flush_num, compaction_num);
