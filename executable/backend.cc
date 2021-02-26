@@ -18,6 +18,7 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/sst_partitioner.h"
 #include "rocksdb/compaction_filter.h"
+#include "rocksdb/comparator.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -97,6 +98,28 @@ class MyCompactionFilter : public CompactionFilter {
   }
 };
 
+class IntComparator : public Comparator {
+ public:
+  int Compare(const Slice& a, const Slice& b) const override {
+    int64_t diff = *reinterpret_cast<const int64_t*>(a.data()) -
+                   *reinterpret_cast<const int64_t*>(b.data());
+    if (diff < 0) {
+      return -1;
+    } else if (diff == 0) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+
+  const char* Name() const override { return "IntComparator"; }
+
+  void FindShortestSeparator(std::string* /*start*/,
+                             const Slice& /*limit*/) const override {}
+
+  void FindShortSuccessor(std::string* /*key*/) const override {}
+};
+
 std::atomic<uint64_t> MyCompactionFilter::entry_cnt;
 
 int main(int argc, char** argv) {
@@ -107,10 +130,11 @@ int main(int argc, char** argv) {
   options.statistics = CreateDBStatistics();
   options.IncreaseParallelism(8);
 
-  options.level0_file_num_compaction_trigger = 4;
+  options.level0_file_num_compaction_trigger = 6;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
   options.stats_dump_period_sec = 180;
+  options.comparator = new IntComparator();
   // options.compaction_filter = new MyCompactionFilter(100);
   for (auto & i : options.compression_per_level) {
     i = kSnappyCompression;

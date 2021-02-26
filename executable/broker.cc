@@ -233,7 +233,8 @@ void simple_test(int argc, char **argv) {
     values_.reserve(batch_size);
 
     for (uint32_t i = 0; i < file_num * pt_per_file; ++i) {
-        key_ = std::to_string(i);
+        uint64_t long_key = i;
+        key_ = std::string(reinterpret_cast<char*> (&long_key), 8);
         value_ = std::to_string(i);
 
         keys_.emplace_back(key_);
@@ -249,7 +250,6 @@ void simple_test(int argc, char **argv) {
         }
     }
     broker->Flush();
-    broker->Compact();
 
     std::cout << "Before overwriting" << std::endl;
     //  for (int i = 0; i < 9; ++i) {
@@ -260,7 +260,8 @@ void simple_test(int argc, char **argv) {
 
     for (uint32_t i = 0; i < file_num; ++i) {
         for (uint32_t j = 0; j < pt_per_file; ++j) {
-            key_ = std::to_string(i * pt_per_file + j);
+            uint64_t long_key = i * pt_per_file + j;
+            key_ = std::string(reinterpret_cast<char*> (&long_key), 8);
             value_ = std::to_string(i * pt_per_file + j + 100);
 
             keys_.emplace_back(key_);
@@ -344,7 +345,8 @@ void write_stress(char **argv) {
             for (;;) {
                 for (uint32_t l = 0; l < batch_size; l++) {
                     uint32_t k_v = distribution(e);
-                    keys_.emplace_back(std::to_string(k_v));
+                    uint64_t long_key = k_v;
+                    keys_.emplace_back(std::string(reinterpret_cast<char*> (&long_key), 8));
                     values_.emplace_back(std::to_string(k_v));
                 }
                 uint32_t j = ++i;
