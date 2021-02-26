@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
   } else {
     DefaultConfig(options);
   }
-  options.max_subcompactions = options.nodes.size() * 4;
+  options.max_subcompactions = options.nodes.size() * 12;
 
   std::cout << "Local node: " << options.this_node->ToString() << std::endl;
   std::cout << "All nodes:" << std::endl;
