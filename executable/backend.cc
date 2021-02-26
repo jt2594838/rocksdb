@@ -65,6 +65,7 @@ void LoadConfig(char* config_path, Options& options) {
   options.disable_auto_compactions = !is_compaction_leader && options.enable_dist_compaction;
   options.OptimizeLevelStyleCompaction(root_node.get<uint64_t>("mem_budget"));
   options.target_file_size_base = root_node.get<uint64_t>("l0_file_size");
+  options.level0_file_num_compaction_trigger = root_node.get<uint64_t>("l0_trigger");
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
@@ -130,7 +131,6 @@ int main(int argc, char** argv) {
   options.statistics = CreateDBStatistics();
   options.IncreaseParallelism(8);
 
-  options.level0_file_num_compaction_trigger = 6;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
   options.stats_dump_period_sec = 180;

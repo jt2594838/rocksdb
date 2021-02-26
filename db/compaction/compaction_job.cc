@@ -1266,9 +1266,9 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       "records[%ld bytes], %ld us",
       sub_compact->outputs.size(), output_files_str.c_str(),
       sub_compact->start == nullptr ? "NULL"
-                                    : sub_compact->start->ToString().c_str(),
+                                    : std::to_string(sub_compact->start->ToUint64()).c_str(),
       sub_compact->end == nullptr ? "NULL"
-                                  : sub_compact->end->ToString().c_str(),
+                                  : std::to_string(sub_compact->end->ToUint64()).c_str(),
       sub_compact->num_output_records, sub_compact->total_bytes,
       sub_compact->compaction_job_stats.cpu_micros);
 
@@ -1382,9 +1382,9 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
       "files, %ld records(%ldBytes)",
       sub_compact->node->ToString().c_str(), consumed_time,
       sub_compact->start == nullptr ? "NULL"
-                                    : sub_compact->start->ToString().c_str(),
+                                    : std::to_string(sub_compact->start->ToUint64()).c_str(),
       sub_compact->end == nullptr ? "NULL"
-                                  : sub_compact->end->ToString().c_str(),
+                                  : std::to_string(sub_compact->end->ToUint64()).c_str(),
       status.ToString().c_str(), result.output_files.size(),
       result.num_output_records, result.total_bytes);
   sub_compact->status = status;
