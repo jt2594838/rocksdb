@@ -7,11 +7,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include "db/compaction/compaction_picker_level.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "db/compaction/compaction_picker_level.h"
 #include "logging/log_buffer.h"
 #include "test_util/sync_point.h"
 
@@ -475,8 +476,13 @@ bool LevelCompactionBuilder::PickFileToCompact() {
 
   // store where to start the iteration in the next call to PickCompaction
   vstorage_->SetNextCompactionIndex(start_level_, cmp_idx);
+  if (start_level_ == 0 &&
+      start_level_inputs_.size() <
+          mutable_cf_options_.level0_file_num_compaction_trigger) {
+    return false;
+  }
 
-  return start_level_inputs_.size() > 0;
+  return start_level_inputs_.size() + output_level_inputs_.size() > 1;
 }
 
 bool LevelCompactionBuilder::PickIntraL0Compaction() {
