@@ -2218,7 +2218,6 @@ void DBImpl::EnableManualCompaction() {
   InstrumentedMutexLock l(&mutex_);
   assert(manual_compaction_paused_ > 0);
   manual_compaction_paused_.fetch_sub(1, std::memory_order_release);
-  this.file
 }
 
 void DBImpl::MaybeScheduleFlushOrCompaction() {
