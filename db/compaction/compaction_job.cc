@@ -2202,9 +2202,9 @@ namespace ROCKSDB_NAMESPACE {
         for (auto &subcomp : compact_->sub_compact_states) {
             report.append(subcomp.node == nullptr ? "NULL" : subcomp.node->ToString())
                     .append(":[")
-                    .append(subcomp.start == nullptr ? "NULL" : subcomp.start->ToString())
+                    .append(subcomp.start == nullptr ? "NULL" : std::to_string(subcomp.start->ToUint64()))
                     .append(",")
-                    .append(subcomp.end == nullptr ? "NULL" : subcomp.end->ToString())
+                    .append(subcomp.end == nullptr ? "NULL" : std::to_string(subcomp.end->ToUint64()))
                     .append("], ");
         }
         ROCKS_LOG_INFO(db_options_.info_log, "Sub-compactions: %s", report.c_str());

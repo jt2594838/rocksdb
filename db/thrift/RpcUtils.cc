@@ -167,4 +167,9 @@ void RpcUtils::ReleaseClient(ClusterNode* node, ThriftServiceClient* client) {
     mutex.Unlock();
   }
 }
+uint64_t RpcUtils::ToUint64(const std::string& str) {
+  if (str.size() < 8) {
+    return 0;
+  }
+  return *reinterpret_cast<const uint64_t *> (str.c_str()); }
 }  // namespace ROCKSDB_NAMESPACE

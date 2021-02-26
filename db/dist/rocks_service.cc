@@ -38,8 +38,8 @@ void RocksService::CompactFiles(TCompactionResult &_return,
   ROCKS_LOG_INFO(
       db->immutable_db_options_.info_log,
       "Received a compaction "
-      "request of %ld files, range: [%s, %s], assigned file nums: [%ld, %ld)",
-      file_names.size(), request.comp_start.c_str(), request.comp_end.c_str(),
+      "request of %ld files, range: [%ld, %ld], assigned file nums: [%ld, %ld)",
+      file_names.size(), RpcUtils::ToUint64(request.comp_start), RpcUtils::ToUint64(request.comp_end),
       request.start_file_num, request.max_file_num + request.start_file_num);
   Slice begin(request.comp_start);
   Slice end(request.comp_end);

@@ -196,6 +196,7 @@ bool Slice::DecodeHex(std::string* result) const {
   }
   return true;
 }
+uint64_t Slice::ToUint64() const { return *reinterpret_cast<const uint64_t *>(data_); }
 
 const SliceTransform* NewFixedPrefixTransform(size_t prefix_len) {
   return new FixedPrefixTransform(prefix_len);

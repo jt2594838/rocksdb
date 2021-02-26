@@ -27,6 +27,8 @@ class RpcUtils {
                                                fileDescriptor);
   static Status ToStatus(TStatus& status);
   static TStatus ToTStatus(const Status& status);
+
+  static uint64_t ToUint64(const std::string& str);
 };
 }  // namespace rocksT
 
