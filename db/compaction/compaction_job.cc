@@ -633,8 +633,8 @@ namespace ROCKSDB_NAMESPACE {
         }
 
         // Group the ranges into subcompactions
-        const double min_file_fill_percent = 4.0 / 5;
-        int base_level = v->storage_info()->base_level();
+//        const double min_file_fill_percent = 4.0 / 5;
+//        int base_level = v->storage_info()->base_level();
 //        uint64_t max_output_files = static_cast<uint64_t>(std::ceil(
 //                sum / min_file_fill_percent /
 //                MaxFileSizeForLevel(
