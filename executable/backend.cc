@@ -62,6 +62,8 @@ void LoadConfig(char* config_path, Options& options) {
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
   std::cout << "The node " << (is_compaction_leader ? "is" : "is not") << " a compaction leader" << std::endl;
   options.disable_auto_compactions = !is_compaction_leader && options.enable_dist_compaction;
+  options.OptimizeLevelStyleCompaction(root_node.get<uint64_t>("mem_budget"));
+  options.target_file_size_base = root_node.get<uint64_t>("l0_file_size");
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
@@ -103,13 +105,12 @@ int main(int argc, char** argv) {
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.statistics = CreateDBStatistics();
-  options.IncreaseParallelism(12);
-  options.OptimizeLevelStyleCompaction(16 * 1024 * 1024);
-  options.level0_file_num_compaction_trigger = 3;
+  options.IncreaseParallelism(8);
+
+  options.level0_file_num_compaction_trigger = 4;
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
   options.stats_dump_period_sec = 180;
-  options.target_file_size_base = 16 * 1024 * 1024;
   // options.compaction_filter = new MyCompactionFilter(100);
   for (auto & i : options.compression_per_level) {
     i = kSnappyCompression;

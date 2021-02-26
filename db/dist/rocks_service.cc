@@ -10,7 +10,7 @@
 #include "file/filename.h"
 #include "rocksdb/write_batch.h"
 
-int CORE_NUM = 30;
+int CORE_NUM = 16;
 
 namespace ROCKSDB_NAMESPACE {
 

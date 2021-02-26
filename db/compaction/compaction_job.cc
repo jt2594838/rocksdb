@@ -641,7 +641,6 @@ namespace ROCKSDB_NAMESPACE {
                         *(c->mutable_cf_options()), out_lvl,
                         c->immutable_cf_options()->compaction_style, base_level,
                         c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
-        max_output_files = 100;
         uint64_t subcompactions = std::min(
                 {static_cast<uint64_t>(ranges.size()),
                  static_cast<uint64_t>(c->max_subcompactions()), max_output_files});
