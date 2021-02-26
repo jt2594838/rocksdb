@@ -478,7 +478,7 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   vstorage_->SetNextCompactionIndex(start_level_, cmp_idx);
   if (start_level_ == 0 &&
       start_level_inputs_.size() <
-          mutable_cf_options_.level0_file_num_compaction_trigger) {
+          static_cast<uint32_t>(mutable_cf_options_.level0_file_num_compaction_trigger)) {
     return false;
   }
 

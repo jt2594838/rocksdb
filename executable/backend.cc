@@ -101,7 +101,7 @@ class MyCompactionFilter : public CompactionFilter {
 class IntComparator : public Comparator {
  public:
   int Compare(const Slice& a, const Slice& b) const override {
-    uint64_t diff = *reinterpret_cast<const uint64_t*>(a.data()) -
+    int64_t diff = *reinterpret_cast<const uint64_t*>(a.data()) -
                    *reinterpret_cast<const uint64_t*>(b.data());
     if (diff < 0) {
       return -1;
