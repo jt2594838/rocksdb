@@ -635,15 +635,15 @@ namespace ROCKSDB_NAMESPACE {
         // Group the ranges into subcompactions
         const double min_file_fill_percent = 4.0 / 5;
         int base_level = v->storage_info()->base_level();
-        uint64_t max_output_files = static_cast<uint64_t>(std::ceil(
-                sum / min_file_fill_percent /
-                MaxFileSizeForLevel(
-                        *(c->mutable_cf_options()), out_lvl,
-                        c->immutable_cf_options()->compaction_style, base_level,
-                        c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
+//        uint64_t max_output_files = static_cast<uint64_t>(std::ceil(
+//                sum / min_file_fill_percent /
+//                MaxFileSizeForLevel(
+//                        *(c->mutable_cf_options()), out_lvl,
+//                        c->immutable_cf_options()->compaction_style, base_level,
+//                        c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
         uint64_t subcompactions = std::min(
                 {static_cast<uint64_t>(ranges.size()),
-                 static_cast<uint64_t>(c->max_subcompactions()), max_output_files});
+                 static_cast<uint64_t>(c->max_subcompactions())});
 
         if (subcompactions > 1) {
             double mean = sum * 1.0 / subcompactions;
