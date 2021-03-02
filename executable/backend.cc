@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
   Options options;
   // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
   options.statistics = CreateDBStatistics();
-  options.IncreaseParallelism(3);
+  options.IncreaseParallelism(16);
 
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;

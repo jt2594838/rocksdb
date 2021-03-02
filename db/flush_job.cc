@@ -239,7 +239,6 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
   if (!s.ok()) {
     cfd_->imm()->RollbackMemtableFlush(mems_, meta_.fd.GetFlushNumber());
   } else if (write_manifest_) {
-    ROCKS_LOG_INFO(db_options_.info_log, "Installing flush result");
     TEST_SYNC_POINT("FlushJob::InstallResults");
     // Replace immutable memtable with the generated Table
     IOStatus tmp_io_s;
@@ -247,7 +246,6 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
         cfd_, mutable_cf_options_, mems_, prep_tracker, versions_, db_mutex_,
         meta_.fd.GetFlushNumber(), &job_context_->memtables_to_free, db_directory_,
         log_buffer_, &committed_flush_jobs_info_, &tmp_io_s);
-    ROCKS_LOG_INFO(db_options_.info_log, "Installed flush result");
     if (!tmp_io_s.ok()) {
       io_status_ = tmp_io_s;
     }
@@ -424,16 +422,13 @@ Status FlushJob::WriteLevel0Table() {
       s = output_file_directory_->Fsync(IOOptions(), nullptr);
     }
     TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table", &mems_);
-    ROCKS_LOG_INFO(db_options_.info_log, "Flush completed, getting lock, %s", s.ToString().c_str());
     db_mutex_->Lock();
-    ROCKS_LOG_INFO(db_options_.info_log, "Flush completed, got lock");
   }
   base_->Unref();
 
   // Note that if file_size is zero, the file has been deleted and
   // should not be added to the manifest.
   if (s.ok() && meta_.fd.GetFileSize() > 0) {
-    ROCKS_LOG_INFO(db_options_.info_log, "Adding flushed file to edit");
     // if we have more than 1 background thread, then we cannot
     // insert files directly into higher levels because some other
     // threads could be concurrently producing compacted files for

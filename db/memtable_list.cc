@@ -474,10 +474,8 @@ Status MemTableList::TryInstallMemtableFlushResults(
       }
 
       // this can release and reacquire the mutex.
-      ROCKS_LOG_BUFFER(log_buffer, "Before applying memtable");
       s = vset->LogAndApply(cfd, mutable_cf_options, edit_list, mu,
                             db_directory);
-      ROCKS_LOG_BUFFER(log_buffer, "After applying memtable");
       *io_s = vset->io_status();
 
       // we will be changing the version in the next code path,
