@@ -317,12 +317,6 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
     return nullptr;
   }
 
-  if (start_level_ == 0 &&
-      start_level_inputs_.size() <
-      static_cast<uint32_t>(mutable_cf_options_.level0_file_num_compaction_trigger)) {
-    return nullptr;
-  }
-
   // Form a compaction object containing the files we picked.
   Compaction* c = GetCompaction();
 
