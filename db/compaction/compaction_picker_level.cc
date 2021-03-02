@@ -477,7 +477,7 @@ bool LevelCompactionBuilder::PickFileToCompact() {
   // store where to start the iteration in the next call to PickCompaction
   vstorage_->SetNextCompactionIndex(start_level_, cmp_idx);
 
-  return start_level_inputs_.size() + output_level_inputs_.size() > 1;
+  return start_level_inputs_.size() > 1;
 }
 
 bool LevelCompactionBuilder::PickIntraL0Compaction() {
