@@ -922,6 +922,7 @@ void DBImpl::DumpStats() {
 #endif  // !ROCKSDB_LITE
 
   PrintStatistics();
+  immutable_db_options_.info.log.Flush();
 }
 
 Status DBImpl::TablesRangeTombstoneSummary(ColumnFamilyHandle* column_family,
