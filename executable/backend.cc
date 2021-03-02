@@ -5,20 +5,20 @@
 
 #include <monitoring/statistics.h>
 
+#include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <string>
-#include <atomic>
 
 #include "iostream"
+#include "rocksdb/compaction_filter.h"
+#include "rocksdb/comparator.h"
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/sst_partitioner.h"
-#include "rocksdb/compaction_filter.h"
-#include "rocksdb/comparator.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -31,11 +31,11 @@ void ParseNode(std::string& node_str, ClusterNode* node) {
   node->setPort(atoi(splits[1].c_str()));
 }
 
-void ParseNodes(std::string& nodes_str, std::vector<ClusterNode*> &nodes) {
+void ParseNodes(std::string& nodes_str, std::vector<ClusterNode*>& nodes) {
   std::vector<std::string> splits;
   boost::split(splits, nodes_str, boost::is_any_of(","));
   std::cout << "Read " << splits.size() << " nodes" << std::endl;
-  for (auto & split : splits) {
+  for (auto& split : splits) {
     auto* node = new ClusterNode();
     ParseNode(split, node);
     nodes.push_back(node);
@@ -61,11 +61,18 @@ void LoadConfig(char* config_path, Options& options) {
   options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
-  std::cout << "The node " << (is_compaction_leader ? "is" : "is not") << " a compaction leader" << std::endl;
-  options.disable_auto_compactions = !is_compaction_leader && options.enable_dist_compaction;
+  std::cout << "The node " << (is_compaction_leader ? "is" : "is not")
+            << " a compaction leader" << std::endl;
+  options.disable_auto_compactions =
+      !is_compaction_leader && options.enable_dist_compaction;
   options.OptimizeLevelStyleCompaction(root_node.get<uint64_t>("mem_budget"));
   options.target_file_size_base = root_node.get<uint64_t>("l0_file_size");
-  options.level0_file_num_compaction_trigger = root_node.get<uint64_t>("l0_trigger");
+  options.level0_file_num_compaction_trigger =
+      root_node.get<uint64_t>("l0_trigger");
+  options.level0_slowdown_writes_trigger =
+      static_cast<uint32_t>(options.level0_file_num_compaction_trigger * 1.5);
+  options.level0_stop_writes_trigger =
+      options.level0_file_num_compaction_trigger * 2;
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
@@ -136,7 +143,7 @@ int main(int argc, char** argv) {
   options.stats_dump_period_sec = 180;
   options.comparator = new IntComparator();
   // options.compaction_filter = new MyCompactionFilter(100);
-  for (auto & i : options.compression_per_level) {
+  for (auto& i : options.compression_per_level) {
     i = kSnappyCompression;
   }
   if (argc > 1) {
