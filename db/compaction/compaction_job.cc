@@ -2232,7 +2232,6 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output, char* bu
     auto *node = nodes[i];
     RpcUtils::ReleaseClient(node, client);
   }
-  delete[] buf;
   ROCKS_LOG_INFO(db_options_.info_log, "Pushed %s[%ld] to other nodes",
                  file_path.c_str(), uploaded_size);
 }
