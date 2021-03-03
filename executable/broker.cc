@@ -208,6 +208,7 @@ bool compact_each = false;
 uint32_t batch_size = 1000;
 uint32_t batch_num = 100000;
 uint32_t batch_report_interval = 1000;
+uint32_t write_thread_num = 1;
 uint32_t read_num_per_batch = 10;
 uint64_t seed = 21516347;
 uint32_t file_num = 3;
@@ -261,8 +262,9 @@ void simple_test(int argc, char **argv) {
     for (uint32_t i = 0; i < file_num; ++i) {
         for (uint32_t j = 0; j < pt_per_file; ++j) {
             uint64_t long_key = i * pt_per_file + j;
+            uint64_t long_value = long_key + 100;
             key_ = std::string(reinterpret_cast<char*> (&long_key), 8);
-            value_ = std::to_string(i * pt_per_file + j + 100);
+            value_ = std::string(reinterpret_cast<char*> (&long_value), 8);
 
             keys_.emplace_back(key_);
             values_.emplace_back(value_);
@@ -319,6 +321,7 @@ void read_config(char *config_file_path) {
     file_num = root_node.get<uint32_t>("file_num");
     pt_per_file = root_node.get<uint32_t>("pt_per_file");
     mode = root_node.get<uint32_t>("mode");
+    write_thread_num = root_node.get<uint32_t>("write_thread_num");
 }
 
 void write_stress(char **argv) {
@@ -331,7 +334,7 @@ void write_stress(char **argv) {
     uint64_t t_start = env->NowMicros();
     uint64_t t_last = t_start;
 
-    for (int k = 0; k < 9; ++k) {
+    for (int k = 0; k < write_thread_num; ++k) {
         threads.emplace_back([&env, &i, &argv, t_start, &t_last] {
             Broker b(argv[1]);
             std::default_random_engine e(seed);
@@ -346,8 +349,9 @@ void write_stress(char **argv) {
                 for (uint32_t l = 0; l < batch_size; l++) {
                     uint32_t k_v = distribution(e);
                     uint64_t long_key = k_v;
-                    keys_.emplace_back(std::string(reinterpret_cast<char*> (&long_key), 8));
-                    values_.emplace_back(std::to_string(k_v));
+                    std::string k_v_str = std::string(reinterpret_cast<char*> (&long_key), 8)
+                    keys_.emplace_back(k_v_str);
+                    values_.emplace_back(k_v_str);
                 }
                 uint32_t j = ++i;
                 b.Put(keys_, values_);

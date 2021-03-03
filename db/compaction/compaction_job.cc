@@ -1244,10 +1244,13 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       output_iter++;
     }
 
+    uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
     if (sub_compact->node != nullptr) {
-      uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
       sub_compact->node->setCompactedBytes(compacted_bytes +
                                            sub_compact->total_bytes);
+    } else {
+      db_options_.this_node->setCompactedBytes(compacted_bytes +
+                                               sub_compact->total_bytes);
     }
   }
 
@@ -1256,7 +1259,8 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
 
   std::string output_files_str = "[";
   for (auto &file : sub_compact->outputs) {
-    output_files_str.append(std::to_string(file.meta.fd.merge_number)).append(" ");
+    output_files_str.append(std::to_string(file.meta.fd.merge_number))
+        .append(" ");
   }
   output_files_str.append("]");
 
@@ -1265,10 +1269,12 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       "A local compaction ends with %ld files: %s, range: [%s, %s], %ld "
       "records[%ld bytes], %ld us",
       sub_compact->outputs.size(), output_files_str.c_str(),
-      sub_compact->start == nullptr ? "NULL"
-                                    : std::to_string(sub_compact->start->ToUint64()).c_str(),
-      sub_compact->end == nullptr ? "NULL"
-                                  : std::to_string(sub_compact->end->ToUint64()).c_str(),
+      sub_compact->start == nullptr
+          ? "NULL"
+          : std::to_string(sub_compact->start->ToUint64()).c_str(),
+      sub_compact->end == nullptr
+          ? "NULL"
+          : std::to_string(sub_compact->end->ToUint64()).c_str(),
       sub_compact->num_output_records, sub_compact->total_bytes,
       sub_compact->compaction_job_stats.cpu_micros);
 
@@ -1375,18 +1381,19 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
     iter++;
   }
 
-  ROCKS_LOG_INFO(
-      this->db_options_.info_log,
-      "Executed a remote compaction "
-      "on %s, time: %ld us, range[%s, %s], status: %s, results: %ld "
-      "files, %ld records(%ldBytes)",
-      sub_compact->node->ToString().c_str(), consumed_time,
-      sub_compact->start == nullptr ? "NULL"
-                                    : std::to_string(sub_compact->start->ToUint64()).c_str(),
-      sub_compact->end == nullptr ? "NULL"
-                                  : std::to_string(sub_compact->end->ToUint64()).c_str(),
-      status.ToString().c_str(), result.output_files.size(),
-      result.num_output_records, result.total_bytes);
+  ROCKS_LOG_INFO(this->db_options_.info_log,
+                 "Executed a remote compaction "
+                 "on %s, time: %ld us, range[%s, %s], status: %s, results: %ld "
+                 "files, %ld records(%ldBytes)",
+                 sub_compact->node->ToString().c_str(), consumed_time,
+                 sub_compact->start == nullptr
+                     ? "NULL"
+                     : std::to_string(sub_compact->start->ToUint64()).c_str(),
+                 sub_compact->end == nullptr
+                     ? "NULL"
+                     : std::to_string(sub_compact->end->ToUint64()).c_str(),
+                 status.ToString().c_str(), result.output_files.size(),
+                 result.num_output_records, result.total_bytes);
   sub_compact->status = status;
   sub_compact->num_output_records = result.num_output_records;
   sub_compact->total_bytes = result.total_bytes;
