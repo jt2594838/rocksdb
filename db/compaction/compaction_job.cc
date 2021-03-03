@@ -1242,7 +1242,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
     while (output_iter != sub_compact->outputs.end()) {
       SubcompactionState::Output &output = *output_iter;
       output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
-      PushCompactionOutputToNodes(output.meta.fd, push_file_buf);
+      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size);
       output_iter++;
     }
     delete[] push_file_buf;
@@ -2177,7 +2177,7 @@ const std::vector<FileMetaData> &CompactionJob::getCompactOutput() const {
   return compact_output;
 }
 
-void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output, char* buf) {
+void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output, char* buf, uint32_t buf_size) {
   const std::string &file_path = db_options_.db_paths[output.GetPathId()].path +
                                  "/" + output.GetFileName();
   uint64_t file_size;
