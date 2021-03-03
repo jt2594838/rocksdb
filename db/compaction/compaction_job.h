@@ -130,7 +130,7 @@ class CompactionJob {
   void ProcessRemoteKVCompaction(SubcompactionState* sub_compact);
   void GenFileNumbers();
   void PushResultToNode(TCompactionResult& result, ClusterNode* node) const;
-  void PushCompactionOutputToNodes(FileDescriptor& output, char* buf, uint32_t buf_size);
+  void PushCompactionOutputToNodes(FileDescriptor& output, char* buf, uint32_t buf_size, char* compress_buf);
 
   Status FinishCompactionOutputFile(
       const Status& input_status, SubcompactionState* sub_compact,

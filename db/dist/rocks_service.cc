@@ -9,6 +9,7 @@
 #include "db/version_edit.h"
 #include "file/filename.h"
 #include "rocksdb/write_batch.h"
+#include "snappy.h"
 
 int CORE_NUM = 30;
 
@@ -303,8 +304,13 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
                                    int32_t path_num) {
   const std::string &local_file_name =
       db->immutable_db_options_.db_paths[path_num].path + "/" + file_name;
+
+  size_t uncompressed_size;
+  snappy::GetUncompressedLength(data.c_str(), data.size(), &uncompressed_size);
+  char* uncompress_buf = new char[uncompressed_size];
+  snappy::RawUncompress(data.c_str(), data.size(), uncompress_buf);
   std::unique_ptr<WritableFile> *writer = GetFileWriter(local_file_name);
-  (*writer)->Append(Slice(data));
+  (*writer)->Append(Slice(uncompress_buf, uncompressed_size));
   if (is_last) {
     (*writer)->Close();
     ReleaseFileWriter(local_file_name);
@@ -312,8 +318,9 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
     db->env_->GetFileSize(local_file_name, &file_size);
     ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                    "File %s[%ld] is uploaded to this node, last data size: %ld",
-                   local_file_name.c_str(), file_size, data.size());
+                   local_file_name.c_str(), file_size, uncompressed_size);
   }
+  delete[] uncompress_buf;
 }
 
 std::unique_ptr<WritableFile> *RocksService::GetFileWriter(
