@@ -1235,15 +1235,17 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       result.db_paths.emplace_back(path.path);
     }
 
+    uint32_t buf_size = 16 * 1024 * 1024;
+    char* push_file_buf = new char[buf_size];
     std::vector<TFileMetadata> &output_file_metadata = result.output_files;
     auto output_iter = sub_compact->outputs.begin();
     while (output_iter != sub_compact->outputs.end()) {
       SubcompactionState::Output &output = *output_iter;
       output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
-      PushCompactionOutputToNodes(output.meta.fd);
+      PushCompactionOutputToNodes(output.meta.fd, push_file_buf);
       output_iter++;
     }
-
+    delete[] push_file_buf;
 
     if (sub_compact->node != nullptr) {
       uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
@@ -2175,7 +2177,7 @@ const std::vector<FileMetaData> &CompactionJob::getCompactOutput() const {
   return compact_output;
 }
 
-void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
+void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output, char* buf) {
   const std::string &file_path = db_options_.db_paths[output.GetPathId()].path +
                                  "/" + output.GetFileName();
   uint64_t file_size;
@@ -2185,8 +2187,6 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
   EnvOptions envOptions;
   std::unique_ptr<SequentialFile> file_reader;
   env_->NewSequentialFile(file_path, &file_reader, envOptions);
-  uint32_t buf_size = 64 * 1024;
-  char buf[buf_size];
   Slice slice;
   bool file_end = false;
   uint64_t uploaded_size = 0;
@@ -2208,12 +2208,19 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
     uploaded_size += read_size;
     file_end = read_size < buf_size;
     std::string data(buf, read_size);
-    for (auto *client : clients) {
-      threads.emplace_back([&output, &data, &file_end, &client] {
-        client->UpLoadTableFile(output.GetFileName(), data, file_end,
-                                output.GetPathId());
+
+    for (uint32_t i = 0; i < clients.size(); i++) {
+      auto *client = clients[i];
+      threads.emplace_back([&output, &data, &file_end, client] {
+        try {
+          client->UpLoadTableFile(output.GetFileName(), data, file_end,
+                                  output.GetPathId());
+        } catch (std::exception &e) {
+          std::cout << e.what() << std::endl;
+        }
       });
     }
+
     for (auto& thread : threads) {
       thread.join();
     }
@@ -2225,6 +2232,7 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
     auto *node = nodes[i];
     RpcUtils::ReleaseClient(node, client);
   }
+  delete[] buf;
   ROCKS_LOG_INFO(db_options_.info_log, "Pushed %s[%ld] to other nodes",
                  file_path.c_str(), uploaded_size);
 }

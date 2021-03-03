@@ -39,8 +39,9 @@ void RocksService::CompactFiles(TCompactionResult &_return,
       db->immutable_db_options_.info_log,
       "Received a compaction "
       "request of %ld files, range: [%ld, %ld], assigned file nums: [%ld, %ld)",
-      file_names.size(), RpcUtils::ToUint64(request.comp_start), RpcUtils::ToUint64(request.comp_end),
-      request.start_file_num, request.max_file_num + request.start_file_num);
+      file_names.size(), RpcUtils::ToUint64(request.comp_start),
+      RpcUtils::ToUint64(request.comp_end), request.start_file_num,
+      request.max_file_num + request.start_file_num);
   Slice begin(request.comp_start);
   Slice end(request.comp_end);
   Slice *_begin = request.comp_start.empty() ? nullptr : &begin;
@@ -162,9 +163,9 @@ void RocksService::InstallCompaction(TStatus &_return,
     FileMetaData *fileMetaData;
     ColumnFamilyData *cfd;
     while (db->versions_
-        ->GetMetadataForFile(flush_num, compaction_num, &file_level,
-                             &fileMetaData, &cfd)
-        .IsNotFound()) {
+               ->GetMetadataForFile(flush_num, compaction_num, &file_level,
+                                    &fileMetaData, &cfd)
+               .IsNotFound()) {
       usleep(100 * 1000);
     }
     edit.DeleteFile(level, flush_num, compaction_num);
