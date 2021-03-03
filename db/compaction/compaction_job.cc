@@ -2183,7 +2183,7 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
   EnvOptions envOptions;
   std::unique_ptr<SequentialFile> file_reader;
   env_->NewSequentialFile(file_path, &file_reader, envOptions);
-  uint32_t buf_size = 4 * 1024 * 1024;
+  uint32_t buf_size = 64 * 1024;
   char buf[buf_size];
   Slice slice;
   bool file_end = false;
