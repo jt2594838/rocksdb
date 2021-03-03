@@ -1244,11 +1244,13 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       output_iter++;
     }
 
-    uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
+
     if (sub_compact->node != nullptr) {
+      uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
       sub_compact->node->setCompactedBytes(compacted_bytes +
                                            sub_compact->total_bytes);
     } else {
+      uint64_t compacted_bytes = db_options_.this_node->getCompactedBytes();
       db_options_.this_node->setCompactedBytes(compacted_bytes +
                                                sub_compact->total_bytes);
     }
@@ -2189,8 +2191,8 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
   bool file_end = false;
   uint64_t uploaded_size = 0;
   uint64_t read_size;
-  std::vector<ThriftServiceClient*> clients;
-  std::vector<ClusterNode*> nodes;
+  std::vector<ThriftServiceClient *> clients;
+  std::vector<ClusterNode *> nodes;
   for (auto *node : db_options_.nodes) {
     if (*node != *db_options_.this_node) {
       auto *client = RpcUtils::GetClient(node);
@@ -2199,6 +2201,7 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
     }
   }
 
+  std::vector<std::thread> threads;
   while (!file_end) {
     file_reader->Read(buf_size, &slice, buf);
     read_size = slice.size();
@@ -2206,14 +2209,20 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
     file_end = read_size < buf_size;
     std::string data(buf, read_size);
     for (auto *client : clients) {
-      client->UpLoadTableFile(output.GetFileName(), data, file_end,
-                              output.GetPathId());
+      threads.emplace_back([&output, &data, &file_end, &client] {
+        client->UpLoadTableFile(output.GetFileName(), data, file_end,
+                                output.GetPathId());
+      });
     }
+    for (auto& thread : threads) {
+      thread.join();
+    }
+    threads.clear();
   }
 
   for (uint32_t i = 0; i < clients.size(); i++) {
-    auto* client = clients[i];
-    auto* node = nodes[i];
+    auto *client = clients[i];
+    auto *node = nodes[i];
     RpcUtils::ReleaseClient(node, client);
   }
   ROCKS_LOG_INFO(db_options_.info_log, "Pushed %s[%ld] to other nodes",
