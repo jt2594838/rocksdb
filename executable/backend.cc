@@ -70,9 +70,9 @@ void LoadConfig(char* config_path, Options& options) {
   options.level0_file_num_compaction_trigger =
       root_node.get<uint64_t>("l0_trigger");
   options.level0_slowdown_writes_trigger =
-      static_cast<uint32_t>(options.level0_file_num_compaction_trigger * 1.5);
-  options.level0_stop_writes_trigger =
       options.level0_file_num_compaction_trigger * 2;
+  options.level0_stop_writes_trigger =
+      options.level0_file_num_compaction_trigger * 3;
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);

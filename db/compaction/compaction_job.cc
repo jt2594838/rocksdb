@@ -2189,20 +2189,32 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output) {
   bool file_end = false;
   uint64_t uploaded_size = 0;
   uint64_t read_size;
+  std::vector<ThriftServiceClient*> clients;
+  std::vector<ClusterNode*> nodes;
+  for (auto *node : db_options_.nodes) {
+    if (*node != *db_options_.this_node) {
+      auto *client = RpcUtils::GetClient(node);
+      clients.emplace_back(client);
+      nodes.emplace_back(node);
+    }
+  }
+
   while (!file_end) {
     file_reader->Read(buf_size, &slice, buf);
     read_size = slice.size();
     uploaded_size += read_size;
     file_end = read_size < buf_size;
     std::string data(buf, read_size);
-    for (auto *node : db_options_.nodes) {
-      if (*node != *db_options_.this_node) {
-        auto *client = RpcUtils::GetClient(node);
-        client->UpLoadTableFile(output.GetFileName(), data, file_end,
-                                output.GetPathId());
-        RpcUtils::ReleaseClient(node, client);
-      }
+    for (auto *client : clients) {
+      client->UpLoadTableFile(output.GetFileName(), data, file_end,
+                              output.GetPathId());
     }
+  }
+
+  for (uint32_t i = 0; i < clients.size(); i++) {
+    auto* client = clients[i];
+    auto* node = nodes[i];
+    RpcUtils::ReleaseClient(node, client);
   }
   ROCKS_LOG_INFO(db_options_.info_log, "Pushed %s[%ld] to other nodes",
                  file_path.c_str(), uploaded_size);
