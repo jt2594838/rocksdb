@@ -334,7 +334,7 @@ void write_stress(char **argv) {
     uint64_t t_start = env->NowMicros();
     uint64_t t_last = t_start;
 
-    for (int k = 0; k < write_thread_num; ++k) {
+    for (uint32_t k = 0; k < write_thread_num; ++k) {
         threads.emplace_back([&env, &i, &argv, t_start, &t_last] {
             Broker b(argv[1]);
             std::default_random_engine e(seed);
@@ -349,7 +349,7 @@ void write_stress(char **argv) {
                 for (uint32_t l = 0; l < batch_size; l++) {
                     uint32_t k_v = distribution(e);
                     uint64_t long_key = k_v;
-                    std::string k_v_str = std::string(reinterpret_cast<char*> (&long_key), 8)
+                    std::string k_v_str = std::string(reinterpret_cast<char*> (&long_key), 8);
                     keys_.emplace_back(k_v_str);
                     values_.emplace_back(k_v_str);
                 }
