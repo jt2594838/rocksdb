@@ -643,6 +643,17 @@ void CompactionJob::GenSubcompactionBoundaries() {
   //                        c->immutable_cf_options()->compaction_style,
   //                        base_level,
   //                        c->immutable_cf_options()->level_compaction_dynamic_level_bytes)));
+  std::string ranges_str;
+  for (auto &range : ranges) {
+    ranges_str.append("[")
+        .append(std::to_string(range.range.start.ToUint64()))
+        .append(",")
+        .append(std::to_string(range.range.limit.ToUint64()))
+        .append("](")
+        .append(std::to_string(range.size))
+        .append(") ");
+  }
+  ROCKS_LOG_INFO(db_options_.info_log, "Compaction ranges: %s", ranges_str.c_str());
   uint64_t subcompactions =
       std::min({static_cast<uint64_t>(ranges.size()),
                 static_cast<uint64_t>(c->max_subcompactions())});
