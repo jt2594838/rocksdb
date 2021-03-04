@@ -671,10 +671,32 @@ void CompactionJob::GenSubcompactionBoundaries() {
         continue;
       }
       if (sum >= mean) {
-        boundaries_.emplace_back(ExtractUserKey(ranges[i].range.limit));
-        sizes_.emplace_back(sum);
-        subcompactions--;
-        sum = 0;
+        if (split_compaction_range) {
+          auto num_splits = static_cast<uint32_t> (sum / mean);
+          uint64_t prev = !boundaries_.empty() ? boundaries_.back().ToUint64() : 0;
+          uint64_t current = ranges[i].range.limit.ToUint64();
+          uint64_t size_per_split = sum / num_splits;
+          uint64_t split_range = (current - prev) / num_splits;
+          for (uint32_t j = 0; j < num_splits - 1; j++) {
+            uint64_t split_limit = prev + j * split_range;
+            auto* split_limit_buf = new uint64_t;
+            *split_limit_buf = split_limit;
+            range_limit_collector.emplace_back(split_limit_buf);
+            boundaries_.emplace_back(Slice(reinterpret_cast<char *>(split_limit_buf), 8));
+            sizes_.emplace_back(size_per_split);
+            sum -= size_per_split;
+          }
+          // the last split
+          boundaries_.emplace_back(ExtractUserKey(ranges[i].range.limit));
+          sizes_.emplace_back(sum);
+          subcompactions--;
+          sum = 0;
+        } else {
+          boundaries_.emplace_back(ExtractUserKey(ranges[i].range.limit));
+          sizes_.emplace_back(sum);
+          subcompactions--;
+          sum = 0;
+        }
       }
     }
     sizes_.emplace_back(sum + ranges.back().size);

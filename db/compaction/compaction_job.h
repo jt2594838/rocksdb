@@ -223,6 +223,8 @@ class CompactionJob {
   uint64_t file_start_num;
   uint64_t max_file_num;
   bool is_remote = false;
+  bool split_compaction_range = true;
+  std::vector<uint64_t*> range_limit_collector;
   std::vector<FileMetaData> compact_output;
 
  public:
