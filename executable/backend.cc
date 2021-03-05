@@ -73,7 +73,6 @@ void LoadConfig(char* config_path, Options& options) {
       options.level0_file_num_compaction_trigger * 5;
   options.level0_stop_writes_trigger =
       options.level0_file_num_compaction_trigger * 8;
-  options.allow_concurrent_memtable_write = false;
 
   options.this_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
