@@ -673,6 +673,9 @@ void CompactionJob::GenSubcompactionBoundaries() {
       if (sum >= mean) {
         if (split_compaction_range) {
           auto num_splits = static_cast<uint32_t> (sum / mean);
+          if (num_splits == 0) {
+            num_splits = 1;
+          }
           uint64_t prev = !boundaries_.empty() ? boundaries_.back().ToUint64() : 0;
           uint64_t current = ranges[i].range.limit.ToUint64();
           uint64_t size_per_split = sum / num_splits;
