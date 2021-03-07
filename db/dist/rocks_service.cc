@@ -307,7 +307,7 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
 
   size_t uncompressed_size;
   snappy::GetUncompressedLength(data.c_str(), data.size(), &uncompressed_size);
-  char* uncompress_buf = new char[uncompressed_size];
+  char *uncompress_buf = new char[uncompressed_size];
   snappy::RawUncompress(data.c_str(), data.size(), uncompress_buf);
   std::unique_ptr<WritableFile> *writer = GetFileWriter(local_file_name);
   (*writer)->Append(Slice(uncompress_buf, uncompressed_size));
@@ -321,6 +321,8 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
                    local_file_name.c_str(), file_size, uncompressed_size);
   }
   delete[] uncompress_buf;
+  db->immutable_db_options_.statistics->recordTick(COMPACT_PULL_FILE_BYTES,
+                                                   data.size());
 }
 
 std::unique_ptr<WritableFile> *RocksService::GetFileWriter(

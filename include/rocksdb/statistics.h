@@ -203,6 +203,8 @@ enum Tickers : uint32_t {
   WRITE_WITH_WAL,       // Number of Write calls that request WAL
   COMPACT_READ_BYTES,   // Bytes read during compaction
   COMPACT_WRITE_BYTES,  // Bytes written during compaction
+  COMPACT_PUSH_FILE_BYTES,
+  COMPACT_PULL_FILE_BYTES,
   FLUSH_WRITE_BYTES,    // Bytes written during flush
 
   // Compaction read and write statistics broken down by CompactionReason

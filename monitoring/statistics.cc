@@ -104,6 +104,8 @@ const std::vector<std::pair<Tickers, std::string>> TickersNameMap = {
     {WRITE_WITH_WAL, "rocksdb.write.wal"},
     {COMPACT_READ_BYTES, "rocksdb.compact.read.bytes"},
     {COMPACT_WRITE_BYTES, "rocksdb.compact.write.bytes"},
+    {COMPACT_PULL_FILE_BYTES, "rocksdb.compact.file.pull.bytes"},
+    {COMPACT_PUSH_FILE_BYTES, "rocksdb.compact.file.push.bytes"},
     {FLUSH_WRITE_BYTES, "rocksdb.flush.write.bytes"},
     {COMPACT_READ_BYTES_MARKED, "rocksdb.compact.read.marked.bytes"},
     {COMPACT_READ_BYTES_PERIODIC, "rocksdb.compact.read.periodic.bytes"},

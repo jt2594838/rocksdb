@@ -653,7 +653,8 @@ void CompactionJob::GenSubcompactionBoundaries() {
         .append(std::to_string(range.size))
         .append(") ");
   }
-  ROCKS_LOG_INFO(db_options_.info_log, "Compaction ranges: %s", ranges_str.c_str());
+  ROCKS_LOG_INFO(db_options_.info_log, "Compaction ranges: %s",
+                 ranges_str.c_str());
   uint64_t subcompactions =
       std::min({static_cast<uint64_t>(ranges.size()),
                 static_cast<uint64_t>(c->max_subcompactions())});
@@ -672,20 +673,22 @@ void CompactionJob::GenSubcompactionBoundaries() {
       }
       if (sum >= mean) {
         if (split_compaction_range) {
-          auto num_splits = static_cast<uint32_t> (sum / mean);
+          auto num_splits = static_cast<uint32_t>(sum / mean);
           if (num_splits == 0) {
             num_splits = 1;
           }
-          uint64_t prev = !boundaries_.empty() ? boundaries_.back().ToUint64() : 0;
+          uint64_t prev =
+              !boundaries_.empty() ? boundaries_.back().ToUint64() : 0;
           uint64_t current = ranges[i].range.limit.ToUint64();
           uint64_t size_per_split = sum / num_splits;
           uint64_t split_range = (current - prev) / num_splits;
           for (uint32_t j = 0; j < num_splits - 1; j++) {
             uint64_t split_limit = prev + j * split_range;
-            auto* split_limit_buf = new uint64_t;
+            auto *split_limit_buf = new uint64_t;
             *split_limit_buf = split_limit;
             range_limit_collector.emplace_back(split_limit_buf);
-            boundaries_.emplace_back(Slice(reinterpret_cast<char *>(split_limit_buf), 8));
+            boundaries_.emplace_back(
+                Slice(reinterpret_cast<char *>(split_limit_buf), 8));
             sizes_.emplace_back(size_per_split);
             sum -= size_per_split;
           }
@@ -2258,11 +2261,14 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output,
         try {
           client->UpLoadTableFile(output.GetFileName(), data, file_end,
                                   output.GetPathId());
+
         } catch (std::exception &e) {
           std::cout << e.what() << std::endl;
         }
       });
     }
+    this->db_options_.statistics->recordTick(COMPACT_PUSH_FILE_BYTES,
+                                             data.size() * clients.size());
 
     for (auto &thread : threads) {
       thread.join();
