@@ -206,7 +206,7 @@ void Broker::CompactEach() {
 }
 
 bool compact_each = false;
-uint32_t batch_size = 1000;
+uint64_t batch_size = 1000;
 uint32_t batch_num = 100000;
 uint32_t batch_report_interval = 1000;
 uint32_t write_thread_num = 1;
@@ -314,7 +314,7 @@ void read_config(char *config_file_path) {
   boost::property_tree::ptree root_node;
   boost::property_tree::ini_parser::read_ini(config_file_path, root_node);
 
-  batch_size = root_node.get<uint32_t>("batch_size");
+  batch_size = root_node.get<uint64_t>("batch_size");
   batch_num = root_node.get<uint32_t>("batch_num");
   batch_report_interval = root_node.get<uint32_t>("batch_report_interval");
   read_num_per_batch = root_node.get<uint32_t>("read_num_per_batch");
@@ -354,7 +354,7 @@ void write_stress(char **argv) {
           keys_.emplace_back(k_v_str);
           values_.emplace_back(k_v_str);
         }
-        uint32_t j = ++i;
+        uint64_t j = ++i;
         b.Put(keys_, values_);
         keys_.clear();
         values_.clear();
