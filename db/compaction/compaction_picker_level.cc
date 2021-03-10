@@ -188,6 +188,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
           // L1+ score = `Level files size` / `MaxBytesForLevel`
           compaction_reason_ = CompactionReason::kLevelMaxLevelSize;
         }
+        ROCKS_LOG_INFO(ioptions_.info_log, "Found compaction files at level %d", start_level_);
         break;
       } else {
         // didn't find the compaction, clear the inputs
@@ -204,6 +205,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
           if (PickIntraL0Compaction()) {
             output_level_ = 0;
             compaction_reason_ = CompactionReason::kLevelL0FilesNum;
+            ROCKS_LOG_INFO(ioptions_.info_log, "Found intra compaction files at level 0");
             break;
           }
         }
@@ -301,6 +303,7 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
   // to a clean cut.
   SetupInitialFiles();
   if (start_level_inputs_.empty()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup initial files");
     return nullptr;
   }
   assert(start_level_ >= 0 && output_level_ >= 0);
@@ -308,12 +311,14 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
   // If it is a L0 -> base level compaction, we need to set up other L0
   // files if needed.
   if (!SetupOtherL0FilesIfNeeded()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other L0 files");
     return nullptr;
   }
 
   // Pick files in the output level and expand more files in the start level
   // if needed.
   if (!SetupOtherInputsIfNeeded()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other files");
     return nullptr;
   }
 

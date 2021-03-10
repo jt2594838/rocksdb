@@ -277,6 +277,7 @@ bool CompactionPicker::ExpandInputsToCleanCut(const std::string& /*cf_name*/,
   // If, after the expansion, there are files that are already under
   // compaction, then we must drop/cancel this compaction.
   if (AreFilesInCompaction(inputs->files)) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot expand inputs at level %d", inputs->level);
     return false;
   }
   return true;
@@ -291,6 +292,10 @@ bool CompactionPicker::RangeOverlapWithCompaction(
         ucmp->Compare(smallest_user_key, c->GetLargestUserKey()) <= 0 &&
         ucmp->Compare(largest_user_key, c->GetSmallestUserKey()) >= 0) {
       // Overlap
+      char buffer[256];
+      memset(buffer, '\0', 256);
+      c->Summary(buffer, 256);
+      ROCKS_LOG_INFO(ioptions_.info_log, "Current selection overlaps compaction %s", buffer);
       return true;
     }
   }
