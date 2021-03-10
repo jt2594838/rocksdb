@@ -202,11 +202,12 @@ void RocksService::Start() {
   std::shared_ptr<ThriftServiceProcessor::TProcessor> processor(
       new ThriftServiceProcessor(interface));
   auto *node = db->immutable_db_options_.this_node;
+  auto *external_node = db->immutable_db_options_.external_node;
 
   internal_server_transport.reset(new apache::thrift::transport::TServerSocket(
       node->getIp(), node->getPort()));
   external_server_transport.reset(new apache::thrift::transport::TServerSocket(
-      node->getIp(), node->getPort() + 1));
+      external_node->getIp(), external_node->getPort()));
   std::shared_ptr<apache::thrift::server::TTransportFactory> transportFactory(
       new apache::thrift::transport::TBufferedTransportFactory());
   std::shared_ptr<apache::thrift::protocol::TProtocolFactory> protocolFactory(

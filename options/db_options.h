@@ -93,6 +93,7 @@ struct ImmutableDBOptions {
   uint64_t bgerror_resume_retry_interval;
 
   ClusterNode* this_node;
+  ClusterNode* external_node;
   std::vector<ClusterNode*> nodes;
   bool enable_dist_compaction = true;
 };

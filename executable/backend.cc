@@ -46,6 +46,7 @@ void DefaultConfig(Options& options) {
   std::cout << "Using default configs" << std::endl;
   options.nodes.push_back(new ClusterNode(std::string("127.0.0.1"), 3241));
   options.this_node = options.nodes.front();
+  options.external_node = new ClusterNode(std::string("127.0.0.1"), 3242);
 }
 
 void LoadConfig(char* config_path, Options& options) {
@@ -58,6 +59,7 @@ void LoadConfig(char* config_path, Options& options) {
   boost::property_tree::ini_parser::read_ini(config_path, root_node);
   std::string local_node = root_node.get<std::string>("local_node");
   std::string all_nodes = root_node.get<std::string>("all_nodes");
+  std::string external_node = root_node.get<std::string>("external_node");
   options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
@@ -75,7 +77,9 @@ void LoadConfig(char* config_path, Options& options) {
       options.level0_file_num_compaction_trigger * 8;
 
   options.this_node = new ClusterNode();
+  options.external_node = new ClusterNode();
   ParseNode(local_node, options.this_node);
+  ParseNode(external_node, options.external_node);
   ParseNodes(all_nodes, options.nodes);
 }
 
