@@ -393,7 +393,6 @@ void write_stress(char **argv) {
     th.join();
   }
   Broker b(argv[1]);
-  b.Flush();
   if (compact_each) {
     b.CompactEach();
   } else {

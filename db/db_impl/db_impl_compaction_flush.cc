@@ -1783,7 +1783,11 @@ Status DBImpl::RunManualCompaction(
       // CompactRange
       assert(!exclusive || !manual_conflict);
       // Running either this or some other manual compaction
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Waiting for manual compaction proceeding");
       bg_cv_.Wait();
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Manual compaction notified");
       if (scheduled && manual.incomplete == true) {
         assert(!manual.in_progress);
         scheduled = false;
@@ -1814,6 +1818,8 @@ Status DBImpl::RunManualCompaction(
       }
       env_->Schedule(&DBImpl::BGWorkCompaction, ca, thread_pool_pri, this,
                      &DBImpl::UnscheduleCompactionCallback);
+      ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                     "Manual compaction is scheduled");
       scheduled = true;
     }
   }
@@ -2636,6 +2642,8 @@ void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
   TEST_SYNC_POINT("BackgroundCallCompaction:0");
   LogBuffer log_buffer(InfoLogLevel::INFO_LEVEL,
                        immutable_db_options_.info_log.get());
+  ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                 "A compaction job [%d] starts", job_context.job_id);
   {
     InstrumentedMutexLock l(&mutex_);
 
@@ -2654,6 +2662,9 @@ void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
            (bg_thread_pri == Env::Priority::LOW && bg_compaction_scheduled_));
     Status s = BackgroundCompaction(&made_progress, &job_context, &log_buffer,
                                     prepicked_compaction, bg_thread_pri);
+    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                   "A compaction job [%d] ends with status: %s",
+                   job_context.job_id, s.ToString().c_str());
     TEST_SYNC_POINT("BackgroundCallCompaction:1");
     if (s.IsBusy()) {
       bg_cv_.SignalAll();  // In case a waiter can proceed despite the error
