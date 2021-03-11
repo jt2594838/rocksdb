@@ -314,6 +314,7 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
   std::unique_ptr<WritableFile> *writer = GetFileWriter(local_file_name);
   (*writer)->Append(Slice(uncompress_buf, uncompressed_size));
   if (is_last) {
+    (*writer)->Sync();
     (*writer)->Close();
     ReleaseFileWriter(local_file_name);
     uint64_t file_size;
