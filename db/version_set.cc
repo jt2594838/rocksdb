@@ -3925,6 +3925,7 @@ Status VersionSet::ProcessManifestWrites(
         }
       }
     }
+    ROCKS_LOG_INFO(db_options_->info_log, "Manifest is written");
 
     if (s.ok() && new_descriptor_log) {
       // This is fine because everything inside of this block is serialized --
@@ -3952,6 +3953,7 @@ Status VersionSet::ProcessManifestWrites(
         s = io_s;
       }
     }
+    ROCKS_LOG_INFO(db_options_->info_log, "New manifest is created");
 
     if (s.ok()) {
       if (!first_writer.edit_list.front()->IsColumnFamilyManipulation()) {
@@ -4027,7 +4029,7 @@ Status VersionSet::ProcessManifestWrites(
     TEST_SYNC_POINT("VersionSet::LogAndApply:WriteManifestDone");
     mu->Lock();
   }
-  ROCKS_LOG_INFO(db_options_->info_log, "Manifest is written");
+  ROCKS_LOG_INFO(db_options_->info_log, "Manifest is synced");
 
   if (!io_s.ok()) {
     if (io_status_.ok()) {
