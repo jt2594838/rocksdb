@@ -32,7 +32,7 @@ void Broker::Put(std::vector<std::string> &keys,
     uint64_t t_start = clock();
     clients[i]->PutBatch(status, keys, values);
     uint64_t t_consumed = clock() - t_start;
-    client_ticks[i] += t_consumed;
+    client_ticks[i].fetch_add(t_consumed);
     if (status.code != Status::Code::kOk) {
       std::cout << "An error occurred during put " << status.code << ":"
                 << status.state << std::endl;
@@ -42,7 +42,7 @@ void Broker::Put(std::vector<std::string> &keys,
   uint64_t t_start = clock();
   leader_client->PutBatch(status, keys, values);
   uint64_t t_consumed = clock() - t_start;
-  client_ticks[leader_pos] += t_consumed;
+  client_ticks[leader_pos].fetch_add(t_consumed);
   if (status.code != Status::Code::kOk) {
     std::cout << "An error occurred during put " << status.code << ":"
               << status.state << std::endl;
@@ -58,7 +58,7 @@ void Broker::Put(std::string &key, std::string &value) {
     uint64_t t_start = clock();
     clients[i]->Put(status, key, value);
     uint64_t t_consumed = clock() - t_start;
-    client_ticks[i] += t_consumed;
+    client_ticks[i].fetch_add(t_consumed);
     if (status.code != Status::Code::kOk) {
       std::cout << "An error occurred during put " << status.code << ":"
                 << status.state << std::endl;
@@ -68,7 +68,7 @@ void Broker::Put(std::string &key, std::string &value) {
   uint64_t t_start = clock();
   leader_client->Put(status, key, value);
   uint64_t t_consumed = clock() - t_start;
-  client_ticks[leader_pos] += t_consumed;
+  client_ticks[leader_pos].fetch_add(t_consumed);
   if (status.code != Status::Code::kOk) {
     std::cout << "An error occurred during put " << status.code << ":"
               << status.state << std::endl;
@@ -149,14 +149,14 @@ void Broker::init(char *config_file_path) {
   ParseNodes(all_nodes_str, nodes);
 
   leader_client = RpcUtils::NewClient(compaction_leader);
-  client_ticks = new uint64_t[nodes.size()];
+  client_ticks = new std::atomic_uint64_t[nodes.size()];
   for (uint32_t i = 0; i < nodes.size(); i++) {
     auto *node = nodes[i];
     if (*node == *compaction_leader) {
       leader_pos = i;
     }
     clients.push_back(RpcUtils::NewClient(node));
-    client_ticks[i] = 0;
+    client_ticks[i].store(0);
   }
 }
 
@@ -187,7 +187,7 @@ std::string Broker::GetTicks() {
 
 void Broker::ClearTicks() {
   for (uint32_t i = 0; i < nodes.size(); ++i) {
-    client_ticks[i] = 0;
+    client_ticks[i].store(0);
   }
 }
 

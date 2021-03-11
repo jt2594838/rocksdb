@@ -7,6 +7,7 @@
 #define ROCKSDB_BROKER_H
 
 #include <vector>
+#include <atomic>
 
 #include "db/thrift/RpcUtils.h"
 #include "rocksdb/node.h"
@@ -21,7 +22,7 @@ class Broker {
   ClusterNode* compaction_leader = nullptr;
   ThriftServiceClient* leader_client = nullptr;
   uint32_t leader_pos = 0;
-  uint64_t* client_ticks;
+  std::atomic_uint64_t* client_ticks;
 
   void init(char* config_file_path);
 
