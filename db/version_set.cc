@@ -3803,6 +3803,7 @@ Status VersionSet::ProcessManifestWrites(
           group_start = std::numeric_limits<size_t>::max();
         }
         Status s = LogAndApplyHelper(last_writer->cfd, builder, e, mu);
+        ROCKS_LOG_INFO(db_options_->info_log, "Edit applied: %s", s.ToString().c_str());
         if (!s.ok()) {
           // free up the allocated memory
           for (auto v : versions) {
@@ -3826,6 +3827,7 @@ Status VersionSet::ProcessManifestWrites(
         return s;
       }
     }
+    ROCKS_LOG_INFO(db_options_->info_log, "Version changes are saved");
   }
 
 #ifndef NDEBUG
@@ -4025,6 +4027,7 @@ Status VersionSet::ProcessManifestWrites(
     TEST_SYNC_POINT("VersionSet::LogAndApply:WriteManifestDone");
     mu->Lock();
   }
+  ROCKS_LOG_INFO(db_options_->info_log, "Manifest is written");
 
   if (!io_s.ok()) {
     if (io_status_.ok()) {
@@ -4115,6 +4118,7 @@ Status VersionSet::ProcessManifestWrites(
           DescriptorFileName(dbname_, pending_manifest_file_number_));
     }
   }
+  ROCKS_LOG_INFO(db_options_->info_log, "New version is installed");
 
   pending_manifest_file_number_ = 0;
 
@@ -4141,6 +4145,7 @@ Status VersionSet::ProcessManifestWrites(
   if (!manifest_writers_.empty()) {
     manifest_writers_.front()->cv.Signal();
   }
+  ROCKS_LOG_INFO(db_options_->info_log, "Other manifest writers are notified");
   return s;
 }
 
