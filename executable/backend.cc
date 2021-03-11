@@ -68,6 +68,7 @@ void LoadConfig(char* config_path, Options& options) {
   options.disable_auto_compactions =
       !is_compaction_leader && options.enable_dist_compaction;
   options.OptimizeLevelStyleCompaction(root_node.get<uint64_t>("mem_budget"));
+  options.max_write_buffer_number = 8;
   options.target_file_size_base = root_node.get<uint64_t>("l0_file_size");
   options.level0_file_num_compaction_trigger =
       root_node.get<uint64_t>("l0_trigger");
