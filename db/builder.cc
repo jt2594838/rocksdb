@@ -227,6 +227,7 @@ Status BuildTable(
     }
     delete builder;
 
+    ROCKS_LOG_INFO(ioptions.info_log, "[JOB %d] flushing new table", job_id);
     // Finish and check for file errors
     if (s.ok() && !empty) {
       StopWatch sw(env, ioptions.statistics, TABLE_SYNC_MICROS);
@@ -246,6 +247,7 @@ Status BuildTable(
     if (s.ok()) {
       s = *io_status;
     }
+    ROCKS_LOG_INFO(ioptions.info_log, "[JOB %d] new table is Flushed", job_id);
 
     // TODO Also check the IO status when create the Iterator.
 
