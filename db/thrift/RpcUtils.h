@@ -29,6 +29,8 @@ class RpcUtils {
   static TStatus ToTStatus(const Status& status);
 
   static uint64_t ToUint64(const std::string& str);
+
+  static sockaddr* local_addr;
 };
 }  // namespace rocksT
 

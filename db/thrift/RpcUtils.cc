@@ -16,6 +16,7 @@ namespace ROCKSDB_NAMESPACE {
 
 port::Mutex RpcUtils::mutex;
 std::map<ClusterNode*, std::vector<ThriftServiceClient*>*> RpcUtils::client_cache;
+sockaddr* RpcUtils::local_addr;
 
 ThriftServiceClient* RpcUtils::GetClient(ClusterNode* node) {
   mutex.Lock();
@@ -138,8 +139,12 @@ TStatus RpcUtils::ToTStatus(const Status& status) {
 }
 ThriftServiceClient* RpcUtils::NewClient(rocksdb::ClusterNode* node) {
   std::shared_ptr<apache::thrift::transport::TTransport> transport;
-  transport.reset(
-      new apache::thrift::transport::TSocket(node->getIp(), node->getPort()));
+  auto* socket = new apache::thrift::transport::TSocket(node->getIp(), node->getPort());
+  bool bind_success = bind(socket->getSocketFD(), local_addr, sizeof(sockaddr));
+  if (!bind_success) {
+    std::cout << "Cannot bind client to " << local_addr->sa_data << std::endl;
+  }
+  transport.reset(socket);
   std::shared_ptr<apache::thrift::transport::TTransport> buffered_transport(
       new apache::thrift::transport::TBufferedTransport(transport));
   std::shared_ptr< ::apache::thrift::protocol::TProtocol> protocol;

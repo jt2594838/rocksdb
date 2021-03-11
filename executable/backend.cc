@@ -12,13 +12,13 @@
 #include <boost/property_tree/ptree.hpp>
 #include <string>
 
+#include "db/thrift/RpcUtils.h"
 #include "iostream"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/comparator.h"
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
-#include "rocksdb/sst_partitioner.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -82,6 +82,10 @@ void LoadConfig(char* config_path, Options& options) {
   ParseNode(local_node, options.this_node);
   ParseNode(external_node, options.external_node);
   ParseNodes(all_nodes, options.nodes);
+  RpcUtils::local_addr = new sockaddr;
+  memset(RpcUtils::local_addr, 0, sizeof(sockaddr));
+  strncpy(RpcUtils::local_addr->sa_data, options.this_node->getIp().c_str(),
+          options.this_node->getIp().size());
 }
 
 class MyCompactionFilter : public CompactionFilter {
