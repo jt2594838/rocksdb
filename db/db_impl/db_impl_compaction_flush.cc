@@ -1770,7 +1770,8 @@ Status DBImpl::RunManualCompaction(
     assert(HasPendingManualCompaction());
     manual_conflict = false;
     Compaction* compaction = nullptr;
-    if (ShouldntRunManualCompaction(&manual) || (manual.in_progress == true) ||
+    bool no_run = ShouldntRunManualCompaction(&manual);
+    if (no_run || (manual.in_progress == true) ||
         scheduled ||
         (((manual.manual_end = &manual.tmp_storage1) != nullptr) &&
          ((compaction = manual.cfd->CompactRange(
@@ -1784,7 +1785,14 @@ Status DBImpl::RunManualCompaction(
       assert(!exclusive || !manual_conflict);
       // Running either this or some other manual compaction
       ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                     "Waiting for manual compaction proceeding");
+                     "Waiting for manual compaction proceeding, in progress: "
+                     "%d, scheduled: %d, manual_end: %ld, has compaction: %d, "
+                     "manual conflict: %d, no run: %d",
+                     manual.in_progress, scheduled,
+                     manual.manual_end == nullptr
+                         ? -1
+                         : manual.manual_end->user_key().ToUint64(),
+                     compaction != nullptr, manual_conflict, no_run);
       bg_cv_.Wait();
       ROCKS_LOG_INFO(immutable_db_options_.info_log,
                      "Manual compaction notified");
@@ -2642,8 +2650,8 @@ void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
   TEST_SYNC_POINT("BackgroundCallCompaction:0");
   LogBuffer log_buffer(InfoLogLevel::INFO_LEVEL,
                        immutable_db_options_.info_log.get());
-  ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                 "A compaction job [%d] starts", job_context.job_id);
+  ROCKS_LOG_INFO(immutable_db_options_.info_log, "A compaction job [%d] starts",
+                 job_context.job_id);
   {
     InstrumentedMutexLock l(&mutex_);
 
