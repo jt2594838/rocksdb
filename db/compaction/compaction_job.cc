@@ -1274,7 +1274,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
       result.db_paths.emplace_back(path.path);
     }
 
-    uint32_t buf_size = 256 * 1024;
+    uint32_t buf_size = 16 * 1024 * 1024;
     char *push_file_buf = new char[buf_size];
     char *compress_buf = new char[buf_size];
     std::vector<TFileMetadata> &output_file_metadata = result.output_files;

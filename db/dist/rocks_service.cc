@@ -314,14 +314,11 @@ void RocksService::UpLoadTableFile(const std::string &file_name,
   std::unique_ptr<WritableFile> *writer = GetFileWriter(local_file_name);
   (*writer)->Append(Slice(uncompress_buf, uncompressed_size));
   if (is_last) {
-    (*writer)->Sync();
     (*writer)->Close();
     ReleaseFileWriter(local_file_name);
-    uint64_t file_size;
-    db->env_->GetFileSize(local_file_name, &file_size);
     ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
-                   "File %s[%ld] is uploaded to this node, last data size: %ld",
-                   local_file_name.c_str(), file_size, uncompressed_size);
+                   "File %s is uploaded to this node, last data size: %ld",
+                   local_file_name.c_str(), uncompressed_size);
   }
   delete[] uncompress_buf;
   db->immutable_db_options_.statistics->recordTick(COMPACT_PULL_FILE_BYTES,
