@@ -174,7 +174,10 @@ int main(int argc, char** argv) {
   // open DB
   DB* db;
   Status s = DB::Open(options, kDBPath, &db);
-  assert(s.ok());
+  if (!s.ok()) {
+    std::cout << s.ToString() << std::endl;
+    return -1;
+  }
 
   std::cout << "DB is up" << std::endl;
 
