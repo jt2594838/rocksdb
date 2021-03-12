@@ -40,6 +40,8 @@ class RocksService : ThriftServiceIf {
   std::shared_ptr<apache::thrift::server::TServerTransport> internal_server_transport;
   std::unique_ptr<apache::thrift::server::TThreadPoolServer> external_server = nullptr;
   std::shared_ptr<apache::thrift::server::TServerTransport> external_server_transport;
+  std::unique_ptr<std::thread> internal_server_thread;
+  std::unique_ptr<std::thread> external_server_thread;
   FlushOptions flushOptions;
   CompactRangeOptions compactOptions;
   port::Mutex mutex;
@@ -54,7 +56,7 @@ class RocksService : ThriftServiceIf {
   void Start();
   void Stop();
 
-  static void RunServer(void* arg);
+  static void RunServer(apache::thrift::server::TThreadPoolServer* server);
   ~RocksService() override;
 };
 }

@@ -234,16 +234,21 @@ void RocksService::Start() {
   external_server.reset(new apache::thrift::server::TThreadPoolServer(
       processor, external_server_transport, transportFactory, protocolFactory,
       external_thread_manager));
-  db->env_->Schedule(RocksService::RunServer, internal_server.get());
-  db->env_->Schedule(RocksService::RunServer, external_server.get());
+
+  apache::thrift::server::TThreadPoolServer *i_server = internal_server.get();
+  apache::thrift::server::TThreadPoolServer *e_server = external_server.get();
+  internal_server_thread.reset(
+      new std::thread([i_server] { RunServer(i_server); }));
+  external_server_thread.reset(
+      new std::thread([e_server] { RunServer(e_server); }));
+
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Compaction service "
                  "started");
 }
 
-void RocksService::RunServer(void *arg) {
-  auto *server =
-      reinterpret_cast<apache::thrift::server::TThreadPoolServer *>(arg);
+void RocksService::RunServer(
+    apache::thrift::server::TThreadPoolServer *server) {
   try {
     server->serve();
   } catch (apache::thrift::transport::TTransportException &exception) {
