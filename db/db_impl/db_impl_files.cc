@@ -407,12 +407,12 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
       candidate_files.end());
 
   if (state.prev_total_log_size > 0) {
-    ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                   "[JOB %d] Try to delete WAL files size %" PRIu64
-                   ", prev total WAL file size %" PRIu64
-                   ", number of live WAL files %" ROCKSDB_PRIszt ".\n",
-                   state.job_id, state.size_log_to_delete,
-                   state.prev_total_log_size, state.num_alive_log_files);
+//    ROCKS_LOG_INFO(immutable_db_options_.info_log,
+//                   "[JOB %d] Try to delete WAL files size %" PRIu64
+//                   ", prev total WAL file size %" PRIu64
+//                   ", number of live WAL files %" ROCKSDB_PRIszt ".\n",
+//                   state.job_id, state.size_log_to_delete,
+//                   state.prev_total_log_size, state.num_alive_log_files);
   }
 
   std::vector<std::string> old_info_log_files;

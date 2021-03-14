@@ -66,11 +66,11 @@ Status DeleteScheduler::DeleteFile(const std::string& file_path,
     s = fs_->DeleteFile(file_path, IOOptions(), nullptr);
     if (s.ok()) {
       s = sst_file_manager_->OnDeleteFile(file_path);
-      ROCKS_LOG_INFO(info_log_,
-                     "Deleted file %s immediately, rate_bytes_per_sec %" PRIi64
-                     ", total_trash_size %" PRIu64 " max_trash_db_ratio %lf",
-                     file_path.c_str(), rate_bytes_per_sec_.load(),
-                     total_trash_size_.load(), max_trash_db_ratio_.load());
+//      ROCKS_LOG_INFO(info_log_,
+//                     "Deleted file %s immediately, rate_bytes_per_sec %" PRIi64
+//                     ", total_trash_size %" PRIu64 " max_trash_db_ratio %lf",
+//                     file_path.c_str(), rate_bytes_per_sec_.load(),
+//                     total_trash_size_.load(), max_trash_db_ratio_.load());
       InstrumentedMutexLock l(&mu_);
       RecordTick(stats_.get(), FILES_DELETED_IMMEDIATELY);
     }

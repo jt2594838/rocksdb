@@ -1276,19 +1276,16 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
 
     uint32_t buf_size = 16 * 1024 * 1024;
     char *push_file_buf = new char[buf_size];
-    char *compress_buf = new char[buf_size];
     std::vector<TFileMetadata> &output_file_metadata = result.output_files;
     auto output_iter = sub_compact->outputs.begin();
     while (output_iter != sub_compact->outputs.end()) {
       SubcompactionState::Output &output = *output_iter;
       output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
-      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size,
-                                  compress_buf);
+      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size);
       output_iter++;
     }
 
     delete[] push_file_buf;
-    delete[] compress_buf;
 
     if (sub_compact->node != nullptr) {
       uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
@@ -2221,8 +2218,7 @@ const std::vector<FileMetaData> &CompactionJob::getCompactOutput() const {
 }
 
 void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output,
-                                                char *buf, uint32_t buf_size,
-                                                char *compress_buf) {
+                                                char *buf, uint32_t buf_size) {
   const std::string &file_path = db_options_.db_paths[output.GetPathId()].path +
                                  "/" + output.GetFileName();
   uint64_t file_size;
@@ -2247,14 +2243,12 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output,
   }
 
   std::vector<std::thread> threads;
-  size_t compressed_size;
   while (!file_end) {
     file_reader->Read(buf_size, &slice, buf);
     read_size = slice.size();
     uploaded_size += read_size;
     file_end = read_size < buf_size;
-    snappy::RawCompress(buf, read_size, compress_buf, &compressed_size);
-    std::string data(compress_buf, compressed_size);
+    std::string data(buf, read_size);
 
     for (uint32_t i = 0; i < clients.size(); i++) {
       auto *client = clients[i];
