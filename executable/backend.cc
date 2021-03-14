@@ -61,7 +61,9 @@ void LoadConfig(char* config_path, Options& options) {
   std::string all_nodes = root_node.get<std::string>("all_nodes");
   std::string external_node = root_node.get<std::string>("external_node");
   options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
-  options.IncreaseParallelism(root_node.get<uint32_t>("parallelism"));
+  auto parallelism = root_node.get<uint32_t>("parallelism");
+  options.IncreaseParallelism(parallelism);
+  options.max_subcompactions = options.nodes.size() * parallelism;
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
   std::cout << "The node " << (is_compaction_leader ? "is" : "is not")
@@ -160,7 +162,6 @@ int main(int argc, char** argv) {
   } else {
     DefaultConfig(options);
   }
-  options.max_subcompactions = options.nodes.size() * 8;
 
   std::cout << "Local node: " << options.this_node->ToString() << std::endl;
   std::cout << "All nodes:" << std::endl;
