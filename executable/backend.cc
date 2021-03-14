@@ -153,6 +153,7 @@ int main(int argc, char** argv) {
   options.compression = kSnappyCompression;
   options.bottommost_compression = kSnappyCompression;
   options.stats_dump_period_sec = 360;
+  options.allow_concurrent_memtable_write = false;
   options.comparator = new IntComparator();
   // options.compaction_filter = new MyCompactionFilter(100);
   for (auto& i : options.compression_per_level) {
