@@ -1288,6 +1288,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
     }
 
     delete[] push_file_buf;
+    delete[] compress_buf;
 
     if (sub_compact->node != nullptr) {
       uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
