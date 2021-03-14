@@ -63,7 +63,7 @@ void LoadConfig(char* config_path, Options& options) {
   options.enable_dist_compaction = root_node.get<bool>("enable_dist_comp");
   auto parallelism = root_node.get<uint32_t>("parallelism");
   options.IncreaseParallelism(parallelism);
-  options.max_subcompactions = options.nodes.size() * parallelism;
+
   kDBPath = root_node.get<std::string>("db_path");
   bool is_compaction_leader = root_node.get<bool>("is_compaction_leader");
   std::cout << "The node " << (is_compaction_leader ? "is" : "is not")
@@ -89,6 +89,7 @@ void LoadConfig(char* config_path, Options& options) {
   memset(RpcUtils::local_addr, 0, sizeof(sockaddr));
   strncpy(RpcUtils::local_addr->sa_data, options.this_node->getIp().c_str(),
           options.this_node->getIp().size());
+  options.max_subcompactions = options.nodes.size() * parallelism;
 }
 
 class MyCompactionFilter : public CompactionFilter {

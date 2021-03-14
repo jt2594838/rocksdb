@@ -479,6 +479,7 @@ void CompactionJob::Prepare() {
           versions_->FetchAddCompactionNumber(max_file_per_sub_comp);
       sub_comp.max_output_file_num = max_file_per_sub_comp;
     }
+    ROCKS_LOG_INFO(db_options_.info_log, "A local compaction is prepared");
   }
 
   //        if (!is_remote && db_options_.enable_dist_compaction) {
