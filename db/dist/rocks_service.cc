@@ -191,7 +191,7 @@ void RocksService::InstallCompaction(TStatus &_return,
 }
 
 RocksService::RocksService(DBImpl *_db) : db(_db) {
-  // writeOptions.disableWAL = true;
+  writeOptions.disableWAL = true;
   compactOptions.exclusive_manual_compaction = false;
 }
 
