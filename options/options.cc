@@ -534,8 +534,6 @@ ColumnFamilyOptions* ColumnFamilyOptions::OptimizeForPointLookup(
 ColumnFamilyOptions* ColumnFamilyOptions::OptimizeLevelStyleCompaction(
     uint64_t memtable_memory_budget) {
   write_buffer_size = static_cast<size_t>(memtable_memory_budget / 4);
-  // merge two memtables when flushing to L0
-  min_write_buffer_number_to_merge = 2;
   // this means we'll use 50% extra memory in the worst case, but will reduce
   // write stalls.
   max_write_buffer_number = 6;
