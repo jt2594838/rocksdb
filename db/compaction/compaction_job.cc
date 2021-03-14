@@ -2055,6 +2055,11 @@ void CompactionJob::CleanupCompaction() {
       }
     }
   }
+  for (auto* range_limit_buf : range_limit_collector) {
+    delete range_limit_buf;
+  }
+  range_limit_collector.clear();
+
   delete compact_;
   compact_ = nullptr;
 }
