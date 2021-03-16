@@ -169,6 +169,7 @@ struct CompactionJob::SubcompactionState {
   uint64_t overlapped_bytes = 0;
   // A flag determine whether the key has been seen in ShouldStopBefore()
   bool seen_key = false;
+  std::vector<std::thread> push_file_threads;
 
   SubcompactionState(Compaction *c, Slice *_start, Slice *_end,
                      uint64_t size = 0, ClusterNode *_node = nullptr)
@@ -1267,26 +1268,24 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
 
   // push compaction results to other nodes
   if (status.ok() && db_options_.enable_dist_compaction) {
-    TCompactionResult result;
-    result.num_output_records =
-        sub_compact->compaction_job_stats.num_output_records;
-    result.total_bytes = sub_compact->compaction_job_stats.total_output_bytes;
-    for (auto &path : db_options_.db_paths) {
-      result.db_paths.emplace_back(path.path);
-    }
 
-    uint32_t buf_size = 16 * 1024 * 1024;
-    char *push_file_buf = new char[buf_size];
-    std::vector<TFileMetadata> &output_file_metadata = result.output_files;
-    auto output_iter = sub_compact->outputs.begin();
-    while (output_iter != sub_compact->outputs.end()) {
-      SubcompactionState::Output &output = *output_iter;
-      output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
-      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size);
-      output_iter++;
-    }
+//    uint32_t buf_size = 16 * 1024 * 1024;
+//    char *push_file_buf = new char[buf_size];
+//    std::vector<TFileMetadata> &output_file_metadata = result.output_files;
+//    auto output_iter = sub_compact->outputs.begin();
+//    while (output_iter != sub_compact->outputs.end()) {
+//      SubcompactionState::Output &output = *output_iter;
+//      output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
+//      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size);
+//      output_iter++;
+//    }
+//
+//    delete[] push_file_buf;
 
-    delete[] push_file_buf;
+    for(auto &thread : sub_compact->push_file_threads) {
+      thread.join();
+    }
+    push_file_threads.clear();
 
     if (sub_compact->node != nullptr) {
       uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
@@ -1804,6 +1803,17 @@ Status CompactionJob::FinishCompactionOutputFile(
     }
   }
 #endif
+
+  if (s.ok() && db_options_.enable_dist_compaction) {
+    sub_compact->push_file_threads.emplace_back([&meta, this]{
+      FileDescriptor descriptor;
+      descriptor = meta->fd;
+      uint32_t buf_size = 16 << 20;
+      char* buf = new char[buf_size];
+      PushCompactionOutputToNodes(descriptor, buf, buf_size);
+      delete[] buf;
+    });
+  }
 
   sub_compact->builder.reset();
   sub_compact->current_output_file_size = 0;
