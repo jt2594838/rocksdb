@@ -1285,7 +1285,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
     for(auto &thread : sub_compact->push_file_threads) {
       thread.join();
     }
-    push_file_threads.clear();
+    sub_compact->push_file_threads.clear();
 
     if (sub_compact->node != nullptr) {
       uint64_t compacted_bytes = sub_compact->node->getCompactedBytes();
