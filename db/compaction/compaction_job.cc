@@ -1268,21 +1268,20 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
 
   // push compaction results to other nodes
   if (status.ok() && db_options_.enable_dist_compaction) {
+    //    uint32_t buf_size = 16 * 1024 * 1024;
+    //    char *push_file_buf = new char[buf_size];
+    //    std::vector<TFileMetadata> &output_file_metadata =
+    //    result.output_files; auto output_iter = sub_compact->outputs.begin();
+    //    while (output_iter != sub_compact->outputs.end()) {
+    //      SubcompactionState::Output &output = *output_iter;
+    //      output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
+    //      PushCompactionOutputToNodes(output.meta.fd, push_file_buf,
+    //      buf_size); output_iter++;
+    //    }
+    //
+    //    delete[] push_file_buf;
 
-//    uint32_t buf_size = 16 * 1024 * 1024;
-//    char *push_file_buf = new char[buf_size];
-//    std::vector<TFileMetadata> &output_file_metadata = result.output_files;
-//    auto output_iter = sub_compact->outputs.begin();
-//    while (output_iter != sub_compact->outputs.end()) {
-//      SubcompactionState::Output &output = *output_iter;
-//      output_file_metadata.emplace_back(RpcUtils::ToTFileMetaData(output.meta));
-//      PushCompactionOutputToNodes(output.meta.fd, push_file_buf, buf_size);
-//      output_iter++;
-//    }
-//
-//    delete[] push_file_buf;
-
-    for(auto &thread : sub_compact->push_file_threads) {
+    for (auto &thread : sub_compact->push_file_threads) {
       thread.join();
     }
     sub_compact->push_file_threads.clear();
@@ -1805,11 +1804,11 @@ Status CompactionJob::FinishCompactionOutputFile(
 #endif
 
   if (s.ok() && meta != nullptr && db_options_.enable_dist_compaction) {
-    sub_compact->push_file_threads.emplace_back([meta, this]{
+    sub_compact->push_file_threads.emplace_back([meta, this] {
       FileDescriptor descriptor;
       descriptor = meta->fd;
       uint32_t buf_size = 16 << 20;
-      char* buf = new char[buf_size];
+      char *buf = new char[buf_size];
       PushCompactionOutputToNodes(descriptor, buf, buf_size);
       delete[] buf;
     });
@@ -2065,7 +2064,7 @@ void CompactionJob::CleanupCompaction() {
       }
     }
   }
-  for (auto* range_limit_buf : range_limit_collector) {
+  for (auto *range_limit_buf : range_limit_collector) {
     delete range_limit_buf;
   }
   range_limit_collector.clear();
@@ -2243,7 +2242,13 @@ void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output,
                  file_path.c_str(), file_size);
   EnvOptions envOptions;
   std::unique_ptr<SequentialFile> file_reader;
-  env_->NewSequentialFile(file_path, &file_reader, envOptions);
+  Status status = env_->NewSequentialFile(file_path, &file_reader, envOptions);
+  if (!status.ok()) {
+    ROCKS_LOG_ERROR(db_options_.info_log,
+                    "Cannot read compaction output file %s: %s(%ld)",
+                    file_path.c_str(), status.ToString().c_str(), output.merge_number);
+    db_options_.info_log->Flush();
+  }
   Slice slice;
   bool file_end = false;
   uint64_t uploaded_size = 0;
