@@ -202,6 +202,7 @@ const std::vector<std::pair<Histograms, std::string>> HistogramsNameMap = {
     {COMPACTION_TIME, "rocksdb.compaction.times.micros"},
     {COMPACTION_CPU_TIME, "rocksdb.compaction.times.cpu_micros"},
     {COMPACTION_LOCAL_TIME, "rocksdb.compaction.times.local_micros"},
+    {COMPACTION_REMOTE_TIME, "rocksdb.compaction.times.remote_micros"},
     {SUBCOMPACTION_SETUP_TIME, "rocksdb.subcompaction.setup.times.micros"},
     {TABLE_SYNC_MICROS, "rocksdb.table.sync.micros"},
     {COMPACTION_OUTFILE_SYNC_MICROS, "rocksdb.compaction.outfile.sync.micros"},

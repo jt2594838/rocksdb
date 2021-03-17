@@ -984,7 +984,8 @@ void CompactionJob::LogCompactionEnd(ColumnFamilyData *cfd, Status &status) {
 void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
   assert(sub_compact != nullptr);
 
-  uint64_t prev_cpu_micros = env_->NowMicros();
+  uint64_t prev_cpu_micros = env_->NowCPUNanos() / 1000;
+  uint64_t prev_micros = env_->NowMicros();
 
   ColumnFamilyData *cfd = sub_compact->compaction->column_family_data();
 
@@ -1298,7 +1299,8 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
   }
 
   sub_compact->compaction_job_stats.cpu_micros =
-      env_->NowMicros() - prev_cpu_micros;
+      env_->NowCPUNanos() / 1000 - prev_cpu_micros;
+  uint64_t consumed_micros = env_->NowMicros() - prev_micros;
 
   std::string output_files_str = "[";
   for (auto &file : sub_compact->outputs) {
@@ -1310,7 +1312,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
   ROCKS_LOG_INFO(
       this->db_options_.info_log,
       "A local compaction ends with %ld files: %s, range: [%s, %s], %ld "
-      "records[%ld bytes], %ld us",
+      "records[%ld bytes], %ld(%ld) us",
       sub_compact->outputs.size(), output_files_str.c_str(),
       sub_compact->start == nullptr
           ? "NULL"
@@ -1319,7 +1321,7 @@ void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
           ? "NULL"
           : std::to_string(sub_compact->end->ToUint64()).c_str(),
       sub_compact->num_output_records, sub_compact->total_bytes,
-      sub_compact->compaction_job_stats.cpu_micros);
+      consumed_micros, sub_compact->compaction_job_stats.cpu_micros);
 
   RecordTimeToHistogram(stats_, COMPACTION_LOCAL_TIME,
                         sub_compact->compaction_job_stats.cpu_micros);
@@ -1350,6 +1352,8 @@ void CompactionJob::PushResultToNode(TCompactionResult &result,
 
 void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
   uint64_t prev_cpu_micros = env_->NowCPUNanos() / 1000;
+  uint64_t start_time;
+  start_time = env_->NowMicros();
 
   std::string cf_name =
       sub_compact->compaction->column_family_data()->GetName();
@@ -1402,8 +1406,7 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
                  sub_compact->node->ToString().c_str());
 
   TCompactionResult result;
-  uint64_t start_time;
-  start_time = env_->NowMicros();
+
   for (int i = 0; i < 15; ++i) {
     client->CompactFiles(result, request);
     if (result.status.code != Status::Code::kInvalidArgument) {
@@ -1411,9 +1414,7 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
     }
     sleep(1);
   }
-  uint64_t end_time;
-  end_time = env_->NowMicros();
-  uint64_t consumed_time = end_time - start_time;
+
   // when the client ends compaction, the result files should have been
   // pushed to this node
   const Status &status = RpcUtils::ToStatus(result.status);
@@ -1424,19 +1425,9 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
     iter++;
   }
 
-  ROCKS_LOG_INFO(this->db_options_.info_log,
-                 "Executed a remote compaction "
-                 "on %s, time: %ld us, range[%s, %s], status: %s, results: %ld "
-                 "files, %ld records(%ldBytes)",
-                 sub_compact->node->ToString().c_str(), consumed_time,
-                 sub_compact->start == nullptr
-                     ? "NULL"
-                     : std::to_string(sub_compact->start->ToUint64()).c_str(),
-                 sub_compact->end == nullptr
-                     ? "NULL"
-                     : std::to_string(sub_compact->end->ToUint64()).c_str(),
-                 status.ToString().c_str(), result.output_files.size(),
-                 result.num_output_records, result.total_bytes);
+  uint64_t end_time;
+  end_time = env_->NowMicros();
+  uint64_t consumed_time = end_time - start_time;
   sub_compact->status = status;
   sub_compact->num_output_records = result.num_output_records;
   sub_compact->total_bytes = result.total_bytes;
@@ -1444,6 +1435,24 @@ void CompactionJob::ProcessRemoteKVCompaction(SubcompactionState *sub_compact) {
       env_->NowCPUNanos() / 1000 - prev_cpu_micros;
   sub_compact->node->setCompactedBytes(sub_compact->node->getCompactedBytes() +
                                        sub_compact->total_bytes);
+
+  RecordTimeToHistogram(stats_, COMPACTION_REMOTE_TIME,
+                        sub_compact->compaction_job_stats.cpu_micros);
+  ROCKS_LOG_INFO(
+      this->db_options_.info_log,
+      "Executed a remote compaction "
+      "on %s, time: %ld(%ld) us, range[%s, %s], status: %s, results: %ld "
+      "files, %ld records(%ldBytes)",
+      sub_compact->node->ToString().c_str(), consumed_time,
+      sub_compact->compaction_job_stats.cpu_micros,
+      sub_compact->start == nullptr
+          ? "NULL"
+          : std::to_string(sub_compact->start->ToUint64()).c_str(),
+      sub_compact->end == nullptr
+          ? "NULL"
+          : std::to_string(sub_compact->end->ToUint64()).c_str(),
+      status.ToString().c_str(), result.output_files.size(),
+      result.num_output_records, result.total_bytes);
 
   RpcUtils::ReleaseClient(sub_compact->node, client);
 }
@@ -2242,9 +2251,9 @@ void CompactionJob::PushCompactionOutputToNodes(const FileDescriptor &output,
   std::unique_ptr<SequentialFile> file_reader;
   Status status = env_->NewSequentialFile(file_path, &file_reader, envOptions);
   if (!status.ok()) {
-    ROCKS_LOG_ERROR(db_options_.info_log,
-                    "Cannot read compaction output file %s: %s(%ld)",
-                    file_path.c_str(), status.ToString().c_str(), output.merge_number);
+    ROCKS_LOG_ERROR(
+        db_options_.info_log, "Cannot read compaction output file %s: %s(%ld)",
+        file_path.c_str(), status.ToString().c_str(), output.merge_number);
     db_options_.info_log->Flush();
   }
   Slice slice;
