@@ -1804,12 +1804,10 @@ Status CompactionJob::FinishCompactionOutputFile(
 #endif
 
   if (s.ok() && meta != nullptr && db_options_.enable_dist_compaction) {
-    sub_compact->push_file_threads.emplace_back([meta, this] {
-      FileDescriptor descriptor;
-      descriptor = meta->fd;
+    sub_compact->push_file_threads.emplace_back([output_fd, this] {
       uint32_t buf_size = 16 << 20;
       char *buf = new char[buf_size];
-      PushCompactionOutputToNodes(descriptor, buf, buf_size);
+      PushCompactionOutputToNodes(output_fd, buf, buf_size);
       delete[] buf;
     });
   }
@@ -2232,7 +2230,7 @@ const std::vector<FileMetaData> &CompactionJob::getCompactOutput() const {
   return compact_output;
 }
 
-void CompactionJob::PushCompactionOutputToNodes(FileDescriptor &output,
+void CompactionJob::PushCompactionOutputToNodes(const FileDescriptor &output,
                                                 char *buf, uint32_t buf_size) {
   const std::string &file_path = db_options_.db_paths[output.GetPathId()].path +
                                  "/" + output.GetFileName();
