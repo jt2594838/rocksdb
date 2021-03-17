@@ -79,6 +79,7 @@ void LoadConfig(char* config_path, Options& options) {
       options.level0_file_num_compaction_trigger * 5;
   options.level0_stop_writes_trigger =
       options.level0_file_num_compaction_trigger * 8;
+  options.max_bytes_for_level_multiplier = 2;
 
   options.this_node = new ClusterNode();
   options.external_node = new ClusterNode();
