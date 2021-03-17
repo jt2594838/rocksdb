@@ -1804,8 +1804,8 @@ Status CompactionJob::FinishCompactionOutputFile(
   }
 #endif
 
-  if (s.ok() && db_options_.enable_dist_compaction) {
-    sub_compact->push_file_threads.emplace_back([&meta, this]{
+  if (s.ok() && meta != nullptr && db_options_.enable_dist_compaction) {
+    sub_compact->push_file_threads.emplace_back([meta, this]{
       FileDescriptor descriptor;
       descriptor = meta->fd;
       uint32_t buf_size = 16 << 20;
