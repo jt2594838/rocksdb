@@ -22,7 +22,7 @@ class Broker {
   ClusterNode* compaction_leader = nullptr;
   ThriftServiceClient* leader_client = nullptr;
   uint32_t leader_pos = 0;
-  std::atomic_uint64_t* client_ticks;
+  std::atomic<uint64_t>* client_ticks;
 
   void init(char* config_file_path);
 
