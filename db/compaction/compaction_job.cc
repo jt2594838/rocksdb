@@ -728,9 +728,19 @@ Status CompactionJob::Run() {
   // Launch a thread for each of subcompactions 0...num_threads-1
   std::vector<port::Thread> thread_pool;
   thread_pool.reserve(num_threads - 1);
+  SubcompactionState *first_local_comp = nullptr;
   for (auto &sub_compact_state : compact_->sub_compact_states) {
-    thread_pool.emplace_back(&CompactionJob::ProcessKeyValueCompaction, this,
-                             &sub_compact_state);
+    if (first_local_comp == nullptr &&
+        (sub_compact_state.node == nullptr ||
+         *sub_compact_state.node == *db_options_.this_node)) {
+      first_local_comp = &sub_compact_state;
+    } else {
+      thread_pool.emplace_back(&CompactionJob::ProcessKeyValueCompaction, this,
+                               &sub_compact_state);
+    }
+  }
+  if (first_local_comp != nullptr) {
+    ProcessKeyValueCompaction(first_local_comp);
   }
 
   // Wait for all other threads (if there are any) to finish execution
