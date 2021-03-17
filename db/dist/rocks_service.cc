@@ -332,7 +332,14 @@ std::unique_ptr<WritableFile> *RocksService::GetFileWriter(
   auto iter = file_writer_cache.find(file_name);
   if (iter == file_writer_cache.end()) {
     writableFile = new std::unique_ptr<WritableFile>;
-    db->env_->NewWritableFile(file_name, writableFile, envOptions);
+    Status status =
+        db->env_->NewWritableFile(file_name, writableFile, envOptions);
+    if (!status.ok()) {
+      ROCKS_LOG_ERROR(db->immutable_db_options_.info_log,
+                      "Cannot get writer of %s: %s", file_name.c_str(),
+                      status.ToString().c_str());
+      db->immutable_db_options_.info_log->Flush();
+    }
     file_writer_cache.emplace(file_name, writableFile);
   } else {
     writableFile = (*iter).second;
