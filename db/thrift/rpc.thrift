@@ -71,6 +71,11 @@ struct GetResult {
    2: string value
 }
 
+struct GetBatchResult {
+   1: list<TStatus> status
+   2: list<string> values
+}
+
 service ThriftService {
     TCompactionResult CompactFiles(1: TCompactFilesRequest request)
     binary DownLoadFile(1: string file_name, 2: i64 offset, 3: i32 size)
@@ -81,6 +86,7 @@ service ThriftService {
     TStatus Put(1: string key, 2: string value)
     TStatus PutBatch(1: list<string> key, 2: list<string> value)
     GetResult Get(1: string key)
+    GetBatchResult GetBatch(1: list<string> keys)
     TStatus FullCompaction()
     TStatus Flush()
 }

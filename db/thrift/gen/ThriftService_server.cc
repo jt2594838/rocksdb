@@ -65,6 +65,11 @@ class ThriftServiceHandler : virtual public ThriftServiceIf {
     printf("Get\n");
   }
 
+  void GetBatch(GetBatchResult& _return, const std::vector<std::string> & keys) {
+    // Your implementation goes here
+    printf("GetBatch\n");
+  }
+
   void FullCompaction(TStatus& _return) {
     // Your implementation goes here
     printf("FullCompaction\n");

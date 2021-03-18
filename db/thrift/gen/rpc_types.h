@@ -39,6 +39,8 @@ class TInstallCompactionRequest;
 
 class GetResult;
 
+class GetBatchResult;
+
 typedef struct _TCompactFilesRequest__isset {
   _TCompactFilesRequest__isset() : cf_name(false), flush_nums(false), compaction_nums(false), path_ids(false), output_level(false), start_file_num(false), max_file_num(false), comp_start(false), comp_end(false) {}
   bool cf_name :1;
@@ -626,6 +628,54 @@ class GetResult : public virtual ::apache::thrift::TBase {
 void swap(GetResult &a, GetResult &b);
 
 std::ostream& operator<<(std::ostream& out, const GetResult& obj);
+
+typedef struct _GetBatchResult__isset {
+  _GetBatchResult__isset() : status(false), values(false) {}
+  bool status :1;
+  bool values :1;
+} _GetBatchResult__isset;
+
+class GetBatchResult : public virtual ::apache::thrift::TBase {
+ public:
+
+  GetBatchResult(const GetBatchResult&);
+  GetBatchResult& operator=(const GetBatchResult&);
+  GetBatchResult() {
+  }
+
+  virtual ~GetBatchResult() noexcept;
+  std::vector<TStatus>  status;
+  std::vector<std::string>  values;
+
+  _GetBatchResult__isset __isset;
+
+  void __set_status(const std::vector<TStatus> & val);
+
+  void __set_values(const std::vector<std::string> & val);
+
+  bool operator == (const GetBatchResult & rhs) const
+  {
+    if (!(status == rhs.status))
+      return false;
+    if (!(values == rhs.values))
+      return false;
+    return true;
+  }
+  bool operator != (const GetBatchResult &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const GetBatchResult & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+  virtual void printTo(std::ostream& out) const;
+};
+
+void swap(GetBatchResult &a, GetBatchResult &b);
+
+std::ostream& operator<<(std::ostream& out, const GetBatchResult& obj);
 
 } // namespace
 

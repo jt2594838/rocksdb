@@ -1681,4 +1681,156 @@ void GetResult::printTo(std::ostream& out) const {
   out << ")";
 }
 
+
+GetBatchResult::~GetBatchResult() noexcept {
+}
+
+
+void GetBatchResult::__set_status(const std::vector<TStatus> & val) {
+  this->status = val;
+}
+
+void GetBatchResult::__set_values(const std::vector<std::string> & val) {
+  this->values = val;
+}
+std::ostream& operator<<(std::ostream& out, const GetBatchResult& obj)
+{
+  obj.printTo(out);
+  return out;
+}
+
+
+uint32_t GetBatchResult::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->status.clear();
+            uint32_t _size60;
+            ::apache::thrift::protocol::TType _etype63;
+            xfer += iprot->readListBegin(_etype63, _size60);
+            this->status.resize(_size60);
+            uint32_t _i64;
+            for (_i64 = 0; _i64 < _size60; ++_i64)
+            {
+              xfer += this->status[_i64].read(iprot);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.status = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 2:
+        if (ftype == ::apache::thrift::protocol::T_LIST) {
+          {
+            this->values.clear();
+            uint32_t _size65;
+            ::apache::thrift::protocol::TType _etype68;
+            xfer += iprot->readListBegin(_etype68, _size65);
+            this->values.resize(_size65);
+            uint32_t _i69;
+            for (_i69 = 0; _i69 < _size65; ++_i69)
+            {
+              xfer += iprot->readString(this->values[_i69]);
+            }
+            xfer += iprot->readListEnd();
+          }
+          this->__isset.values = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t GetBatchResult::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("GetBatchResult");
+
+  xfer += oprot->writeFieldBegin("status", ::apache::thrift::protocol::T_LIST, 1);
+  {
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->status.size()));
+    std::vector<TStatus> ::const_iterator _iter70;
+    for (_iter70 = this->status.begin(); _iter70 != this->status.end(); ++_iter70)
+    {
+      xfer += (*_iter70).write(oprot);
+    }
+    xfer += oprot->writeListEnd();
+  }
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("values", ::apache::thrift::protocol::T_LIST, 2);
+  {
+    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->values.size()));
+    std::vector<std::string> ::const_iterator _iter71;
+    for (_iter71 = this->values.begin(); _iter71 != this->values.end(); ++_iter71)
+    {
+      xfer += oprot->writeString((*_iter71));
+    }
+    xfer += oprot->writeListEnd();
+  }
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+void swap(GetBatchResult &a, GetBatchResult &b) {
+  using ::std::swap;
+  swap(a.status, b.status);
+  swap(a.values, b.values);
+  swap(a.__isset, b.__isset);
+}
+
+GetBatchResult::GetBatchResult(const GetBatchResult& other72) {
+  status = other72.status;
+  values = other72.values;
+  __isset = other72.__isset;
+}
+GetBatchResult& GetBatchResult::operator=(const GetBatchResult& other73) {
+  status = other73.status;
+  values = other73.values;
+  __isset = other73.__isset;
+  return *this;
+}
+void GetBatchResult::printTo(std::ostream& out) const {
+  using ::apache::thrift::to_string;
+  out << "GetBatchResult(";
+  out << "status=" << to_string(status);
+  out << ", " << "values=" << to_string(values);
+  out << ")";
+}
+
 } // namespace

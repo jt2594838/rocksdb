@@ -31,6 +31,7 @@ class ThriftServiceIf {
   virtual void Put(TStatus& _return, const std::string& key, const std::string& value) = 0;
   virtual void PutBatch(TStatus& _return, const std::vector<std::string> & key, const std::vector<std::string> & value) = 0;
   virtual void Get(GetResult& _return, const std::string& key) = 0;
+  virtual void GetBatch(GetBatchResult& _return, const std::vector<std::string> & keys) = 0;
   virtual void FullCompaction(TStatus& _return) = 0;
   virtual void Flush(TStatus& _return) = 0;
 };
@@ -87,6 +88,9 @@ class ThriftServiceNull : virtual public ThriftServiceIf {
     return;
   }
   void Get(GetResult& /* _return */, const std::string& /* key */) {
+    return;
+  }
+  void GetBatch(GetBatchResult& /* _return */, const std::vector<std::string> & /* keys */) {
     return;
   }
   void FullCompaction(TStatus& /* _return */) {
@@ -1042,6 +1046,110 @@ class ThriftService_Get_presult {
 
 };
 
+typedef struct _ThriftService_GetBatch_args__isset {
+  _ThriftService_GetBatch_args__isset() : keys(false) {}
+  bool keys :1;
+} _ThriftService_GetBatch_args__isset;
+
+class ThriftService_GetBatch_args {
+ public:
+
+  ThriftService_GetBatch_args(const ThriftService_GetBatch_args&);
+  ThriftService_GetBatch_args& operator=(const ThriftService_GetBatch_args&);
+  ThriftService_GetBatch_args() {
+  }
+
+  virtual ~ThriftService_GetBatch_args() noexcept;
+  std::vector<std::string>  keys;
+
+  _ThriftService_GetBatch_args__isset __isset;
+
+  void __set_keys(const std::vector<std::string> & val);
+
+  bool operator == (const ThriftService_GetBatch_args & rhs) const
+  {
+    if (!(keys == rhs.keys))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_GetBatch_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_GetBatch_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_GetBatch_pargs {
+ public:
+
+
+  virtual ~ThriftService_GetBatch_pargs() noexcept;
+  const std::vector<std::string> * keys;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_GetBatch_result__isset {
+  _ThriftService_GetBatch_result__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_GetBatch_result__isset;
+
+class ThriftService_GetBatch_result {
+ public:
+
+  ThriftService_GetBatch_result(const ThriftService_GetBatch_result&);
+  ThriftService_GetBatch_result& operator=(const ThriftService_GetBatch_result&);
+  ThriftService_GetBatch_result() {
+  }
+
+  virtual ~ThriftService_GetBatch_result() noexcept;
+  GetBatchResult success;
+
+  _ThriftService_GetBatch_result__isset __isset;
+
+  void __set_success(const GetBatchResult& val);
+
+  bool operator == (const ThriftService_GetBatch_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_GetBatch_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_GetBatch_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_GetBatch_presult__isset {
+  _ThriftService_GetBatch_presult__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_GetBatch_presult__isset;
+
+class ThriftService_GetBatch_presult {
+ public:
+
+
+  virtual ~ThriftService_GetBatch_presult() noexcept;
+  GetBatchResult* success;
+
+  _ThriftService_GetBatch_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
 
 class ThriftService_FullCompaction_args {
  public:
@@ -1278,6 +1386,9 @@ class ThriftServiceClient : virtual public ThriftServiceIf {
   void Get(GetResult& _return, const std::string& key);
   void send_Get(const std::string& key);
   void recv_Get(GetResult& _return);
+  void GetBatch(GetBatchResult& _return, const std::vector<std::string> & keys);
+  void send_GetBatch(const std::vector<std::string> & keys);
+  void recv_GetBatch(GetBatchResult& _return);
   void FullCompaction(TStatus& _return);
   void send_FullCompaction();
   void recv_FullCompaction(TStatus& _return);
@@ -1308,6 +1419,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_Put(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_PutBatch(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Get(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_GetBatch(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_FullCompaction(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_Flush(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
@@ -1322,6 +1434,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
     processMap_["Put"] = &ThriftServiceProcessor::process_Put;
     processMap_["PutBatch"] = &ThriftServiceProcessor::process_PutBatch;
     processMap_["Get"] = &ThriftServiceProcessor::process_Get;
+    processMap_["GetBatch"] = &ThriftServiceProcessor::process_GetBatch;
     processMap_["FullCompaction"] = &ThriftServiceProcessor::process_FullCompaction;
     processMap_["Flush"] = &ThriftServiceProcessor::process_Flush;
   }
@@ -1439,6 +1552,16 @@ class ThriftServiceMultiface : virtual public ThriftServiceIf {
     return;
   }
 
+  void GetBatch(GetBatchResult& _return, const std::vector<std::string> & keys) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->GetBatch(_return, keys);
+    }
+    ifaces_[i]->GetBatch(_return, keys);
+    return;
+  }
+
   void FullCompaction(TStatus& _return) {
     size_t sz = ifaces_.size();
     size_t i = 0;
@@ -1518,6 +1641,9 @@ class ThriftServiceConcurrentClient : virtual public ThriftServiceIf {
   void Get(GetResult& _return, const std::string& key);
   int32_t send_Get(const std::string& key);
   void recv_Get(GetResult& _return, const int32_t seqid);
+  void GetBatch(GetBatchResult& _return, const std::vector<std::string> & keys);
+  int32_t send_GetBatch(const std::vector<std::string> & keys);
+  void recv_GetBatch(GetBatchResult& _return, const int32_t seqid);
   void FullCompaction(TStatus& _return);
   int32_t send_FullCompaction();
   void recv_FullCompaction(TStatus& _return, const int32_t seqid);
