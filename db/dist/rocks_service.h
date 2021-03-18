@@ -28,6 +28,8 @@ class RocksService : ThriftServiceIf {
   void PutBatch(TStatus& _return, const std::vector<std::string>& key,
                   const std::vector<std::string>& value) override;
   void Get(GetResult& _return, const std::string& key) override;
+  void GetBatch(GetBatchResult& _return,
+                const std::vector<std::string>& keys) override;
 
   void FullCompaction(TStatus& _return) override;
   void Flush(TStatus& _return) override;

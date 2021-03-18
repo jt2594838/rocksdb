@@ -204,13 +204,23 @@ void Broker::CompactEach() {
     t.join();
   }
 }
+void Broker::Get(std::vector<std::string> &keys,
+                 std::vector<std::string> &values, uint32_t client_idx) {
+  GetBatchResult result;
+  uint64_t t_start = clock();
+  clients[client_idx]->GetBatch(result, keys);
+  uint64_t t_consumed = clock() - t_start;
+  client_ticks[client_idx].fetch_add(t_consumed);
+  values = result.values;
+}
 
 bool compact_each = false;
 uint64_t batch_size = 1000;
 uint32_t batch_num = 100000;
 uint32_t batch_report_interval = 1000;
 uint32_t write_thread_num = 1;
-uint32_t read_num_per_batch = 10;
+uint32_t read_thread_num = 1;
+uint32_t read_num_per_batch = 100;
 uint64_t seed = 21516347;
 uint32_t file_num = 3;
 uint32_t pt_per_file = 8000000;
@@ -318,6 +328,7 @@ void read_config(char *config_file_path) {
   batch_num = root_node.get<uint32_t>("batch_num");
   batch_report_interval = root_node.get<uint32_t>("batch_report_interval");
   read_num_per_batch = root_node.get<uint32_t>("read_num_per_batch");
+  read_thread_num = root_node.get<uint32_t>("read_thread_num");
   compact_each = root_node.get<bool>("compact_each");
   file_num = root_node.get<uint32_t>("file_num");
   pt_per_file = root_node.get<uint32_t>("pt_per_file");
@@ -328,14 +339,16 @@ void read_config(char *config_file_path) {
 void write_stress(char **argv) {
   Env *env = Env::Default();
 
-  std::atomic_int i(0);
+  std::atomic_int write_i(0);
+  std::atomic_int read_i(0);
 
   std::vector<std::thread> threads;
   uint64_t t_start = env->NowMicros();
-  uint64_t t_last = t_start;
+  uint64_t t_write_last = t_start;
+  uint64_t t_read_last = t_start;
 
   for (uint32_t k = 0; k < write_thread_num; ++k) {
-    threads.emplace_back([&env, &i, &argv, t_start, &t_last] {
+    threads.emplace_back([&env, &write_i, &argv, t_start, &t_write_last] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
       std::uniform_int_distribution<uint32_t> distribution;
@@ -354,35 +367,76 @@ void write_stress(char **argv) {
           keys_.emplace_back(k_v_str);
           values_.emplace_back(k_v_str);
         }
-        uint64_t j = ++i;
+        uint64_t j = ++write_i;
         b.Put(keys_, values_);
         keys_.clear();
         values_.clear();
 
-        for (uint32_t r = 0; r < read_num_per_batch; r++) {
-          uint32_t key = distribution(e);
-          std::string key_string = std::to_string(key);
-          std::string value;
-          b.Get(key_string, value, r % b.ClientNum());
-        }
-
         if (j % batch_report_interval == 0) {
           t = env->NowMicros();
-          double temp_avg = (double)batch_report_interval / (t - t_last) *
+          double temp_avg = (double)batch_report_interval / (t - t_write_last) *
                             CLOCKS_PER_SEC * batch_size;
-          t_last = t;
+          t_write_last = t;
           double total_avg =
               (double)j / (t - t_start) * CLOCKS_PER_SEC * batch_size;
           double total_consumed_time = (double)(t - t_start) / CLOCKS_PER_SEC;
           time_t tt = time(nullptr);
           char buffer[9] = {0};
           strftime(buffer, 9, "%H:%M:%S", localtime(&tt));
-          std::cout << buffer << " " << total_consumed_time << " "
+          std::cout << "write: " << buffer << " " << total_consumed_time << " "
                     << j * batch_size << " " << total_avg << " " << temp_avg
                     << "|" << b.GetTicks() << std::endl;
           // b->ClearTicks();
         }
         if (j >= batch_num) {
+          break;
+        }
+      }
+    });
+  }
+
+  for (uint32_t k = 0; k < read_thread_num; k++) {
+    threads.emplace_back([&env, &write_i, &read_i, &argv, t_start, &t_read_last] {
+      Broker b(argv[1]);
+      std::default_random_engine e(seed);
+      std::uniform_int_distribution<uint32_t> distribution;
+
+      std::vector<std::string> keys_;
+      std::vector<std::string> values_;
+      keys_.reserve(read_num_per_batch);
+      uint64_t t;
+      for (;;) {
+        for (uint32_t l = 0; l < read_num_per_batch; l++) {
+          uint32_t k_v = distribution(e);
+          uint64_t long_key = k_v;
+          std::string k_v_str =
+              std::string(reinterpret_cast<char *>(&long_key), 8);
+          keys_.emplace_back(k_v_str);
+        }
+
+        uint64_t j = ++read_i;
+        b.Get(keys_, values_, j % b.ClientNum());
+        keys_.clear();
+        values_.clear();
+
+        if (j % batch_report_interval == 0) {
+          t = env->NowMicros();
+          double temp_avg =
+              (double)(t - t_read_last) / batch_report_interval;
+          t_read_last = t;
+          double total_avg = (double)(t - t_start) / j;
+          double total_consumed_time = (double)(t - t_start) / CLOCKS_PER_SEC;
+          time_t tt = time(nullptr);
+          char buffer[9] = {0};
+          strftime(buffer, 9, "%H:%M:%S", localtime(&tt));
+          std::cout << "read: " << buffer << " " << total_consumed_time << " "
+                    << j * batch_size << " " << total_avg << " " << temp_avg
+                    << "|" << b.GetTicks() << std::endl;
+          // b->ClearTicks();
+        }
+
+        uint64_t written_batch = write_i;
+        if (written_batch >= batch_num) {
           break;
         }
       }

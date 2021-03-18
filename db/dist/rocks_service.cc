@@ -364,4 +364,15 @@ void RocksService::PutBatch(TStatus &_return,
   Status s = db->Write(writeOptions, &batch);
   _return = RpcUtils::ToTStatus(s);
 }
+void RocksService::GetBatch(GetBatchResult &_return,
+                            const std::vector<std::string> &keys) {
+  std::vector<Slice> keys_;
+  for (auto& key : keys) {
+    keys_.emplace_back(key);
+  }
+  std::vector<Status> status_list = db->MultiGet(readOptions, keys_, &_return.values);
+  for (auto &status : status_list) {
+    _return.status.emplace_back(RpcUtils::ToTStatus(status));
+  }
+}
 }  // namespace ROCKSDB_NAMESPACE
