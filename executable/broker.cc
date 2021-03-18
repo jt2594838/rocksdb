@@ -149,7 +149,7 @@ void Broker::init(char *config_file_path) {
   ParseNodes(all_nodes_str, nodes);
 
   leader_client = RpcUtils::NewClient(compaction_leader);
-  client_ticks = new std::atomic_uint64_t[nodes.size()];
+  client_ticks = new std::atomic<uint64_t>[nodes.size()];
   for (uint32_t i = 0; i < nodes.size(); i++) {
     auto *node = nodes[i];
     if (*node == *compaction_leader) {
