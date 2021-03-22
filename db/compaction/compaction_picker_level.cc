@@ -330,6 +330,7 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
       // avoid trivial move
       skipped_levels[start_level_] = true;
       start_level_inputs_.clear();
+      compaction_inputs_.clear();
     } else {
       break;
     }
