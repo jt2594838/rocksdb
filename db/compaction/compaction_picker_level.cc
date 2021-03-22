@@ -172,7 +172,8 @@ void LevelCompactionBuilder::SetupInitialFiles() {
     start_level_ = vstorage_->CompactionScoreLevel(i);
     assert(i == 0 || start_level_score_ <= vstorage_->CompactionScore(i - 1));
     if (start_level_score_ >= 1) {
-      if ((skipped_l0_to_base && start_level_ == vstorage_->base_level()) || skipped_levels[start_level_]) {
+      if ((skipped_l0_to_base && start_level_ == vstorage_->base_level()) ||
+          skipped_levels[start_level_]) {
         // If L0->base_level compaction is pending, don't schedule further
         // compaction from base level. Otherwise L0->base_level compaction
         // may starve.
@@ -189,7 +190,9 @@ void LevelCompactionBuilder::SetupInitialFiles() {
           // L1+ score = `Level files size` / `MaxBytesForLevel`
           compaction_reason_ = CompactionReason::kLevelMaxLevelSize;
         }
-        ROCKS_LOG_INFO(ioptions_.info_log, "Found compaction files at level %d", start_level_);
+        ROCKS_LOG_INFO(ioptions_.info_log,
+                       "Found compaction files at level %d (%zu files)",
+                       start_level_, start_level_inputs_.size());
         break;
       } else {
         // didn't find the compaction, clear the inputs
@@ -206,7 +209,8 @@ void LevelCompactionBuilder::SetupInitialFiles() {
           if (PickIntraL0Compaction()) {
             output_level_ = 0;
             compaction_reason_ = CompactionReason::kLevelL0FilesNum;
-            ROCKS_LOG_INFO(ioptions_.info_log, "Found intra compaction files at level 0");
+            ROCKS_LOG_INFO(ioptions_.info_log,
+                           "Found intra compaction files at level 0");
             break;
           }
         }
@@ -327,15 +331,16 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
     }
 
     if (start_level_inputs_.size() + output_level_inputs_.size() <= 1) {
+      ROCKS_LOG_INFO(ioptions_.info_log, "Level%d is a trivial move", start_level_);
       // avoid trivial move
       skipped_levels[start_level_] = true;
       start_level_inputs_.clear();
+      output_level_inputs_.clear();
       compaction_inputs_.clear();
     } else {
       break;
     }
   }
-
 
   // Form a compaction object containing the files we picked.
   Compaction* c = GetCompaction();
