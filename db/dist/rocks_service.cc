@@ -179,11 +179,17 @@ void RocksService::InstallCompaction(TStatus &_return,
   }
 
   edit.SetColumnFamily(db->DefaultColumnFamily()->GetID());
+  JobContext job_context(db->next_job_id_.fetch_add(1), true);
   db->mutex()->Lock();
   Status s = db->versions_->LogAndApply(
       db->default_cf_handle_->cfd(),
       *db->default_cf_handle_->cfd()->GetCurrentMutableCFOptions(), &edit,
       db->mutex(), db->directories_.GetDbDir());
+  if (s.ok()) {
+    db->InstallSuperVersionAndScheduleWork(
+        db->default_cf_handle_->cfd(), &job_context.superversion_contexts[0],
+        *db->default_cf_handle_->cfd()->GetLatestMutableCFOptions());
+  }
   db->mutex()->Unlock();
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Compaction installation completed: %s", s.ToString().c_str());
@@ -367,12 +373,74 @@ void RocksService::PutBatch(TStatus &_return,
 void RocksService::GetBatch(GetBatchResult &_return,
                             const std::vector<std::string> &keys) {
   std::vector<Slice> keys_;
-  for (auto& key : keys) {
+  for (auto &key : keys) {
     keys_.emplace_back(key);
   }
-  std::vector<Status> status_list = db->MultiGet(readOptions, keys_, &_return.values);
+  std::vector<Status> status_list =
+      db->MultiGet(readOptions, keys_, &_return.values);
   for (auto &status : status_list) {
     _return.status.emplace_back(RpcUtils::ToTStatus(status));
   }
+}
+void RocksService::TrivialMove(TStatus &_return,
+                               const TTrivialMoveRequest &request) {
+  std::string input_files_str = "[";
+  for (auto &file : request.file_meta_list) {
+    input_files_str.append(std::to_string(file.fd.flush_number))
+        .append("-")
+        .append(std::to_string(file.fd.merge_number))
+        .append(" ");
+  }
+  input_files_str.append("]");
+  ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
+                 "Received a "
+                 "trivial move "
+                 "request of %ld inputs: %s",
+                 request.file_meta_list.size(), input_files_str.c_str());
+
+  VersionEdit edit;
+  for (uint32_t i = 0; i < request.file_meta_list.size(); i++) {
+    auto &f = request.file_meta_list[i];
+    uint32_t file_level = request.file_levels[i];
+    FileMetaData &&metaData = RpcUtils::ToFileMetaData(f);
+
+    uint64_t flush_num = f.fd.flush_number;
+    uint64_t compaction_num = f.fd.merge_number;
+
+    int temp_file_level;
+    FileMetaData *fileMetaData;
+    ColumnFamilyData *cfd;
+    while (db->versions_
+        ->GetMetadataForFile(flush_num, compaction_num, &temp_file_level,
+                             &fileMetaData, &cfd)
+        .IsNotFound()) {
+      usleep(100 * 1000);
+    }
+    edit.DeleteFile(file_level, flush_num, compaction_num);
+    edit.AddFile(request.output_level, metaData.fd.GetFlushNumber(),
+                 metaData.fd.GetMergeNumber(), metaData.fd.GetPathId(),
+                 metaData.fd.GetFileSize(), metaData.smallest, metaData.largest,
+                 metaData.fd.smallest_seqno, metaData.fd.largest_seqno,
+                 metaData.marked_for_compaction, metaData.oldest_blob_file_number,
+                 metaData.oldest_ancester_time, metaData.file_creation_time,
+                 metaData.file_checksum, metaData.file_checksum_func_name);
+  }
+
+  edit.SetColumnFamily(db->DefaultColumnFamily()->GetID());
+  JobContext job_context(db->next_job_id_.fetch_add(1), true);
+  db->mutex()->Lock();
+  Status s = db->versions_->LogAndApply(
+      db->default_cf_handle_->cfd(),
+      *db->default_cf_handle_->cfd()->GetCurrentMutableCFOptions(), &edit,
+      db->mutex(), db->directories_.GetDbDir());
+  if (s.ok()) {
+    db->InstallSuperVersionAndScheduleWork(
+        db->default_cf_handle_->cfd(), &job_context.superversion_contexts[0],
+        *db->default_cf_handle_->cfd()->GetLatestMutableCFOptions());
+  }
+  db->mutex()->Unlock();
+  ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
+                 "Trivial move completed: %s", s.ToString().c_str());
+  _return = RpcUtils::ToTStatus(s);
 }
 }  // namespace ROCKSDB_NAMESPACE

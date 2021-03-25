@@ -25,6 +25,11 @@ class ThriftServiceHandler : virtual public ThriftServiceIf {
     printf("CompactFiles\n");
   }
 
+  void TrivialMove(TStatus& _return, const TTrivialMoveRequest& request) {
+    // Your implementation goes here
+    printf("TrivialMove\n");
+  }
+
   void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size) {
     // Your implementation goes here
     printf("DownLoadFile\n");

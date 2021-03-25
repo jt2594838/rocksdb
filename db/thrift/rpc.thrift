@@ -12,6 +12,12 @@ struct TCompactFilesRequest {
     9: binary comp_end
 }
 
+struct TTrivialMoveRequest {
+    1: list<i32> file_levels
+    2: list<TFileMetadata> file_meta_list
+    3: i32 output_level
+}
+
 struct TFileDescriptor {
     1: i64 flush_number
     2: i64 merge_number
@@ -78,6 +84,7 @@ struct GetBatchResult {
 
 service ThriftService {
     TCompactionResult CompactFiles(1: TCompactFilesRequest request)
+    TStatus TrivialMove(1: TTrivialMoveRequest request)
     binary DownLoadFile(1: string file_name, 2: i64 offset, 3: i32 size)
     void UpLoadTableFile(1: string file_name, 2: binary data, 3: bool is_last, 4: i32 path_num)
     void PushFiles(1: TCompactionResult output_files, 2: string source_ip, 3: i32 source_port)

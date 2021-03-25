@@ -108,6 +108,22 @@ TFileMetadata RpcUtils::ToTFileMetaData(const FileMetaData& metaData) {
   return tmetadata;
 }
 
+TFileMetadata RpcUtils::ToTFileMetaData(FileMetaData* metaData) {
+  TFileMetadata tmetadata;
+  tmetadata.fd = ToTFileDescriptor(metaData->fd);
+  tmetadata.smallest_key = metaData->smallest.Encode().ToString();
+  tmetadata.largest_key = metaData->largest.Encode().ToString();
+  tmetadata.num_entries = metaData->num_entries;
+  tmetadata.num_deletions = metaData->num_deletions;
+  tmetadata.raw_key_size = metaData->raw_key_size;
+  tmetadata.raw_value_size = metaData->raw_value_size;
+  tmetadata.oldest_ancester_time = metaData->oldest_ancester_time;
+  tmetadata.file_creation_time = metaData->file_creation_time;
+  tmetadata.file_checksum = metaData->file_checksum;
+  tmetadata.file_checksum_func_name = metaData->file_checksum_func_name;
+  return tmetadata;
+}
+
 TFileDescriptor RpcUtils::ToTFileDescriptor(const FileDescriptor& descriptor) {
   TFileDescriptor tdescriptor;
   tdescriptor.flush_number = descriptor.flush_number;

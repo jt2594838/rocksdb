@@ -23,6 +23,8 @@ namespace rocksdb {
 
 class TCompactFilesRequest;
 
+class TTrivialMoveRequest;
+
 class TFileDescriptor;
 
 class TFileMetadata;
@@ -130,6 +132,60 @@ class TCompactFilesRequest : public virtual ::apache::thrift::TBase {
 void swap(TCompactFilesRequest &a, TCompactFilesRequest &b);
 
 std::ostream& operator<<(std::ostream& out, const TCompactFilesRequest& obj);
+
+typedef struct _TTrivialMoveRequest__isset {
+  _TTrivialMoveRequest__isset() : file_levels(false), file_meta_list(false), output_level(false) {}
+  bool file_levels :1;
+  bool file_meta_list :1;
+  bool output_level :1;
+} _TTrivialMoveRequest__isset;
+
+class TTrivialMoveRequest : public virtual ::apache::thrift::TBase {
+ public:
+
+  TTrivialMoveRequest(const TTrivialMoveRequest&);
+  TTrivialMoveRequest& operator=(const TTrivialMoveRequest&);
+  TTrivialMoveRequest() : output_level(0) {
+  }
+
+  virtual ~TTrivialMoveRequest() noexcept;
+  std::vector<int32_t>  file_levels;
+  std::vector<TFileMetadata>  file_meta_list;
+  int32_t output_level;
+
+  _TTrivialMoveRequest__isset __isset;
+
+  void __set_file_levels(const std::vector<int32_t> & val);
+
+  void __set_file_meta_list(const std::vector<TFileMetadata> & val);
+
+  void __set_output_level(const int32_t val);
+
+  bool operator == (const TTrivialMoveRequest & rhs) const
+  {
+    if (!(file_levels == rhs.file_levels))
+      return false;
+    if (!(file_meta_list == rhs.file_meta_list))
+      return false;
+    if (!(output_level == rhs.output_level))
+      return false;
+    return true;
+  }
+  bool operator != (const TTrivialMoveRequest &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const TTrivialMoveRequest & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+  virtual void printTo(std::ostream& out) const;
+};
+
+void swap(TTrivialMoveRequest &a, TTrivialMoveRequest &b);
+
+std::ostream& operator<<(std::ostream& out, const TTrivialMoveRequest& obj);
 
 typedef struct _TFileDescriptor__isset {
   _TFileDescriptor__isset() : flush_number(false), merge_number(false), path_id(false), file_size(false), smallest_seqno(false), largest_seqno(false) {}

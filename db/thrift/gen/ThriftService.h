@@ -23,6 +23,7 @@ class ThriftServiceIf {
  public:
   virtual ~ThriftServiceIf() {}
   virtual void CompactFiles(TCompactionResult& _return, const TCompactFilesRequest& request) = 0;
+  virtual void TrivialMove(TStatus& _return, const TTrivialMoveRequest& request) = 0;
   virtual void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size) = 0;
   virtual void UpLoadTableFile(const std::string& file_name, const std::string& data, const bool is_last, const int32_t path_num) = 0;
   virtual void PushFiles(const TCompactionResult& output_files, const std::string& source_ip, const int32_t source_port) = 0;
@@ -64,6 +65,9 @@ class ThriftServiceNull : virtual public ThriftServiceIf {
  public:
   virtual ~ThriftServiceNull() {}
   void CompactFiles(TCompactionResult& /* _return */, const TCompactFilesRequest& /* request */) {
+    return;
+  }
+  void TrivialMove(TStatus& /* _return */, const TTrivialMoveRequest& /* request */) {
     return;
   }
   void DownLoadFile(std::string& /* _return */, const std::string& /* file_name */, const int64_t /* offset */, const int32_t /* size */) {
@@ -200,6 +204,110 @@ class ThriftService_CompactFiles_presult {
   TCompactionResult* success;
 
   _ThriftService_CompactFiles_presult__isset __isset;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+
+};
+
+typedef struct _ThriftService_TrivialMove_args__isset {
+  _ThriftService_TrivialMove_args__isset() : request(false) {}
+  bool request :1;
+} _ThriftService_TrivialMove_args__isset;
+
+class ThriftService_TrivialMove_args {
+ public:
+
+  ThriftService_TrivialMove_args(const ThriftService_TrivialMove_args&);
+  ThriftService_TrivialMove_args& operator=(const ThriftService_TrivialMove_args&);
+  ThriftService_TrivialMove_args() {
+  }
+
+  virtual ~ThriftService_TrivialMove_args() noexcept;
+  TTrivialMoveRequest request;
+
+  _ThriftService_TrivialMove_args__isset __isset;
+
+  void __set_request(const TTrivialMoveRequest& val);
+
+  bool operator == (const ThriftService_TrivialMove_args & rhs) const
+  {
+    if (!(request == rhs.request))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_TrivialMove_args &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_TrivialMove_args & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+
+class ThriftService_TrivialMove_pargs {
+ public:
+
+
+  virtual ~ThriftService_TrivialMove_pargs() noexcept;
+  const TTrivialMoveRequest* request;
+
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_TrivialMove_result__isset {
+  _ThriftService_TrivialMove_result__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_TrivialMove_result__isset;
+
+class ThriftService_TrivialMove_result {
+ public:
+
+  ThriftService_TrivialMove_result(const ThriftService_TrivialMove_result&);
+  ThriftService_TrivialMove_result& operator=(const ThriftService_TrivialMove_result&);
+  ThriftService_TrivialMove_result() {
+  }
+
+  virtual ~ThriftService_TrivialMove_result() noexcept;
+  TStatus success;
+
+  _ThriftService_TrivialMove_result__isset __isset;
+
+  void __set_success(const TStatus& val);
+
+  bool operator == (const ThriftService_TrivialMove_result & rhs) const
+  {
+    if (!(success == rhs.success))
+      return false;
+    return true;
+  }
+  bool operator != (const ThriftService_TrivialMove_result &rhs) const {
+    return !(*this == rhs);
+  }
+
+  bool operator < (const ThriftService_TrivialMove_result & ) const;
+
+  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
+  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
+
+};
+
+typedef struct _ThriftService_TrivialMove_presult__isset {
+  _ThriftService_TrivialMove_presult__isset() : success(false) {}
+  bool success :1;
+} _ThriftService_TrivialMove_presult__isset;
+
+class ThriftService_TrivialMove_presult {
+ public:
+
+
+  virtual ~ThriftService_TrivialMove_presult() noexcept;
+  TStatus* success;
+
+  _ThriftService_TrivialMove_presult__isset __isset;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
 
@@ -1362,6 +1470,9 @@ class ThriftServiceClient : virtual public ThriftServiceIf {
   void CompactFiles(TCompactionResult& _return, const TCompactFilesRequest& request);
   void send_CompactFiles(const TCompactFilesRequest& request);
   void recv_CompactFiles(TCompactionResult& _return);
+  void TrivialMove(TStatus& _return, const TTrivialMoveRequest& request);
+  void send_TrivialMove(const TTrivialMoveRequest& request);
+  void recv_TrivialMove(TStatus& _return);
   void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size);
   void send_DownLoadFile(const std::string& file_name, const int64_t offset, const int32_t size);
   void recv_DownLoadFile(std::string& _return);
@@ -1411,6 +1522,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   typedef std::map<std::string, ProcessFunction> ProcessMap;
   ProcessMap processMap_;
   void process_CompactFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
+  void process_TrivialMove(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_DownLoadFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_UpLoadTableFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_PushFiles(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
@@ -1426,6 +1538,7 @@ class ThriftServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   ThriftServiceProcessor(::std::shared_ptr<ThriftServiceIf> iface) :
     iface_(iface) {
     processMap_["CompactFiles"] = &ThriftServiceProcessor::process_CompactFiles;
+    processMap_["TrivialMove"] = &ThriftServiceProcessor::process_TrivialMove;
     processMap_["DownLoadFile"] = &ThriftServiceProcessor::process_DownLoadFile;
     processMap_["UpLoadTableFile"] = &ThriftServiceProcessor::process_UpLoadTableFile;
     processMap_["PushFiles"] = &ThriftServiceProcessor::process_PushFiles;
@@ -1472,6 +1585,16 @@ class ThriftServiceMultiface : virtual public ThriftServiceIf {
       ifaces_[i]->CompactFiles(_return, request);
     }
     ifaces_[i]->CompactFiles(_return, request);
+    return;
+  }
+
+  void TrivialMove(TStatus& _return, const TTrivialMoveRequest& request) {
+    size_t sz = ifaces_.size();
+    size_t i = 0;
+    for (; i < (sz - 1); ++i) {
+      ifaces_[i]->TrivialMove(_return, request);
+    }
+    ifaces_[i]->TrivialMove(_return, request);
     return;
   }
 
@@ -1617,6 +1740,9 @@ class ThriftServiceConcurrentClient : virtual public ThriftServiceIf {
   void CompactFiles(TCompactionResult& _return, const TCompactFilesRequest& request);
   int32_t send_CompactFiles(const TCompactFilesRequest& request);
   void recv_CompactFiles(TCompactionResult& _return, const int32_t seqid);
+  void TrivialMove(TStatus& _return, const TTrivialMoveRequest& request);
+  int32_t send_TrivialMove(const TTrivialMoveRequest& request);
+  void recv_TrivialMove(TStatus& _return, const int32_t seqid);
   void DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size);
   int32_t send_DownLoadFile(const std::string& file_name, const int64_t offset, const int32_t size);
   void recv_DownLoadFile(std::string& _return, const int32_t seqid);

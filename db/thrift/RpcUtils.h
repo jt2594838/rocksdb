@@ -31,6 +31,7 @@ class RpcUtils {
   static uint64_t ToUint64(const std::string& str);
 
   static sockaddr* local_addr;
+  static TFileMetadata ToTFileMetaData(FileMetaData* metaData);
 };
 }  // namespace rocksT
 

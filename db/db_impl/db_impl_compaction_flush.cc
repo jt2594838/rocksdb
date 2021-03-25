@@ -21,6 +21,7 @@
 #include "test_util/sync_point.h"
 #include "util/cast_util.h"
 #include "util/concurrent_task_limiter_impl.h"
+#include "db/thrift/RpcUtils.h"
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -2785,11 +2786,11 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   }
   bool is_prepicked = is_manual || c;
 
-  // (manual_compaction->in_progress == false);
-  //  bool trivial_move_disallowed =
-  //      is_manual && manual_compaction->disallow_trivial_move;
-  // disallow trivial move as it does not inform other nodes
-  bool trivial_move_disallowed = true;
+//   (manual_compaction->in_progress == false);
+    bool trivial_move_disallowed =
+        is_manual && manual_compaction->disallow_trivial_move;
+//  disallow trivial move as it does not inform other nodes
+//  bool trivial_move_disallowed = true;
 
   CompactionJobStats compaction_job_stats;
   Status status;
@@ -3014,6 +3015,10 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
                             compaction_job_stats, job_context->job_id);
 
+    std::vector<TFileMetadata> file_meta_list;
+    std::vector<int32_t> file_levels;
+    int32_t output_level = c->output_level();
+
     // Move files to next level
     int32_t moved_files = 0;
     int64_t moved_bytes = 0;
@@ -3025,13 +3030,16 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
         FileMetaData* f = c->input(l, i);
         c->edit()->DeleteFile(c->level(l), f->fd.GetFlushNumber(),
                               f->fd.GetMergeNumber());
-        c->edit()->AddFile(c->output_level(), f->fd.GetFlushNumber(),
+        c->edit()->AddFile(output_level, f->fd.GetFlushNumber(),
                            f->fd.GetMergeNumber(), f->fd.GetPathId(),
                            f->fd.GetFileSize(), f->smallest, f->largest,
                            f->fd.smallest_seqno, f->fd.largest_seqno,
                            f->marked_for_compaction, f->oldest_blob_file_number,
                            f->oldest_ancester_time, f->file_creation_time,
                            f->file_checksum, f->file_checksum_func_name);
+
+        file_levels.emplace_back(c->level(l));
+        file_meta_list.emplace_back(RpcUtils::ToTFileMetaData(f));
 
         ROCKS_LOG_BUFFER(log_buffer,
                          "[%s] Moving #%" PRIu64 "-%" PRIu64
@@ -3041,6 +3049,44 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
                          c->output_level(), f->fd.GetFileSize());
         ++moved_files;
         moved_bytes += f->fd.GetFileSize();
+      }
+    }
+
+    // notify other nodes to do the same movement
+    TTrivialMoveRequest request;
+    request.file_levels = file_levels;
+    request.output_level = output_level;
+    request.file_meta_list = file_meta_list;
+    TStatus tStatus;
+    Status s;
+    for (auto *node : immutable_db_options_.nodes) {
+      if (*node != *immutable_db_options_.this_node) {
+        auto *client = RpcUtils::GetClient(node);
+        if (client == nullptr) {
+          ROCKS_LOG_ERROR(
+              immutable_db_options_.info_log,
+              "Node %s is unreachable", node->ToString().c_str());
+          continue;
+        }
+        ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                       "Executing a trivial move of "
+                       "%ld inputs to level %d to %s",
+                       file_meta_list.size(),
+                       output_level,
+                       node->ToString().c_str());
+        for (int i = 0; i < 5; ++i) {
+          client->TrivialMove(tStatus, request);
+          status = RpcUtils::ToStatus(tStatus);
+          ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                         "Executed trivial move to %s, "
+                         "result: %s",
+                         node->ToString().c_str(), status.ToString().c_str());
+          if (tStatus.code == Status::Code::kOk) {
+            break;
+          }
+          sleep(1);
+        }
+        RpcUtils::ReleaseClient(node, client);
       }
     }
 

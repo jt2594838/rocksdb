@@ -196,6 +196,193 @@ uint32_t ThriftService_CompactFiles_presult::read(::apache::thrift::protocol::TP
 }
 
 
+ThriftService_TrivialMove_args::~ThriftService_TrivialMove_args() noexcept {
+}
+
+
+uint32_t ThriftService_TrivialMove_args::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->request.read(iprot);
+          this->__isset.request = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t ThriftService_TrivialMove_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("ThriftService_TrivialMove_args");
+
+  xfer += oprot->writeFieldBegin("request", ::apache::thrift::protocol::T_STRUCT, 1);
+  xfer += this->request.write(oprot);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+
+ThriftService_TrivialMove_pargs::~ThriftService_TrivialMove_pargs() noexcept {
+}
+
+
+uint32_t ThriftService_TrivialMove_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  ::apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("ThriftService_TrivialMove_pargs");
+
+  xfer += oprot->writeFieldBegin("request", ::apache::thrift::protocol::T_STRUCT, 1);
+  xfer += (*(this->request)).write(oprot);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+
+ThriftService_TrivialMove_result::~ThriftService_TrivialMove_result() noexcept {
+}
+
+
+uint32_t ThriftService_TrivialMove_result::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->success.read(iprot);
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t ThriftService_TrivialMove_result::write(::apache::thrift::protocol::TProtocol* oprot) const {
+
+  uint32_t xfer = 0;
+
+  xfer += oprot->writeStructBegin("ThriftService_TrivialMove_result");
+
+  if (this->__isset.success) {
+    xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_STRUCT, 0);
+    xfer += this->success.write(oprot);
+    xfer += oprot->writeFieldEnd();
+  }
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+
+ThriftService_TrivialMove_presult::~ThriftService_TrivialMove_presult() noexcept {
+}
+
+
+uint32_t ThriftService_TrivialMove_presult::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  ::apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 0:
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += (*(this->success)).read(iprot);
+          this->__isset.success = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+
 ThriftService_DownLoadFile_args::~ThriftService_DownLoadFile_args() noexcept {
 }
 
@@ -1382,14 +1569,14 @@ uint32_t ThriftService_PutBatch_args::read(::apache::thrift::protocol::TProtocol
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->key.clear();
-            uint32_t _size74;
-            ::apache::thrift::protocol::TType _etype77;
-            xfer += iprot->readListBegin(_etype77, _size74);
-            this->key.resize(_size74);
-            uint32_t _i78;
-            for (_i78 = 0; _i78 < _size74; ++_i78)
+            uint32_t _size88;
+            ::apache::thrift::protocol::TType _etype91;
+            xfer += iprot->readListBegin(_etype91, _size88);
+            this->key.resize(_size88);
+            uint32_t _i92;
+            for (_i92 = 0; _i92 < _size88; ++_i92)
             {
-              xfer += iprot->readString(this->key[_i78]);
+              xfer += iprot->readString(this->key[_i92]);
             }
             xfer += iprot->readListEnd();
           }
@@ -1402,14 +1589,14 @@ uint32_t ThriftService_PutBatch_args::read(::apache::thrift::protocol::TProtocol
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->value.clear();
-            uint32_t _size79;
-            ::apache::thrift::protocol::TType _etype82;
-            xfer += iprot->readListBegin(_etype82, _size79);
-            this->value.resize(_size79);
-            uint32_t _i83;
-            for (_i83 = 0; _i83 < _size79; ++_i83)
+            uint32_t _size93;
+            ::apache::thrift::protocol::TType _etype96;
+            xfer += iprot->readListBegin(_etype96, _size93);
+            this->value.resize(_size93);
+            uint32_t _i97;
+            for (_i97 = 0; _i97 < _size93; ++_i97)
             {
-              xfer += iprot->readString(this->value[_i83]);
+              xfer += iprot->readString(this->value[_i97]);
             }
             xfer += iprot->readListEnd();
           }
@@ -1438,10 +1625,10 @@ uint32_t ThriftService_PutBatch_args::write(::apache::thrift::protocol::TProtoco
   xfer += oprot->writeFieldBegin("key", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->key.size()));
-    std::vector<std::string> ::const_iterator _iter84;
-    for (_iter84 = this->key.begin(); _iter84 != this->key.end(); ++_iter84)
+    std::vector<std::string> ::const_iterator _iter98;
+    for (_iter98 = this->key.begin(); _iter98 != this->key.end(); ++_iter98)
     {
-      xfer += oprot->writeString((*_iter84));
+      xfer += oprot->writeString((*_iter98));
     }
     xfer += oprot->writeListEnd();
   }
@@ -1450,10 +1637,10 @@ uint32_t ThriftService_PutBatch_args::write(::apache::thrift::protocol::TProtoco
   xfer += oprot->writeFieldBegin("value", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->value.size()));
-    std::vector<std::string> ::const_iterator _iter85;
-    for (_iter85 = this->value.begin(); _iter85 != this->value.end(); ++_iter85)
+    std::vector<std::string> ::const_iterator _iter99;
+    for (_iter99 = this->value.begin(); _iter99 != this->value.end(); ++_iter99)
     {
-      xfer += oprot->writeString((*_iter85));
+      xfer += oprot->writeString((*_iter99));
     }
     xfer += oprot->writeListEnd();
   }
@@ -1477,10 +1664,10 @@ uint32_t ThriftService_PutBatch_pargs::write(::apache::thrift::protocol::TProtoc
   xfer += oprot->writeFieldBegin("key", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*(this->key)).size()));
-    std::vector<std::string> ::const_iterator _iter86;
-    for (_iter86 = (*(this->key)).begin(); _iter86 != (*(this->key)).end(); ++_iter86)
+    std::vector<std::string> ::const_iterator _iter100;
+    for (_iter100 = (*(this->key)).begin(); _iter100 != (*(this->key)).end(); ++_iter100)
     {
-      xfer += oprot->writeString((*_iter86));
+      xfer += oprot->writeString((*_iter100));
     }
     xfer += oprot->writeListEnd();
   }
@@ -1489,10 +1676,10 @@ uint32_t ThriftService_PutBatch_pargs::write(::apache::thrift::protocol::TProtoc
   xfer += oprot->writeFieldBegin("value", ::apache::thrift::protocol::T_LIST, 2);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*(this->value)).size()));
-    std::vector<std::string> ::const_iterator _iter87;
-    for (_iter87 = (*(this->value)).begin(); _iter87 != (*(this->value)).end(); ++_iter87)
+    std::vector<std::string> ::const_iterator _iter101;
+    for (_iter101 = (*(this->value)).begin(); _iter101 != (*(this->value)).end(); ++_iter101)
     {
-      xfer += oprot->writeString((*_iter87));
+      xfer += oprot->writeString((*_iter101));
     }
     xfer += oprot->writeListEnd();
   }
@@ -1828,14 +2015,14 @@ uint32_t ThriftService_GetBatch_args::read(::apache::thrift::protocol::TProtocol
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->keys.clear();
-            uint32_t _size88;
-            ::apache::thrift::protocol::TType _etype91;
-            xfer += iprot->readListBegin(_etype91, _size88);
-            this->keys.resize(_size88);
-            uint32_t _i92;
-            for (_i92 = 0; _i92 < _size88; ++_i92)
+            uint32_t _size102;
+            ::apache::thrift::protocol::TType _etype105;
+            xfer += iprot->readListBegin(_etype105, _size102);
+            this->keys.resize(_size102);
+            uint32_t _i106;
+            for (_i106 = 0; _i106 < _size102; ++_i106)
             {
-              xfer += iprot->readString(this->keys[_i92]);
+              xfer += iprot->readString(this->keys[_i106]);
             }
             xfer += iprot->readListEnd();
           }
@@ -1864,10 +2051,10 @@ uint32_t ThriftService_GetBatch_args::write(::apache::thrift::protocol::TProtoco
   xfer += oprot->writeFieldBegin("keys", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->keys.size()));
-    std::vector<std::string> ::const_iterator _iter93;
-    for (_iter93 = this->keys.begin(); _iter93 != this->keys.end(); ++_iter93)
+    std::vector<std::string> ::const_iterator _iter107;
+    for (_iter107 = this->keys.begin(); _iter107 != this->keys.end(); ++_iter107)
     {
-      xfer += oprot->writeString((*_iter93));
+      xfer += oprot->writeString((*_iter107));
     }
     xfer += oprot->writeListEnd();
   }
@@ -1891,10 +2078,10 @@ uint32_t ThriftService_GetBatch_pargs::write(::apache::thrift::protocol::TProtoc
   xfer += oprot->writeFieldBegin("keys", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*(this->keys)).size()));
-    std::vector<std::string> ::const_iterator _iter94;
-    for (_iter94 = (*(this->keys)).begin(); _iter94 != (*(this->keys)).end(); ++_iter94)
+    std::vector<std::string> ::const_iterator _iter108;
+    for (_iter108 = (*(this->keys)).begin(); _iter108 != (*(this->keys)).end(); ++_iter108)
     {
-      xfer += oprot->writeString((*_iter94));
+      xfer += oprot->writeString((*_iter108));
     }
     xfer += oprot->writeListEnd();
   }
@@ -2401,6 +2588,64 @@ void ThriftServiceClient::recv_CompactFiles(TCompactionResult& _return)
     return;
   }
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "CompactFiles failed: unknown result");
+}
+
+void ThriftServiceClient::TrivialMove(TStatus& _return, const TTrivialMoveRequest& request)
+{
+  send_TrivialMove(request);
+  recv_TrivialMove(_return);
+}
+
+void ThriftServiceClient::send_TrivialMove(const TTrivialMoveRequest& request)
+{
+  int32_t cseqid = 0;
+  oprot_->writeMessageBegin("TrivialMove", ::apache::thrift::protocol::T_CALL, cseqid);
+
+  ThriftService_TrivialMove_pargs args;
+  args.request = &request;
+  args.write(oprot_);
+
+  oprot_->writeMessageEnd();
+  oprot_->getTransport()->writeEnd();
+  oprot_->getTransport()->flush();
+}
+
+void ThriftServiceClient::recv_TrivialMove(TStatus& _return)
+{
+
+  int32_t rseqid = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TMessageType mtype;
+
+  iprot_->readMessageBegin(fname, mtype, rseqid);
+  if (mtype == ::apache::thrift::protocol::T_EXCEPTION) {
+    ::apache::thrift::TApplicationException x;
+    x.read(iprot_);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+    throw x;
+  }
+  if (mtype != ::apache::thrift::protocol::T_REPLY) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  if (fname.compare("TrivialMove") != 0) {
+    iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+    iprot_->readMessageEnd();
+    iprot_->getTransport()->readEnd();
+  }
+  ThriftService_TrivialMove_presult result;
+  result.success = &_return;
+  result.read(iprot_);
+  iprot_->readMessageEnd();
+  iprot_->getTransport()->readEnd();
+
+  if (result.__isset.success) {
+    // _return pointer has now been filled
+    return;
+  }
+  throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "TrivialMove failed: unknown result");
 }
 
 void ThriftServiceClient::DownLoadFile(std::string& _return, const std::string& file_name, const int64_t offset, const int32_t size)
@@ -3106,6 +3351,60 @@ void ThriftServiceProcessor::process_CompactFiles(int32_t seqid, ::apache::thrif
   }
 }
 
+void ThriftServiceProcessor::process_TrivialMove(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
+{
+  void* ctx = NULL;
+  if (this->eventHandler_.get() != NULL) {
+    ctx = this->eventHandler_->getContext("ThriftService.TrivialMove", callContext);
+  }
+  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "ThriftService.TrivialMove");
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preRead(ctx, "ThriftService.TrivialMove");
+  }
+
+  ThriftService_TrivialMove_args args;
+  args.read(iprot);
+  iprot->readMessageEnd();
+  uint32_t bytes = iprot->getTransport()->readEnd();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postRead(ctx, "ThriftService.TrivialMove", bytes);
+  }
+
+  ThriftService_TrivialMove_result result;
+  try {
+    iface_->TrivialMove(result.success, args.request);
+    result.__isset.success = true;
+  } catch (const std::exception& e) {
+    if (this->eventHandler_.get() != NULL) {
+      this->eventHandler_->handlerError(ctx, "ThriftService.TrivialMove");
+    }
+
+    ::apache::thrift::TApplicationException x(e.what());
+    oprot->writeMessageBegin("TrivialMove", ::apache::thrift::protocol::T_EXCEPTION, seqid);
+    x.write(oprot);
+    oprot->writeMessageEnd();
+    oprot->getTransport()->writeEnd();
+    oprot->getTransport()->flush();
+    return;
+  }
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->preWrite(ctx, "ThriftService.TrivialMove");
+  }
+
+  oprot->writeMessageBegin("TrivialMove", ::apache::thrift::protocol::T_REPLY, seqid);
+  result.write(oprot);
+  oprot->writeMessageEnd();
+  bytes = oprot->getTransport()->writeEnd();
+  oprot->getTransport()->flush();
+
+  if (this->eventHandler_.get() != NULL) {
+    this->eventHandler_->postWrite(ctx, "ThriftService.TrivialMove", bytes);
+  }
+}
+
 void ThriftServiceProcessor::process_DownLoadFile(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext)
 {
   void* ctx = NULL;
@@ -3779,6 +4078,90 @@ void ThriftServiceConcurrentClient::recv_CompactFiles(TCompactionResult& _return
       }
       // in a bad state, don't commit
       throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "CompactFiles failed: unknown result");
+    }
+    // seqid != rseqid
+    this->sync_->updatePending(fname, mtype, rseqid);
+
+    // this will temporarily unlock the readMutex, and let other clients get work done
+    this->sync_->waitForWork(seqid);
+  } // end while(true)
+}
+
+void ThriftServiceConcurrentClient::TrivialMove(TStatus& _return, const TTrivialMoveRequest& request)
+{
+  int32_t seqid = send_TrivialMove(request);
+  recv_TrivialMove(_return, seqid);
+}
+
+int32_t ThriftServiceConcurrentClient::send_TrivialMove(const TTrivialMoveRequest& request)
+{
+  int32_t cseqid = this->sync_->generateSeqId();
+  ::apache::thrift::async::TConcurrentSendSentry sentry(this->sync_.get());
+  oprot_->writeMessageBegin("TrivialMove", ::apache::thrift::protocol::T_CALL, cseqid);
+
+  ThriftService_TrivialMove_pargs args;
+  args.request = &request;
+  args.write(oprot_);
+
+  oprot_->writeMessageEnd();
+  oprot_->getTransport()->writeEnd();
+  oprot_->getTransport()->flush();
+
+  sentry.commit();
+  return cseqid;
+}
+
+void ThriftServiceConcurrentClient::recv_TrivialMove(TStatus& _return, const int32_t seqid)
+{
+
+  int32_t rseqid = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TMessageType mtype;
+
+  // the read mutex gets dropped and reacquired as part of waitForWork()
+  // The destructor of this sentry wakes up other clients
+  ::apache::thrift::async::TConcurrentRecvSentry sentry(this->sync_.get(), seqid);
+
+  while(true) {
+    if(!this->sync_->getPending(fname, mtype, rseqid)) {
+      iprot_->readMessageBegin(fname, mtype, rseqid);
+    }
+    if(seqid == rseqid) {
+      if (mtype == ::apache::thrift::protocol::T_EXCEPTION) {
+        ::apache::thrift::TApplicationException x;
+        x.read(iprot_);
+        iprot_->readMessageEnd();
+        iprot_->getTransport()->readEnd();
+        sentry.commit();
+        throw x;
+      }
+      if (mtype != ::apache::thrift::protocol::T_REPLY) {
+        iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+        iprot_->readMessageEnd();
+        iprot_->getTransport()->readEnd();
+      }
+      if (fname.compare("TrivialMove") != 0) {
+        iprot_->skip(::apache::thrift::protocol::T_STRUCT);
+        iprot_->readMessageEnd();
+        iprot_->getTransport()->readEnd();
+
+        // in a bad state, don't commit
+        using ::apache::thrift::protocol::TProtocolException;
+        throw TProtocolException(TProtocolException::INVALID_DATA);
+      }
+      ThriftService_TrivialMove_presult result;
+      result.success = &_return;
+      result.read(iprot_);
+      iprot_->readMessageEnd();
+      iprot_->getTransport()->readEnd();
+
+      if (result.__isset.success) {
+        // _return pointer has now been filled
+        sentry.commit();
+        return;
+      }
+      // in a bad state, don't commit
+      throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "TrivialMove failed: unknown result");
     }
     // seqid != rseqid
     this->sync_->updatePending(fname, mtype, rseqid);

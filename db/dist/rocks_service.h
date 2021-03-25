@@ -13,6 +13,8 @@ namespace ROCKSDB_NAMESPACE {
 class RocksService : ThriftServiceIf {
   void CompactFiles(TCompactionResult& _return,
                     const TCompactFilesRequest& request) override;
+  void TrivialMove(TStatus& _return,
+                   const TTrivialMoveRequest& request) override;
   void DownLoadFile(std::string& _return, const std::string& file_name,
                     int64_t offset, int32_t size) override;
   void UpLoadTableFile(const std::string& file_name, const std::string& data,
