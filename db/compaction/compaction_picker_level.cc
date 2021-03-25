@@ -306,40 +306,26 @@ bool LevelCompactionBuilder::SetupOtherInputsIfNeeded() {
 Compaction* LevelCompactionBuilder::PickCompaction() {
   // Pick up the first file to start compaction. It may have been extended
   // to a clean cut.
-  memset(skipped_levels, 0, vstorage_->num_levels());
 
-  while (true) {
-    SetupInitialFiles();
-    if (start_level_inputs_.empty()) {
-      ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup initial files");
-      return nullptr;
-    }
-    assert(start_level_ >= 0 && output_level_ >= 0);
+  SetupInitialFiles();
+  if (start_level_inputs_.empty()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup initial files");
+    return nullptr;
+  }
+  assert(start_level_ >= 0 && output_level_ >= 0);
 
-    // If it is a L0 -> base level compaction, we need to set up other L0
-    // files if needed.
-    if (!SetupOtherL0FilesIfNeeded()) {
-      ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other L0 files");
-      return nullptr;
-    }
+  // If it is a L0 -> base level compaction, we need to set up other L0
+  // files if needed.
+  if (!SetupOtherL0FilesIfNeeded()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other L0 files");
+    return nullptr;
+  }
 
-    // Pick files in the output level and expand more files in the start level
-    // if needed.
-    if (!SetupOtherInputsIfNeeded()) {
-      ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other files");
-      return nullptr;
-    }
-
-    if (start_level_inputs_.size() + output_level_inputs_.size() <= 1) {
-      ROCKS_LOG_INFO(ioptions_.info_log, "Level%d is a trivial move", start_level_);
-      // avoid trivial move
-      skipped_levels[start_level_] = true;
-      start_level_inputs_.clear();
-      output_level_inputs_.clear();
-      compaction_inputs_.clear();
-    } else {
-      break;
-    }
+  // Pick files in the output level and expand more files in the start level
+  // if needed.
+  if (!SetupOtherInputsIfNeeded()) {
+    ROCKS_LOG_INFO(ioptions_.info_log, "Cannot setup other files");
+    return nullptr;
   }
 
   // Form a compaction object containing the files we picked.
