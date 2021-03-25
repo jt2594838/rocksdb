@@ -3052,41 +3052,43 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       }
     }
 
-    // notify other nodes to do the same movement
-    TTrivialMoveRequest request;
-    request.file_levels = file_levels;
-    request.output_level = output_level;
-    request.file_meta_list = file_meta_list;
-    TStatus tStatus;
-    Status s;
-    for (auto *node : immutable_db_options_.nodes) {
-      if (*node != *immutable_db_options_.this_node) {
-        auto *client = RpcUtils::GetClient(node);
-        if (client == nullptr) {
-          ROCKS_LOG_ERROR(
-              immutable_db_options_.info_log,
-              "Node %s is unreachable", node->ToString().c_str());
-          continue;
-        }
-        ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                       "Executing a trivial move of "
-                       "%ld inputs to level %d to %s",
-                       file_meta_list.size(),
-                       output_level,
-                       node->ToString().c_str());
-        for (int i = 0; i < 5; ++i) {
-          client->TrivialMove(tStatus, request);
-          status = RpcUtils::ToStatus(tStatus);
-          ROCKS_LOG_INFO(immutable_db_options_.info_log,
-                         "Executed trivial move to %s, "
-                         "result: %s",
-                         node->ToString().c_str(), status.ToString().c_str());
-          if (tStatus.code == Status::Code::kOk) {
-            break;
+    if (immutable_db_options_.enable_dist_compaction) {
+      // notify other nodes to do the same movement
+      TTrivialMoveRequest request;
+      request.file_levels = file_levels;
+      request.output_level = output_level;
+      request.file_meta_list = file_meta_list;
+      TStatus tStatus;
+      Status s;
+      for (auto *node : immutable_db_options_.nodes) {
+        if (*node != *immutable_db_options_.this_node) {
+          auto *client = RpcUtils::GetClient(node);
+          if (client == nullptr) {
+            ROCKS_LOG_ERROR(
+                immutable_db_options_.info_log,
+                "Node %s is unreachable", node->ToString().c_str());
+            continue;
           }
-          sleep(1);
+          ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                         "Executing a trivial move of "
+                         "%ld inputs to level %d to %s",
+                         file_meta_list.size(),
+                         output_level,
+                         node->ToString().c_str());
+          for (int i = 0; i < 5; ++i) {
+            client->TrivialMove(tStatus, request);
+            status = RpcUtils::ToStatus(tStatus);
+            ROCKS_LOG_INFO(immutable_db_options_.info_log,
+                           "Executed trivial move to %s, "
+                           "result: %s",
+                           node->ToString().c_str(), status.ToString().c_str());
+            if (tStatus.code == Status::Code::kOk) {
+              break;
+            }
+            sleep(1);
+          }
+          RpcUtils::ReleaseClient(node, client);
         }
-        RpcUtils::ReleaseClient(node, client);
       }
     }
 
