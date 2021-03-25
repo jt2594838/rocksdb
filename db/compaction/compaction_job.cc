@@ -727,7 +727,7 @@ Status CompactionJob::Run() {
 
   // Launch a thread for each of subcompactions 0...num_threads-1
   std::vector<port::Thread> thread_pool;
-  thread_pool.reserve(num_threads - 1);
+  thread_pool.reserve(num_threads);
   SubcompactionState *first_local_comp = nullptr;
   for (auto &sub_compact_state : compact_->sub_compact_states) {
     if (first_local_comp == nullptr &&
@@ -993,6 +993,16 @@ void CompactionJob::LogCompactionEnd(ColumnFamilyData *cfd, Status &status) {
 
 void CompactionJob::ProcessLocalKVCompaction(SubcompactionState *sub_compact) {
   assert(sub_compact != nullptr);
+
+  ROCKS_LOG_INFO(this->db_options_.info_log,
+                 "Executing a local compaction "
+                 "[%s, %s]",
+                 sub_compact->start == nullptr
+                 ? "NULL"
+                 : std::to_string(sub_compact->start->ToUint64()).c_str(),
+                 sub_compact->end == nullptr
+                 ? "NULL"
+                 : std::to_string(sub_compact->end->ToUint64()).c_str());
 
   uint64_t prev_cpu_micros = env_->NowCPUNanos() / 1000;
   uint64_t prev_micros = env_->NowMicros();
