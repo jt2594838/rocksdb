@@ -365,7 +365,7 @@ void write_stress(char **argv) {
     threads.emplace_back([&env, &write_i, &argv, t_start, &t_write_last, k] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
-      std::uniform_int_distribution<uint32_t> distribution;
+      std::uniform_int_distribution<uint64_t> distribution;
 
       std::vector<std::string> keys_;
       std::vector<std::string> values_;
@@ -375,7 +375,7 @@ void write_stress(char **argv) {
       uint64_t t;
       for (;;) {
         for (uint32_t l = 0; l < batch_size; l++) {
-          uint32_t k_v = distribution(e);
+          uint64_t k_v = distribution(e);
           uint64_t long_key = k_v;
           std::string k_v_str =
               std::string(reinterpret_cast<char *>(&long_key), 8);
@@ -414,7 +414,7 @@ void write_stress(char **argv) {
     threads.emplace_back([&env, &write_i, &read_i, &argv, t_start, &t_read_last, k] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
-      std::uniform_int_distribution<uint32_t> distribution;
+      std::uniform_int_distribution<uint64_t> distribution;
 
       std::vector<std::string> keys_;
       std::vector<std::string> values_;
@@ -422,7 +422,7 @@ void write_stress(char **argv) {
       uint64_t t;
       for (;;) {
         for (uint32_t l = 0; l < read_num_per_batch; l++) {
-          uint32_t k_v = distribution(e);
+          uint64_t k_v = distribution(e);
           uint64_t long_key = k_v;
           std::string k_v_str =
               std::string(reinterpret_cast<char *>(&long_key), 8);
