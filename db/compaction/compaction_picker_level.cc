@@ -9,6 +9,7 @@
 
 #include "db/compaction/compaction_picker_level.h"
 
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -172,8 +173,7 @@ void LevelCompactionBuilder::SetupInitialFiles() {
     start_level_ = vstorage_->CompactionScoreLevel(i);
     assert(i == 0 || start_level_score_ <= vstorage_->CompactionScore(i - 1));
     if (start_level_score_ >= 1) {
-      if ((skipped_l0_to_base && start_level_ == vstorage_->base_level()) ||
-          skipped_levels[start_level_]) {
+      if ((skipped_l0_to_base && start_level_ == vstorage_->base_level())) {
         // If L0->base_level compaction is pending, don't schedule further
         // compaction from base level. Otherwise L0->base_level compaction
         // may starve.
@@ -314,6 +314,8 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
   }
   assert(start_level_ >= 0 && output_level_ >= 0);
 
+  std::cout << "Before set other l0 files: " << start_level_inputs_.size() << " "
+            << output_level_inputs_.size() << std::endl;
   // If it is a L0 -> base level compaction, we need to set up other L0
   // files if needed.
   if (!SetupOtherL0FilesIfNeeded()) {
@@ -321,6 +323,8 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
     return nullptr;
   }
 
+  std::cout << "Before set other inputs: " << start_level_inputs_.size() << " "
+            << output_level_inputs_.size() << std::endl;
   // Pick files in the output level and expand more files in the start level
   // if needed.
   if (!SetupOtherInputsIfNeeded()) {
