@@ -314,8 +314,6 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
   }
   assert(start_level_ >= 0 && output_level_ >= 0);
 
-  std::cout << "Before set other l0 files: " << start_level_inputs_.size() << " "
-            << output_level_inputs_.size() << std::endl;
   // If it is a L0 -> base level compaction, we need to set up other L0
   // files if needed.
   if (!SetupOtherL0FilesIfNeeded()) {
@@ -323,8 +321,6 @@ Compaction* LevelCompactionBuilder::PickCompaction() {
     return nullptr;
   }
 
-  std::cout << "Before set other inputs: " << start_level_inputs_.size() << " "
-            << output_level_inputs_.size() << std::endl;
   // Pick files in the output level and expand more files in the start level
   // if needed.
   if (!SetupOtherInputsIfNeeded()) {

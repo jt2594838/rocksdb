@@ -1509,7 +1509,7 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
   uint64_t recovered_seq(kMaxSequenceNumber);
   s = impl->Recover(column_families, false, false, false, &recovered_seq);
   if (s.ok()) {
-    uint64_t new_log_number = impl->versions_->NewFlushNumber();
+    uint64_t new_log_number = impl->versions_->NewLogFileNumber();
     log::Writer* new_log = nullptr;
     const size_t preallocate_block_size =
         impl->GetWalPreallocateBlockSize(max_write_buffer_size);

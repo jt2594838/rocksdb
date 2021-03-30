@@ -123,11 +123,11 @@ class MyCompactionFilter : public CompactionFilter {
 class IntComparator : public Comparator {
  public:
   int Compare(const Slice& a, const Slice& b) const override {
-    int64_t diff = *reinterpret_cast<const uint64_t*>(a.data()) -
-                   *reinterpret_cast<const uint64_t*>(b.data());
-    if (diff < 0) {
+    uint64_t _a = *reinterpret_cast<const uint64_t*>(a.data());
+    uint64_t _b = *reinterpret_cast<const uint64_t*>(b.data());
+    if (_a < _b) {
       return -1;
-    } else if (diff == 0) {
+    } else if (_a == _b) {
       return 0;
     } else {
       return 1;

@@ -3944,7 +3944,7 @@ Status DBImpl::WriteOptionsFile(bool need_mutex_lock,
   TEST_SYNC_POINT("DBImpl::WriteOptionsFile:2");
 
   std::string file_name =
-      TempOptionsFileName(GetName(), versions_->NewFlushNumber());
+      TempOptionsFileName(GetName(), versions_->NewLogFileNumber());
   Status s = PersistRocksDBOptions(db_options, cf_names, cf_opts, file_name,
                                    fs_.get());
 
@@ -4028,7 +4028,7 @@ Status DBImpl::RenameTempFileToOptionsFile(const std::string& file_name) {
 #ifndef ROCKSDB_LITE
   Status s;
 
-  uint64_t options_file_number = versions_->NewFlushNumber();
+  uint64_t options_file_number = versions_->NewLogFileNumber();
   std::string options_file_name =
       OptionsFileName(GetName(), options_file_number);
   // Retry if the file name happen to conflict with an existing one.
