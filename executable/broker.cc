@@ -24,29 +24,36 @@ using namespace ROCKSDB_NAMESPACE;
 
 void Broker::Put(std::vector<std::string> &keys,
                  std::vector<std::string> &values) {
+  uint32_t start_idx = 0;
+  for (uint32_t i = 1; i < clients.size(); ++i) {
+    if (client_ticks[i] < client_ticks[start_idx]) {
+       start_idx = i;
+    }
+  }
   TStatus status;
   for (unsigned int i = 0; i < clients.size(); ++i) {
-    if (i == leader_pos) {
-      continue;
-    }
+    //if (i == leader_pos) {
+    //  continue;
+    //}
+    uint32_t cli_idx = (i + start_idx) % clients.size();
     uint64_t t_start = clock();
-    clients[i]->PutBatch(status, keys, values);
+    clients[cli_idx]->PutBatch(status, keys, values);
     uint64_t t_consumed = clock() - t_start;
-    client_ticks[i].fetch_add(t_consumed);
+    client_ticks[cli_idx].fetch_add(t_consumed);
     if (status.code != Status::Code::kOk) {
       std::cout << "An error occurred during put " << status.code << ":"
                 << status.state << std::endl;
     }
   }
 
-  uint64_t t_start = clock();
-  leader_client->PutBatch(status, keys, values);
-  uint64_t t_consumed = clock() - t_start;
-  client_ticks[leader_pos].fetch_add(t_consumed);
-  if (status.code != Status::Code::kOk) {
-    std::cout << "An error occurred during put " << status.code << ":"
-              << status.state << std::endl;
-  }
+  //uint64_t t_start = clock();
+  //leader_client->PutBatch(status, keys, values);
+  //uint64_t t_consumed = clock() - t_start;
+  //client_ticks[leader_pos].fetch_add(t_consumed);
+  //if (status.code != Status::Code::kOk) {
+  //  std::cout << "An error occurred during put " << status.code << ":"
+  //            << status.state << std::endl;
+  //}
 }
 
 void Broker::Put(std::string &key, std::string &value) {
@@ -206,11 +213,18 @@ void Broker::CompactEach() {
 }
 void Broker::Get(std::vector<std::string> &keys,
                  std::vector<std::string> &values, uint32_t client_idx) {
+  uint32_t min_delay_index = client_idx;
+  for (uint32_t i = 0; i < clients.size(); ++i) {
+    if (client_ticks[i] < client_ticks[min_delay_index]) {
+      min_delay_index = i; 
+    }
+  }
+
   GetBatchResult result;
   uint64_t t_start = clock();
-  clients[client_idx]->GetBatch(result, keys);
+  clients[min_delay_index]->GetBatch(result, keys);
   uint64_t t_consumed = clock() - t_start;
-  client_ticks[client_idx].fetch_add(t_consumed);
+  client_ticks[min_delay_index].fetch_add(t_consumed);
   values = result.values;
 }
 
@@ -348,7 +362,7 @@ void write_stress(char **argv) {
   uint64_t t_read_last = t_start;
 
   for (uint32_t k = 0; k < write_thread_num; ++k) {
-    threads.emplace_back([&env, &write_i, &argv, t_start, &t_write_last] {
+    threads.emplace_back([&env, &write_i, &argv, t_start, &t_write_last, k] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
       std::uniform_int_distribution<uint64_t> distribution;
@@ -357,6 +371,7 @@ void write_stress(char **argv) {
       std::vector<std::string> values_;
       keys_.reserve(batch_size);
       values_.reserve(batch_size);
+      std::cout << "Write thread #" << k << " starts" << std::endl;
       uint64_t t;
       for (;;) {
         for (uint32_t l = 0; l < batch_size; l++) {
@@ -383,10 +398,10 @@ void write_stress(char **argv) {
           time_t tt = time(nullptr);
           char buffer[9] = {0};
           strftime(buffer, 9, "%H:%M:%S", localtime(&tt));
-          std::cout << "write: " << buffer << " " << total_consumed_time << " "
+          std::cout << "write" << k << ": " << buffer << " " << total_consumed_time << " "
                     << j * batch_size << " " << total_avg << " " << temp_avg
                     << "|" << b.GetTicks() << std::endl;
-          // b->ClearTicks();
+          //b.ClearTicks();
         }
         if (j >= batch_num) {
           break;
@@ -396,7 +411,7 @@ void write_stress(char **argv) {
   }
 
   for (uint32_t k = 0; k < read_thread_num; k++) {
-    threads.emplace_back([&env, &write_i, &read_i, &argv, t_start, &t_read_last] {
+    threads.emplace_back([&env, &write_i, &read_i, &argv, t_start, &t_read_last, k] {
       Broker b(argv[1]);
       std::default_random_engine e(seed);
       std::uniform_int_distribution<uint64_t> distribution;
@@ -429,10 +444,10 @@ void write_stress(char **argv) {
           time_t tt = time(nullptr);
           char buffer[9] = {0};
           strftime(buffer, 9, "%H:%M:%S", localtime(&tt));
-          std::cout << "read: " << buffer << " " << total_consumed_time << " "
+          std::cout << "read" << k << ": " << buffer << " " << total_consumed_time << " "
                     << j * batch_size << " " << total_avg << " " << temp_avg
                     << "|" << b.GetTicks() << std::endl;
-          // b->ClearTicks();
+          //b.ClearTicks();
         }
 
         uint64_t written_batch = write_i;
