@@ -190,6 +190,7 @@ void RocksService::InstallCompaction(TStatus &_return,
         db->default_cf_handle_->cfd(), &job_context.superversion_contexts[0],
         *db->default_cf_handle_->cfd()->GetLatestMutableCFOptions());
   }
+  job_context.Clean();
   db->mutex()->Unlock();
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Compaction installation completed: %s", s.ToString().c_str());
@@ -438,6 +439,7 @@ void RocksService::TrivialMove(TStatus &_return,
         db->default_cf_handle_->cfd(), &job_context.superversion_contexts[0],
         *db->default_cf_handle_->cfd()->GetLatestMutableCFOptions());
   }
+  job_context.Clean();
   db->mutex()->Unlock();
   ROCKS_LOG_INFO(db->immutable_db_options_.info_log,
                  "Trivial move completed: %s", s.ToString().c_str());
