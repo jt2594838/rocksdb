@@ -1790,7 +1790,7 @@ Status DBImpl::RunManualCompaction(
                      "%d, scheduled: %d, manual_end: %ld, has compaction: %d, "
                      "manual conflict: %d, no run: %d",
                      manual.in_progress, scheduled,
-                     manual.manual_end == nullptr
+                     manual.manual_end == nullptr || manual.manual_end->size() <= 8
                          ? -1
                          : manual.manual_end->user_key().ToUint64(),
                      compaction != nullptr, manual_conflict, no_run);
@@ -2322,7 +2322,7 @@ DBImpl::BGJobLimits DBImpl::GetBGJobLimits() const {
   return GetBGJobLimits(mutable_db_options_.max_background_flushes,
                         mutable_db_options_.max_background_compactions,
                         mutable_db_options_.max_background_jobs,
-                        write_controller_.NeedSpeedupCompaction());
+                        true);
 }
 
 DBImpl::BGJobLimits DBImpl::GetBGJobLimits(int max_background_flushes,
