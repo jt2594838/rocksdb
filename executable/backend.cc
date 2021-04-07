@@ -19,6 +19,7 @@
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
+#include "table/block_based/block_based_table_factory.h"
 
 using namespace ROCKSDB_NAMESPACE;
 
@@ -157,6 +158,7 @@ int main(int argc, char** argv) {
   options.comparator = new IntComparator();
   options.allow_fallocate = false;
   options.allow_concurrent_memtable_write = false;
+  options.OptimizeForPointLookup(16);
 
   // options.compaction_filter = new MyCompactionFilter(100);
   for (auto& i : options.compression_per_level) {
